@@ -76,6 +76,37 @@ function buildSections(findings: readonly Finding[]): Section[] {
 }
 
 /**
+ * Determiners and pronouns that should drop to lower case after a joiner even
+ * when a capitalised term follows them: "your Spouse Palace", not "Your".
+ */
+const ALWAYS_LOWER = new Set([
+  'The', 'A', 'An', 'This', 'That', 'These', 'Those',
+  'Your', 'You', 'It', 'There', 'Both', 'Each', 'No', 'None',
+]);
+
+/**
+ * Lower-case an English sentence opener so a joiner reads naturally.
+ *
+ * The trap is that a claim can open with a term name — "Indirect Wealth shows
+ * openly" — where lowering it is wrong, and character-level tests cannot tell
+ * "Indirect Wealth" from "In the natal chart": both are a capital followed by
+ * a lowercase letter. Looking at the SECOND word settles it, since a term name
+ * is Title Case throughout.
+ */
+function afterJoiner(text: string, joiner: string, locale: Locale): string {
+  if (!joiner || locale === 'zh') return text;
+
+  const match = /^([A-Z][a-z]+)(\s+)(\S+)/.exec(text);
+  if (!match) return text;
+
+  const [, first, gap, second] = match;
+  const secondIsCapitalised = /^[A-Z][a-z]/.test(second!);
+  if (secondIsCapitalised && !ALWAYS_LOWER.has(first!)) return text;
+
+  return first!.charAt(0).toLowerCase() + first!.slice(1) + gap + text.slice(first!.length + gap!.length);
+}
+
+/**
  * Hedge a low-confidence claim so a contested reading is not stated flatly.
  *
  * Skipped inside the "held lightly" section: that heading already says it, and
@@ -128,8 +159,12 @@ export function composeReading(
     out.push(`### ${section.heading[locale]}`);
 
     const sentences = section.findings.map((f, i) => {
-      const joiner = JOINERS[locale][i % JOINERS[locale].length] ?? '';
-      return joiner + hedge(f.claim[locale], f.confidence, locale, section.hedged === true);
+      const willHedge = f.confidence === 'low' && section.hedged !== true;
+      const claim = hedge(f.claim[locale], f.confidence, locale, section.hedged === true);
+      // A hedge is itself a connective. Stacking a joiner on top of it gives
+      // "Beyond that, less certainly: ...", which reads like a throat-clear.
+      const joiner = willHedge ? '' : (JOINERS[locale][i % JOINERS[locale].length] ?? '');
+      return joiner + afterJoiner(claim, joiner, locale);
     });
 
     // One paragraph per section. The claims are already complete sentences,
