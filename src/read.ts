@@ -11,6 +11,8 @@
 import { buildChart } from './engine/chart';
 import { analyzeChart } from './analyzer/index';
 import { formatNote } from './i18n/notes';
+import { isLocale, type Locale } from './i18n/text';
+import { ELEMENT, TEN_GOD } from './i18n/glossary';
 import type { BirthInput, Gender } from './engine/types';
 
 function parseArgs(argv: readonly string[]): BirthInput {
@@ -40,35 +42,40 @@ function parseArgs(argv: readonly string[]): BirthInput {
 const rule = (t: string) => console.log(`\n${t}\n${'─'.repeat(66)}`);
 
 function main() {
-  const chart = buildChart(parseArgs(process.argv.slice(2)));
+  const argv = process.argv.slice(2);
+  const flagIdx = argv.indexOf('--lang');
+  const raw = flagIdx >= 0 ? argv[flagIdx + 1] : 'zh';
+  const L: Locale = isLocale(raw) ? raw : 'zh';
+
+  const chart = buildChart(parseArgs(argv));
   const a = analyzeChart(chart);
 
   rule(`四柱  ${[chart.pillars.year, chart.pillars.month, chart.pillars.day, chart.pillars.hour]
     .map((p) => p?.ganZhi ?? '——').join('  ')}   日主 ${chart.dayMaster}（${chart.dayMasterYinYang}${chart.dayMasterElement}）`);
 
-  rule('旺衰');
-  for (const r of a.strength.reasoning) console.log(`  ${r}`);
-  console.log(`  五行占比  ${Object.entries(a.strength.elementPercent)
-    .map(([e, p]) => `${e} ${p}%`).join('   ')}`);
+  rule(L === 'zh' ? '旺衰' : 'Day Master strength');
+  for (const r of a.strength.reasoning) console.log(`  ${r[L]}`);
+  console.log(`  ${Object.entries(a.strength.elementPercent)
+    .map(([e, p]) => `${ELEMENT[e]![L]} ${p}%`).join('   ')}`);
 
-  rule('用神');
-  for (const r of a.yongShen.reasoning) console.log(`  ${r}`);
+  rule(L === 'zh' ? '用神' : 'Favourable element');
+  for (const r of a.yongShen.reasoning) console.log(`  ${r[L]}`);
 
-  rule('姻缘 / 婚姻');
+  rule(L === 'zh' ? '姻缘 / 婚姻' : 'Relationships');
   for (const f of a.relationship.findings) {
-    console.log(`\n  ▸ ${f.claim}`);
+    console.log(`\n  ▸ ${f.claim[L]}`);
     console.log(`    [${f.id} · ${f.confidence}]`);
-    for (const e of f.evidence) console.log(`    · ${e}`);
+    for (const e of f.evidence) console.log(`    · ${e[L]}`);
   }
 
-  rule('事业 / 财运');
+  rule(L === 'zh' ? '事业 / 财运' : 'Career');
   for (const f of a.career.findings) {
-    console.log(`\n  ▸ ${f.claim}`);
+    console.log(`\n  ▸ ${f.claim[L]}`);
     console.log(`    [${f.id} · ${f.confidence}]`);
-    for (const e of f.evidence) console.log(`    · ${e}`);
+    for (const e of f.evidence) console.log(`    · ${e[L]}`);
   }
 
-  rule('大运走势');
+  rule(L === 'zh' ? '大运走势' : 'Luck pillars');
   for (const d of a.career.decades) {
     const bar = d.verdict === '有利' ? '████' : d.verdict === '偏顺' ? '███'
       : d.verdict === '平稳' ? '██' : '▒';

@@ -11,6 +11,7 @@
 
 import { buildChart } from './engine/chart';
 import { formatNote } from './i18n/notes';
+import { isLocale } from './i18n/text';
 import type { BirthInput, Gender, Pillar } from './engine/types';
 
 function parseArgs(argv: readonly string[]): BirthInput {
@@ -69,7 +70,10 @@ function main() {
   console.log('\n' + '─'.repeat(64));
   console.log(`  ${c.moment.input}  ${c.gender === 'male' ? '男' : '女'}   ${c.moment.timeZone}`);
   console.log('─'.repeat(64));
-  for (const n of c.moment.notes) console.log(`  · ${formatNote(n, 'zh')}`);
+  const cliLang = process.argv.includes('--lang')
+    ? process.argv[process.argv.indexOf('--lang') + 1] : 'zh';
+  const L = isLocale(cliLang) ? cliLang : 'zh';
+  for (const n of c.moment.notes) console.log(`  · ${formatNote(n, L)}`);
   if (c.moment.trueSolarCorrectionMinutes !== 0) {
     const m = c.moment.charted;
     console.log(`  · charted at ${m.year}-${m.month}-${m.day} ` +

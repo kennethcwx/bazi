@@ -11,6 +11,7 @@
  */
 
 import type { Chart, Pillar } from '../engine/types';
+import { t, type LocalizedText } from '../i18n/text';
 
 export interface ShenShaHit {
   readonly name: string;
@@ -19,7 +20,7 @@ export interface ShenShaHit {
   readonly branch: string;
   /** What it is read from — 年支, 日支, 日干. */
   readonly reference: string;
-  readonly meaning: string;
+  readonly meaning: LocalizedText;
   readonly topic: 'relationship' | 'career';
 }
 
@@ -95,7 +96,7 @@ export function findShenSha(chart: Chart): ShenShaHit[] {
 
   const add = (
     name: string, target: string | undefined, reference: string,
-    meaning: string, topic: 'relationship' | 'career',
+    meaning: LocalizedText, topic: 'relationship' | 'career',
   ) => {
     if (!target) return;
     for (const p of pillars) {
@@ -114,23 +115,23 @@ export function findShenSha(chart: Chart): ShenShaHit[] {
 
   // 桃花 is conventionally read from both 年支 and 日支. When the two reference
   // points land on the same branch we report it once rather than twice.
-  add('桃花', PEACH[yearBranch], '年支', '异性缘、魅力、感情牵动', 'relationship');
+  add('桃花', PEACH[yearBranch], '年支', t('异性缘、魅力、感情牵动', 'attraction, charm, and romantic pull'), 'relationship');
   if (PEACH[dayBranch] !== PEACH[yearBranch]) {
-    add('桃花', PEACH[dayBranch], '日支', '异性缘、魅力、感情牵动', 'relationship');
+    add('桃花', PEACH[dayBranch], '日支', t('异性缘、魅力、感情牵动', 'attraction, charm, and romantic pull'), 'relationship');
   }
 
-  add('红鸾', HONG_LUAN[yearBranch], '年支', '婚恋喜事之星', 'relationship');
-  add('天喜', TIAN_XI[yearBranch], '年支', '喜庆、婚嫁之星', 'relationship');
-  add('红艳', HONG_YAN[dayStem], '日干', '情感浓烈、易招情缘', 'relationship');
+  add('红鸾', HONG_LUAN[yearBranch], '年支', t('婚恋喜事之星', 'the star of courtship and happy occasions'), 'relationship');
+  add('天喜', TIAN_XI[yearBranch], '年支', t('喜庆、婚嫁之星', 'the star of celebration and marriage'), 'relationship');
+  add('红艳', HONG_YAN[dayStem], '日干', t('情感浓烈、易招情缘', 'intense feeling; draws romantic attention easily'), 'relationship');
 
   const lonely = LONELY[yearBranch];
-  add('孤辰', lonely?.gu, '年支', '孤独、晚婚倾向', 'relationship');
-  add('寡宿', lonely?.gua, '年支', '孤独、晚婚倾向', 'relationship');
+  add('孤辰', lonely?.gu, '年支', t('孤独、晚婚倾向', 'a pull toward solitude and later marriage'), 'relationship');
+  add('寡宿', lonely?.gua, '年支', t('孤独、晚婚倾向', 'a pull toward solitude and later marriage'), 'relationship');
 
-  add('将星', GENERAL[yearBranch], '年支', '领导力、掌权', 'career');
-  add('驿马', TRAVEL[yearBranch], '年支', '奔波、外出、变动', 'career');
+  add('将星', GENERAL[yearBranch], '年支', t('领导力、掌权', 'leadership, and holding real authority'), 'career');
+  add('驿马', TRAVEL[yearBranch], '年支', t('奔波、外出、变动', 'travel, relocation, and movement'), 'career');
   if (TRAVEL[dayBranch] !== TRAVEL[yearBranch]) {
-    add('驿马', TRAVEL[dayBranch], '日支', '奔波、外出、变动', 'career');
+    add('驿马', TRAVEL[dayBranch], '日支', t('奔波、外出、变动', 'travel, relocation, and movement'), 'career');
   }
 
   if (YIN_CHA_YANG_CUO.has(chart.pillars.day.ganZhi)) {
@@ -139,7 +140,8 @@ export function findShenSha(chart: Chart): ShenShaHit[] {
       position: '日柱',
       branch: chart.pillars.day.ganZhi,
       reference: '日柱',
-      meaning: '婚姻多波折、易有隔阂或聚少离多',
+      meaning: t('婚姻多波折、易有隔阂或聚少离多',
+        'a marriage prone to setbacks, distance, or long stretches apart'),
       topic: 'relationship',
     });
   }
@@ -154,6 +156,11 @@ export function findShenSha(chart: Chart): ShenShaHit[] {
     else seen.set(k, h);
   }
   return [...seen.entries()].map(([k, h]) =>
-    doubled.has(k) ? { ...h, meaning: `${h.meaning}（年、日两见，力量加重）` } : h,
+    doubled.has(k)
+      ? { ...h, meaning: t(
+          `${h.meaning.zh}（年、日两见，力量加重）`,
+          `${h.meaning.en} (found from both the year and day branch, so it counts double)`,
+        ) }
+      : h,
   );
 }

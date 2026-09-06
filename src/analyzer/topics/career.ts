@@ -16,6 +16,10 @@
  */
 
 import type { Chart, Element, TenGod } from '../../engine/types';
+import { t, type LocalizedText } from '../../i18n/text';
+import {
+  DIRECTION, ELEMENT, SHENSHA, STRUCTURE, TEN_GOD, TEN_GOD_FAMILY,
+} from '../../i18n/glossary';
 import { elementOfBranch, elementOfStem, type TenGodFamily } from '../elements';
 import { finding, type Finding } from '../findings';
 import { findShenSha } from '../shensha';
@@ -23,12 +27,37 @@ import type { StrengthAnalysis } from '../strength';
 import type { YongShenAnalysis } from '../yongshen';
 
 /** Sectors by element. Deliberately concrete: "金融" is useful, "金的行业" is not. */
-const INDUSTRIES: Record<Element, readonly string[]> = {
-  木: ['教育', '出版与文化', '纺织服装', '家具木材', '医药保健', '设计创意', '农林'],
-  火: ['能源电力', '媒体广告', '餐饮', '娱乐演艺', '电子科技', '市场营销', '美容'],
-  土: ['房地产', '建筑工程', '保险', '仓储物流', '农业', '咨询顾问', '陶瓷建材'],
-  金: ['金融银行', '机械制造', '法律', '五金矿产', '汽车', '精密仪器', 'IT硬件'],
-  水: ['贸易进出口', '航运物流', '旅游', '通信传媒', '饮料水产', '研究分析', '流通服务'],
+const INDUSTRIES: Record<Element, readonly LocalizedText[]> = {
+  木: [
+    t('教育', 'education'), t('出版与文化', 'publishing and culture'),
+    t('纺织服装', 'textiles and clothing'), t('家具木材', 'furniture and timber'),
+    t('医药保健', 'medicine and health'), t('设计创意', 'design'),
+    t('农林', 'agriculture and forestry'),
+  ],
+  火: [
+    t('能源电力', 'energy and power'), t('媒体广告', 'media and advertising'),
+    t('餐饮', 'food and beverage'), t('娱乐演艺', 'entertainment'),
+    t('电子科技', 'electronics and tech'), t('市场营销', 'marketing'),
+    t('美容', 'beauty'),
+  ],
+  土: [
+    t('房地产', 'property'), t('建筑工程', 'construction'),
+    t('保险', 'insurance'), t('仓储物流', 'warehousing and logistics'),
+    t('农业', 'agriculture'), t('咨询顾问', 'consulting'),
+    t('陶瓷建材', 'ceramics and building materials'),
+  ],
+  金: [
+    t('金融银行', 'finance and banking'), t('机械制造', 'manufacturing'),
+    t('法律', 'law'), t('五金矿产', 'metals and mining'),
+    t('汽车', 'automotive'), t('精密仪器', 'precision instruments'),
+    t('IT硬件', 'IT hardware'),
+  ],
+  水: [
+    t('贸易进出口', 'trade and import/export'), t('航运物流', 'shipping and logistics'),
+    t('旅游', 'travel'), t('通信传媒', 'communications'),
+    t('饮料水产', 'drinks and seafood'), t('研究分析', 'research and analysis'),
+    t('流通服务', 'distribution services'),
+  ],
 };
 
 /** Directions by element, for the 方位 question people always ask. */
@@ -38,6 +67,14 @@ const DIRECTIONS: Record<Element, string> = {
 
 export type CareerLean = '适合任职受雇' | '适合自主创业' | '两可，视运而定';
 
+const LEAN_LABEL: Record<CareerLean, LocalizedText> = {
+  适合任职受雇: t('适合任职受雇', 'Better suited to employment'),
+  适合自主创业: t('适合自主创业', 'Better suited to working for yourself'),
+  '两可，视运而定': t('两可，视运而定', 'Either can work — it depends on timing'),
+};
+
+export type DecadeVerdict = '有利' | '偏顺' | '平稳' | '不利';
+
 export interface DecadeOutlook {
   readonly index: number;
   readonly startAge: number;
@@ -46,8 +83,8 @@ export interface DecadeOutlook {
   readonly endYear: number;
   readonly ganZhi: string;
   readonly score: number;
-  readonly verdict: '有利' | '偏顺' | '平稳' | '不利';
-  readonly notes: readonly string[];
+  readonly verdict: DecadeVerdict;
+  readonly notes: readonly LocalizedText[];
 }
 
 export interface CareerAnalysis {
@@ -56,7 +93,7 @@ export interface CareerAnalysis {
   readonly structureExposed: boolean;
   readonly dominantFamily: TenGodFamily;
   readonly lean: CareerLean;
-  readonly industries: readonly string[];
+  readonly industries: readonly LocalizedText[];
   readonly direction: string;
   readonly decades: readonly DecadeOutlook[];
   readonly bestDecade: DecadeOutlook | null;
@@ -90,7 +127,7 @@ function determineStructure(chart: Chart): { name: string; exposed: boolean; ten
   return { name, exposed, tenGod };
 }
 
-function determineLean(strength: StrengthAnalysis): { lean: CareerLean; why: string } {
+function determineLean(strength: StrengthAnalysis): { lean: CareerLean; why: LocalizedText } {
   const s = strength.familyPercent;
   const strong = strength.verdict === '身强';
   const output = s['食伤'];
@@ -101,27 +138,46 @@ function determineLean(strength: StrengthAnalysis): { lean: CareerLean; why: str
   if (strong && (wealth >= 20 || output >= 25)) {
     return {
       lean: '适合自主创业',
-      why: `身强担得起财，食伤 ${output}% 与财 ${wealth}% 俱有力，` +
-        `自主经营比受制于人更能发挥。`,
+      why: t(
+        `身强担得起财，食伤 ${output}% 与财 ${wealth}% 俱有力，自主经营比受制于人更能发挥。`,
+        `The Day Master is strong enough to carry wealth, and both output ` +
+          `(${output}%) and wealth (${wealth}%) have real weight. You get further ` +
+          `running your own thing than working to someone else's brief.`,
+      ),
     };
   }
   if (!strong && (officer >= 20 || seal >= 20)) {
     return {
       lean: '适合任职受雇',
-      why: `身弱而官印有力（官杀 ${officer}%、印 ${seal}%），` +
-        `在有制度、有人带的组织里更稳，独自扛盘易力不从心。`,
+      why: t(
+        `身弱而官印有力（官杀 ${officer}%、印 ${seal}%），在有制度、有人带的组织里更稳，` +
+          `独自扛盘易力不从心。`,
+        `The Day Master is weak while authority (${officer}%) and resource (${seal}%) ` +
+          `are strong. You do better inside an organisation with structure and ` +
+          `people to learn from; carrying the whole load alone tends to outrun you.`,
+      ),
     };
   }
   if (strong && officer >= 25) {
     return {
       lean: '适合任职受雇',
-      why: `身强而官杀 ${officer}% 得力，适合在体制或大组织内担责掌权。`,
+      why: t(
+        `身强而官杀 ${officer}% 得力，适合在体制或大组织内担责掌权。`,
+        `The Day Master is strong and authority is substantial at ${officer}%. ` +
+          `That combination takes responsibility well inside an institution or a ` +
+          `large organisation.`,
+      ),
     };
   }
   return {
     lean: '两可，视运而定',
-    why: `十神分布未见一面独强（官杀 ${officer}%、财 ${wealth}%、食伤 ${output}%），` +
-      `受雇或自营皆可行，宜按大运选择时机。`,
+    why: t(
+      `十神分布未见一面独强（官杀 ${officer}%、财 ${wealth}%、食伤 ${output}%），` +
+        `受雇或自营皆可行，宜按大运选择时机。`,
+      `No single force dominates — authority ${officer}%, wealth ${wealth}%, ` +
+        `output ${output}%. Employment and self-employment are both viable; the ` +
+        `luck pillars should decide which, and when.`,
+    ),
   };
 }
 
@@ -131,16 +187,33 @@ function scoreDecades(chart: Chart, yongShen: YongShenAnalysis): DecadeOutlook[]
   return chart.decades.map((d) => {
     const stemEl = elementOfStem(d.stem);
     const branchEl = elementOfBranch(d.branch);
-    const notes: string[] = [];
+    const notes: LocalizedText[] = [];
     let score = 0;
 
-    if (fav.has(stemEl)) { score += 2; notes.push(`天干${d.stem}属${stemEl}，为用神一路`); }
-    else { score -= 1; notes.push(`天干${d.stem}属${stemEl}，非用神`); }
+    if (fav.has(stemEl)) {
+      score += 2;
+      notes.push(t(`天干${d.stem}属${stemEl}，为用神一路`,
+        `Stem ${d.stem} is ${ELEMENT[stemEl]!.en} — favourable`));
+    } else {
+      score -= 1;
+      notes.push(t(`天干${d.stem}属${stemEl}，非用神`,
+        `Stem ${d.stem} is ${ELEMENT[stemEl]!.en} — not favourable`));
+    }
 
-    if (fav.has(branchEl)) { score += 2; notes.push(`地支${d.branch}属${branchEl}，为用神一路`); }
-    else { score -= 1; notes.push(`地支${d.branch}属${branchEl}，非用神`); }
+    if (fav.has(branchEl)) {
+      score += 2;
+      notes.push(t(`地支${d.branch}属${branchEl}，为用神一路`,
+        `Branch ${d.branch} is ${ELEMENT[branchEl]!.en} — favourable`));
+    } else {
+      score -= 1;
+      notes.push(t(`地支${d.branch}属${branchEl}，非用神`,
+        `Branch ${d.branch} is ${ELEMENT[branchEl]!.en} — not favourable`));
+    }
 
-    if (d.isVoid) { score -= 1; notes.push('此运落空亡，力量打折'); }
+    if (d.isVoid) {
+      score -= 1;
+      notes.push(t('此运落空亡，力量打折', 'This pillar falls void, which discounts its force'));
+    }
 
     return {
       index: d.index,
@@ -181,14 +254,28 @@ export function analyzeCareer(
 
   const shensha = findShenSha(chart).filter((s) => s.topic === 'career');
   const f: Finding[] = [];
+  const monthMainStem = chart.pillars.month.hiddenStems.find((h) => h.role === 'main')?.stem ?? '';
+  const structureEn = STRUCTURE[structure.name]?.en ?? structure.name;
 
   f.push(finding({
     id: 'career.structure',
     topic: 'career',
-    claim: `月令取${structure.name}${structure.exposed ? '，且格神透干，格局清晰' : '，格神未透，方向需自己摸索'}。`,
+    claim: t(
+      `月令取${structure.name}${structure.exposed ? '，且格神透干，格局清晰' : '，格神未透，方向需自己摸索'}。`,
+      `The month gives you a ${structureEn}` +
+        (structure.exposed
+          ? `, and its governing stem shows openly — the structure is clean and the direction is legible.`
+          : `, but its governing stem stays hidden. The shape is there; you will have to find the direction yourself.`),
+    ),
     evidence: [
-      `月支 ${chart.pillars.month.branch} 本气 ${chart.pillars.month.hiddenStems.find((h) => h.role === 'main')?.stem ?? ''}（${structure.tenGod}）`,
-      structure.exposed ? '格神于天干得见' : '格神仅藏于地支',
+      t(
+        `月支 ${chart.pillars.month.branch} 本气 ${monthMainStem}（${structure.tenGod}）`,
+        `Month branch ${chart.pillars.month.branch}, primary hidden stem ` +
+          `${monthMainStem} (${TEN_GOD[structure.tenGod]!.en})`,
+      ),
+      structure.exposed
+        ? t('格神于天干得见', 'The governing stem is visible above')
+        : t('格神仅藏于地支', 'The governing stem is hidden in the branches only'),
     ],
     confidence: 'medium',
     requiresHour: false,
@@ -198,10 +285,14 @@ export function analyzeCareer(
   f.push(finding({
     id: 'career.lean',
     topic: 'career',
-    claim: `${lean}。`,
+    claim: t(`${lean}。`, `${LEAN_LABEL[lean].en}.`),
     evidence: [
       why,
-      `旺衰判定 ${strength.verdict}（支持度 ${strength.supportPercent}%）`,
+      t(
+        `旺衰判定 ${strength.verdict}（支持度 ${strength.supportPercent}%）`,
+        `Strength: ${strength.verdict === '身强' ? 'strong' : strength.verdict === '身弱' ? 'weak' : 'balanced'} ` +
+          `(support ${strength.supportPercent}%)`,
+      ),
     ],
     confidence: 'medium',
     requiresHour: false,
@@ -211,13 +302,27 @@ export function analyzeCareer(
   f.push(finding({
     id: 'career.industry',
     topic: 'career',
-    claim: `用神为${yongShen.primary}，宜走${yongShen.primary}性行业：` +
-      `${industries.slice(0, 5).join('、')}等；方位利${direction}。`,
+    claim: t(
+      `用神为${yongShen.primary}，宜走${yongShen.primary}性行业：` +
+        `${industries.slice(0, 5).map((i) => i.zh).join('、')}等；方位利${direction}。`,
+      `Your favourable element is ${ELEMENT[yongShen.primary]!.en}, so ` +
+        `${ELEMENT[yongShen.primary]!.en}-natured work suits you: ` +
+        `${industries.slice(0, 5).map((i) => i.en).join(', ')}. ` +
+        `Direction favours the ${DIRECTION[direction]?.en ?? direction}.`,
+    ),
     evidence: [
-      `用神 ${yongShen.primary}（${yongShen.primaryFamily}）`,
-      `取用流派：${yongShen.school}`,
-      ...(yongShen.climateConflict
-        ? [`⚠️ 调候另取${yongShen.climateNeed}，与扶抑不一致，行业选择可两者兼顾`]
+      t(
+        `用神 ${yongShen.primary}（${yongShen.primaryFamily}）`,
+        `Favourable element ${ELEMENT[yongShen.primary]!.en} ` +
+          `(${TEN_GOD_FAMILY[yongShen.primaryFamily]!.en})`,
+      ),
+      t(`取用流派：${yongShen.school.zh}`, `Method used: ${yongShen.school.en}`),
+      ...(yongShen.climateConflict && yongShen.climateNeed
+        ? [t(
+            `⚠️ 调候另取${yongShen.climateNeed}，与扶抑不一致，行业选择可两者兼顾`,
+            `⚠️ On climate grounds ${ELEMENT[yongShen.climateNeed]!.en} is wanted instead. ` +
+              `The two methods disagree, so a sector spanning both is defensible.`,
+          )]
         : []),
     ],
     confidence: yongShen.climateConflict ? 'low' : 'medium',
@@ -228,25 +333,38 @@ export function analyzeCareer(
   f.push(finding({
     id: 'career.dominant',
     topic: 'career',
-    claim: `十神以${dominantFamily}最重（${strength.familyPercent[dominantFamily]}%），` +
-      `${familyCareerMeaning(dominantFamily)}`,
+    claim: t(
+      `十神以${dominantFamily}最重（${strength.familyPercent[dominantFamily]}%），` +
+        familyCareerMeaning(dominantFamily).zh,
+      `${TEN_GOD_FAMILY[dominantFamily]!.en} is the heaviest force in your chart at ` +
+        `${strength.familyPercent[dominantFamily]}%. ` +
+        familyCareerMeaning(dominantFamily).en,
+    ),
     evidence: (Object.entries(strength.familyPercent) as [TenGodFamily, number][])
       .sort((a, b) => b[1] - a[1])
-      .map(([fam, pct]) => `${fam} ${pct}%`),
+      .map(([fam, pct]) => t(`${fam} ${pct}%`, `${TEN_GOD_FAMILY[fam]!.en} ${pct}%`)),
     confidence: 'high',
     requiresHour: false,
     salience: 8,
   }));
 
+  const decadeSpan = (d: DecadeOutlook) => t(
+    `${d.startAge}-${d.endAge}岁（${d.startYear}-${d.endYear}，${d.ganZhi}）`,
+    `ages ${d.startAge}–${d.endAge} (${d.startYear}–${d.endYear}, ${d.ganZhi})`,
+  );
+  const decadeNotes = (list: readonly DecadeOutlook[]) =>
+    list.flatMap((d) => d.notes.map((n) => t(`${d.ganZhi}运：${n.zh}`, `${d.ganZhi}: ${n.en}`)));
+
   if (favourableDecades.length > 0) {
     f.push(finding({
       id: 'career.timing.favourable',
       topic: 'career',
-      claim: `事业较得力的大运：` +
-        favourableDecades
-          .map((d) => `${d.startAge}-${d.endAge}岁（${d.startYear}-${d.endYear}，${d.ganZhi}）`)
-          .join('、') + '。',
-      evidence: favourableDecades.flatMap((d) => d.notes.map((n) => `${d.ganZhi}运：${n}`)),
+      claim: t(
+        `事业较得力的大运：${favourableDecades.map((d) => decadeSpan(d).zh).join('、')}。`,
+        `Your strongest luck pillars for work: ` +
+          `${favourableDecades.map((d) => decadeSpan(d).en).join('; ')}.`,
+      ),
+      evidence: decadeNotes(favourableDecades),
       confidence: 'medium',
       requiresHour: false,
       salience: 10,
@@ -255,12 +373,17 @@ export function analyzeCareer(
     f.push(finding({
       id: 'career.timing.mild',
       topic: 'career',
-      claim: `前十步大运中没有干支俱为用神的强运，较为顺遂的是：` +
-        mildDecades
-          .map((d) => `${d.startAge}-${d.endAge}岁（${d.ganZhi}）`)
-          .join('、') +
-        `，皆为一柱得用、一柱不得用，事业进展靠积累多于际遇。`,
-      evidence: mildDecades.flatMap((d) => d.notes.map((n) => `${d.ganZhi}运：${n}`)),
+      claim: t(
+        `前十步大运中没有干支俱为用神的强运，较为顺遂的是：` +
+          `${mildDecades.map((d) => `${d.startAge}-${d.endAge}岁（${d.ganZhi}）`).join('、')}，` +
+          `皆为一柱得用、一柱不得用，事业进展靠积累多于际遇。`,
+        `None of the first ten luck pillars has both stem and branch in your ` +
+          `favour. The better ones are ` +
+          `${mildDecades.map((d) => `ages ${d.startAge}–${d.endAge} (${d.ganZhi})`).join('; ')} — ` +
+          `each half favourable, half not. Progress here comes from accumulation ` +
+          `rather than from a break.`,
+      ),
+      evidence: decadeNotes(mildDecades),
       confidence: 'medium',
       requiresHour: false,
       salience: 9,
@@ -273,8 +396,15 @@ export function analyzeCareer(
     f.push(finding({
       id: 'career.timing.none',
       topic: 'career',
-      claim: '前十步大运中未见明显的用神旺运，事业进展偏靠积累而非际遇，宜稳中求进。',
-      evidence: decades.map((d) => `${d.startAge}岁 ${d.ganZhi}：${d.verdict}（${d.score}分）`),
+      claim: t(
+        '前十步大运中未见明显的用神旺运，事业进展偏靠积累而非际遇，宜稳中求进。',
+        'No luck pillar in the first ten clearly favours you. Career progress ' +
+          'will come from steady accumulation rather than opportunity.',
+      ),
+      evidence: decades.map((d) => t(
+        `${d.startAge}岁 ${d.ganZhi}：${d.verdict}（${d.score}分）`,
+        `Age ${d.startAge} ${d.ganZhi}: score ${d.score}`,
+      )),
       confidence: 'medium',
       requiresHour: false,
       salience: 8,
@@ -286,10 +416,15 @@ export function analyzeCareer(
     f.push(finding({
       id: 'career.timing.adverse',
       topic: 'career',
-      claim: `须留意的大运：` +
-        adverse.map((d) => `${d.startAge}-${d.endAge}岁（${d.ganZhi}）`).join('、') +
-        `，此期间不宜大幅扩张或贸然转行。`,
-      evidence: adverse.flatMap((d) => d.notes.map((n) => `${d.ganZhi}运：${n}`)),
+      claim: t(
+        `须留意的大运：${adverse.map((d) => `${d.startAge}-${d.endAge}岁（${d.ganZhi}）`).join('、')}，` +
+          `此期间不宜大幅扩张或贸然转行。`,
+        `Pillars to watch: ` +
+          `${adverse.map((d) => `ages ${d.startAge}–${d.endAge} (${d.ganZhi})`).join('; ')}. ` +
+          `Not the time to expand hard or change field on impulse — this is a ` +
+          `caution about pace, not a warning of disaster.`,
+      ),
+      evidence: decadeNotes(adverse),
       confidence: 'medium',
       requiresHour: false,
       salience: 7,
@@ -297,11 +432,18 @@ export function analyzeCareer(
   }
 
   if (shensha.length > 0) {
+    const names = [...new Set(shensha.map((s) => s.name))];
     f.push(finding({
       id: 'career.shensha',
       topic: 'career',
-      claim: `事业相关神煞：${[...new Set(shensha.map((s) => s.name))].join('、')}。`,
-      evidence: shensha.map((s) => `${s.name} 在${s.position}${s.branch} — ${s.meaning}`),
+      claim: t(
+        `事业相关神煞：${names.join('、')}。`,
+        `Symbolic stars bearing on work: ${names.map((n) => SHENSHA[n]?.en ?? n).join(', ')}.`,
+      ),
+      evidence: shensha.map((s) => t(
+        `${s.name} 在${s.position}${s.branch} — ${s.meaning.zh}`,
+        `${SHENSHA[s.name]?.en ?? s.name} on the ${s.branch} branch — ${s.meaning.en}`,
+      )),
       confidence: 'low',
       requiresHour: shensha.every((s) => s.position === '时支'),
       salience: 4,
@@ -321,12 +463,37 @@ export function analyzeCareer(
   };
 }
 
-function familyCareerMeaning(family: TenGodFamily): string {
+function familyCareerMeaning(family: TenGodFamily): LocalizedText {
   switch (family) {
-    case '官杀': return '重责任与规矩，在有层级的组织里升得上去，但压力也来自于此。';
-    case '财': return '对资源与机会敏感，务实、看重回报，适合直接与钱和客户打交道。';
-    case '食伤': return '表达与创造力强，靠作品、技艺或点子取胜，受不了被框死。';
-    case '印': return '重学习与资历，靠专业身份立足，起步慢但根基稳。';
-    case '比劫': return '重同侪与合作，做事靠人脉与团队，但也容易在分利上生嫌隙。';
+    case '官杀':
+      return t(
+        '重责任与规矩，在有层级的组织里升得上去，但压力也来自于此。',
+        'You take responsibility and respect the rules, which is why you rise in ' +
+          'organisations with a hierarchy — and also where the pressure comes from.',
+      );
+    case '财':
+      return t(
+        '对资源与机会敏感，务实、看重回报，适合直接与钱和客户打交道。',
+        'You read resources and opportunities well, and you are practical about ' +
+          'return. Work that puts you directly in front of money and customers suits you.',
+      );
+    case '食伤':
+      return t(
+        '表达与创造力强，靠作品、技艺或点子取胜，受不了被框死。',
+        'Expression and invention are your edge — you win on work, craft or ideas, ' +
+          'and you do badly when boxed in.',
+      );
+    case '印':
+      return t(
+        '重学习与资历，靠专业身份立足，起步慢但根基稳。',
+        'You lean on learning and credentials, and you stand on professional ' +
+          'standing. Slow to start, but the foundation holds.',
+      );
+    case '比劫':
+      return t(
+        '重同侪与合作，做事靠人脉与团队，但也容易在分利上生嫌隙。',
+        'You work through peers and teams, and your network does real work for ' +
+          'you — but splitting the proceeds is where friction tends to appear.',
+      );
   }
 }

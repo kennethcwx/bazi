@@ -9,7 +9,9 @@
     "build": "next build",
     "start": "next start",
     "chart": "tsx src/cli.ts",
-    "read": "tsx src/read.ts"
+    "read": "tsx src/read.ts",
+    "typecheck": "tsc --noEmit --incremental false",
+    "check": "npm run typecheck && vitest run"
   },
   "keywords": [],
   "author": "",

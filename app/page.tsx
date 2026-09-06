@@ -10,72 +10,96 @@
  *
  * The 依据 citations under each section of a reading are shown, not hidden.
  * They are the product's whole claim — that a reading can be argued with.
+ *
+ * Language: the API returns one locale, so switching re-fetches rather than
+ * shipping both languages to a phone to display half of them. 干支 characters
+ * never translate — they are the chart itself.
  */
 
-import { useState, useRef, type ReactNode, type FormEvent } from 'react';
+import { useState, useRef, useEffect, useCallback, type ReactNode, type FormEvent } from 'react';
 import type { Chart, Element, Pillar } from '../src/engine/types';
+import type { RenderedFinding } from '../src/analyzer/findings';
 import { formatNote, isCaveat } from '../src/i18n/notes';
-import type { Finding } from '../src/analyzer/findings';
-import type { StrengthAnalysis } from '../src/analyzer/strength';
-import type { YongShenAnalysis } from '../src/analyzer/yongshen';
-import type { DecadeOutlook } from '../src/analyzer/topics/career';
+import { UI } from '../src/i18n/ui';
+import { ELEMENT, TEN_GOD, TERRAIN, DECADE_VERDICT, term } from '../src/i18n/glossary';
+import { isLocale, type Locale } from '../src/i18n/text';
 import { TEMPLATES } from '../src/narrator/templates';
 
+interface DecadeView {
+  index: number; startAge: number; endAge: number;
+  startYear: number; endYear: number; ganZhi: string;
+  score: number; verdict: string; notes: string[];
+}
+
 interface Result {
+  locale: Locale;
   chart: Chart;
-  strength: StrengthAnalysis;
-  yongShen: YongShenAnalysis;
-  relationship: { findings: Finding[]; primaryStar: string };
-  career: { findings: Finding[]; decades: DecadeOutlook[]; structure: string; lean: string };
+  strength: {
+    elementPercent: Record<Element, number>;
+    supportPercent: number;
+    verdict: string;
+    reasoning: string[];
+  };
+  yongShen: {
+    primary: Element;
+    secondary: Element | null;
+    school: string;
+    reasoning: string[];
+  };
+  relationship: { findings: RenderedFinding[]; primaryStar: string };
+  career: { findings: RenderedFinding[]; decades: DecadeView[]; structure: string; lean: string };
 }
 
 interface Grounding {
-  cited: string[];
-  invalid: string[];
-  uncitedLeads: string[];
-  ok: boolean;
+  cited: string[]; invalid: string[]; uncitedLeads: string[]; ok: boolean;
 }
 
 type Topic = 'relationship' | 'career';
 
-const POSITION: Record<string, string> = {
-  year: '年柱', month: '月柱', day: '日柱', hour: '时柱',
-};
+const PILLAR_KEY = {
+  year: 'yearPillar', month: 'monthPillar', day: 'dayPillar', hour: 'hourPillar',
+} as const;
 
 /** Longitude drives 真太阳时, so each place carries one. */
 const PLACES = [
-  { label: '新加坡', tz: 'Asia/Singapore', lon: 103.82 },
-  { label: '吉隆坡', tz: 'Asia/Kuala_Lumpur', lon: 101.69 },
-  { label: '槟城', tz: 'Asia/Kuala_Lumpur', lon: 100.33 },
-  { label: '香港', tz: 'Asia/Hong_Kong', lon: 114.17 },
-  { label: '台北', tz: 'Asia/Taipei', lon: 121.56 },
-  { label: '台中', tz: 'Asia/Taipei', lon: 120.68 },
-  { label: '北京', tz: 'Asia/Shanghai', lon: 116.41 },
-  { label: '上海', tz: 'Asia/Shanghai', lon: 121.47 },
-  { label: '广州', tz: 'Asia/Shanghai', lon: 113.26 },
-  { label: '雅加达', tz: 'Asia/Jakarta', lon: 106.85 },
-  { label: '曼谷', tz: 'Asia/Bangkok', lon: 100.5 },
-  { label: '伦敦', tz: 'Europe/London', lon: -0.13 },
-  { label: '悉尼', tz: 'Australia/Sydney', lon: 151.21 },
-  { label: '纽约', tz: 'America/New_York', lon: -74.01 },
+  { zh: '新加坡', en: 'Singapore', tz: 'Asia/Singapore', lon: 103.82 },
+  { zh: '吉隆坡', en: 'Kuala Lumpur', tz: 'Asia/Kuala_Lumpur', lon: 101.69 },
+  { zh: '槟城', en: 'Penang', tz: 'Asia/Kuala_Lumpur', lon: 100.33 },
+  { zh: '香港', en: 'Hong Kong', tz: 'Asia/Hong_Kong', lon: 114.17 },
+  { zh: '台北', en: 'Taipei', tz: 'Asia/Taipei', lon: 121.56 },
+  { zh: '台中', en: 'Taichung', tz: 'Asia/Taipei', lon: 120.68 },
+  { zh: '北京', en: 'Beijing', tz: 'Asia/Shanghai', lon: 116.41 },
+  { zh: '上海', en: 'Shanghai', tz: 'Asia/Shanghai', lon: 121.47 },
+  { zh: '广州', en: 'Guangzhou', tz: 'Asia/Shanghai', lon: 113.26 },
+  { zh: '雅加达', en: 'Jakarta', tz: 'Asia/Jakarta', lon: 106.85 },
+  { zh: '曼谷', en: 'Bangkok', tz: 'Asia/Bangkok', lon: 100.5 },
+  { zh: '伦敦', en: 'London', tz: 'Europe/London', lon: -0.13 },
+  { zh: '悉尼', en: 'Sydney', tz: 'Australia/Sydney', lon: 151.21 },
+  { zh: '纽约', en: 'New York', tz: 'America/New_York', lon: -74.01 },
 ];
 
-function PillarCard({ p, position }: { p: Pillar | null; position: string }) {
+function PillarCard({ p, position, locale }: {
+  p: Pillar | null; position: keyof typeof PILLAR_KEY; locale: Locale;
+}) {
+  const label = UI[PILLAR_KEY[position]][locale];
   if (!p) {
     return (
       <div className="pillar unknown">
-        <div className="pos">{POSITION[position]}</div>
+        <div className="pos">{label}</div>
         <div className="tengod">—</div>
         <div className="gz">——</div>
-        <div className="hidden">时辰未知</div>
+        <div className="hidden">{UI.timeUnknown[locale]}</div>
       </div>
     );
   }
   return (
     <div className={`pillar${position === 'day' ? ' is-day' : ''}`}>
-      {p.isVoid && <span className="void">空</span>}
-      <div className="pos">{POSITION[position]}</div>
-      <div className="tengod">{p.tenGod ?? '日主'}</div>
+      {p.isVoid && <span className="void">{UI.void[locale]}</span>}
+      <div className="pos">{label}</div>
+      <div className="tengod">
+        {p.tenGod ? TEN_GOD[p.tenGod]![locale] : UI.dayMaster[locale]}
+      </div>
+      {/* 干支 characters are the chart itself and never translate. */}
       <div className="gz">
         <span className={`el-${p.stemElement}`}>{p.stem}</span>
         <span className={`el-${p.branchElement}`}>{p.branch}</span>
@@ -83,11 +107,12 @@ function PillarCard({ p, position }: { p: Pillar | null; position: string }) {
       <div className="hidden">
         {p.hiddenStems.map((h) => (
           <div key={h.stem + h.role}>
-            <span className={`el-${h.element}`}>{h.stem}</span> {h.tenGod}
+            <span className={`el-${h.element}`}>{h.stem}</span>{' '}
+            {TEN_GOD[h.tenGod]![locale]}
           </div>
         ))}
       </div>
-      <div className="meta">{p.naYin}·{p.terrain}</div>
+      <div className="meta">{p.naYin}·{TERRAIN[p.terrain]?.[locale] ?? p.terrain}</div>
     </div>
   );
 }
@@ -97,19 +122,21 @@ function PillarCard({ p, position }: { p: Pillar | null; position: string }) {
  *
  * The format is deliberately minimal — `### heading`, paragraphs, and a
  * `依据：` line per section — so this needs no markdown dependency and cannot
- * be used to inject markup.
+ * be used to inject markup. The 依据 marker is the same in both languages so
+ * there is one parser and nothing to go wrong if a model mixes them.
  */
-function Reading({ text, streaming }: { text: string; streaming: boolean }) {
+function Reading({ text, streaming, locale }: {
+  text: string; streaming: boolean; locale: Locale;
+}) {
   const blocks: ReactNode[] = [];
   let key = 0;
 
   for (const rawLine of text.split('\n')) {
     const line = rawLine.trim();
     if (!line) continue;
-
     if (line.startsWith('###')) {
       blocks.push(<h3 key={key++}>{line.replace(/^#+\s*/, '')}</h3>);
-    } else if (/^依据[:：]/.test(line)) {
+    } else if (/^(依据|Basis|Sources?)[:：]/i.test(line)) {
       blocks.push(<p className="cite" key={key++}>{line}</p>);
     } else {
       blocks.push(<p key={key++}>{line}</p>);
@@ -119,13 +146,13 @@ function Reading({ text, streaming }: { text: string; streaming: boolean }) {
   return (
     <div className="reading">
       {blocks}
-      {streaming && <span className="cursor" aria-label="生成中" />}
+      {streaming && <span className="cursor" aria-label={UI.generating[locale]} />}
     </div>
   );
 }
 
-function FindingList({ findings }: { findings: Finding[] }) {
-  if (findings.length === 0) return <p className="note">没有可报告的结论。</p>;
+function FindingList({ findings, locale }: { findings: RenderedFinding[]; locale: Locale }) {
+  if (findings.length === 0) return <p className="note">{UI.noFindings[locale]}</p>;
   return (
     <>
       {findings.map((f) => (
@@ -133,7 +160,9 @@ function FindingList({ findings }: { findings: Finding[] }) {
           <div className="claim">
             {f.claim}
             <span className={`tag${f.confidence === 'low' ? ' low' : ''}`}>
-              {f.confidence === 'high' ? '确' : f.confidence === 'medium' ? '中' : '存疑'}
+              {f.confidence === 'high' ? UI.confHigh[locale]
+                : f.confidence === 'medium' ? UI.confMedium[locale]
+                : UI.confLow[locale]}
             </span>
           </div>
           <ul className="ev">
@@ -146,6 +175,7 @@ function FindingList({ findings }: { findings: Finding[] }) {
 }
 
 export default function Page() {
+  const [locale, setLocale] = useState<Locale>('zh');
   const [place, setPlace] = useState(0);
   const [timeKnown, setTimeKnown] = useState(true);
   const [trueSolar, setTrueSolar] = useState(true);
@@ -163,6 +193,58 @@ export default function Page() {
   /** The birth payload that produced the current chart, reused for readings. */
   const lastInput = useRef<Record<string, unknown> | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+
+  // Remember the language choice. Wrapped because storage throws in some
+  // privacy modes, and a language toggle is not worth a blank page.
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem('bazi_locale');
+      if (isLocale(saved)) setLocale(saved);
+      else if (!navigator.language.toLowerCase().startsWith('zh')) setLocale('en');
+    } catch { /* storage unavailable; keep the default */ }
+  }, []);
+
+  const castChart = useCallback(async (
+    payload: Record<string, unknown>,
+    forLocale: Locale,
+    scroll: boolean,
+  ) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/chart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, locale: forLocale }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setError(json.error ?? UI.errCast[forLocale]); setResult(null); }
+      else {
+        setResult(json as Result);
+        if (scroll) {
+          requestAnimationFrame(() =>
+            resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+          );
+        }
+      }
+    } catch {
+      setError(UI.errConnect[forLocale]);
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  function changeLocale(next: Locale) {
+    setLocale(next);
+    try { window.localStorage.setItem('bazi_locale', next); } catch { /* ignore */ }
+    // A reading is language-specific; drop it rather than show Chinese prose
+    // under an English interface.
+    setReading('');
+    setActiveTemplate(null);
+    setGrounding(null);
+    setReadingError(null);
+    if (lastInput.current) void castChart(lastInput.current, next, false);
+  }
 
   function readForm(form: HTMLFormElement) {
     const fd = new FormData(form);
@@ -182,36 +264,13 @@ export default function Page() {
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setBusy(true);
-    setError(null);
     setReading('');
     setActiveTemplate(null);
     setGrounding(null);
     setReadingError(null);
-
     const payload = readForm(e.currentTarget);
     lastInput.current = payload;
-
-    try {
-      const res = await fetch('/api/chart', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
-      if (!res.ok) { setError(json.error ?? '排盘失败。'); setResult(null); }
-      else {
-        setResult(json as Result);
-        // On a phone the form fills the screen; bring the chart into view.
-        requestAnimationFrame(() =>
-          resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
-        );
-      }
-    } catch {
-      setError('无法连线，请稍后再试。');
-    } finally {
-      setBusy(false);
-    }
+    await castChart(payload, locale, true);
   }
 
   /** Stream a reading for one template. */
@@ -227,12 +286,12 @@ export default function Page() {
       const res = await fetch('/api/read', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...lastInput.current, templateId }),
+        body: JSON.stringify({ ...lastInput.current, templateId, locale }),
       });
 
       if (!res.ok || !res.body) {
         const json = await res.json().catch(() => ({}));
-        setReadingError(json.error ?? '生成解读失败。');
+        setReadingError(json.error ?? UI.errReading[locale]);
         return;
       }
 
@@ -266,12 +325,12 @@ export default function Page() {
           } else if (event === 'done') {
             setGrounding(data['grounding'] as Grounding);
           } else if (event === 'failed') {
-            setReadingError(String(data['error'] ?? '生成解读失败。'));
+            setReadingError(String(data['error'] ?? UI.errReading[locale]));
           }
         }
       }
     } catch {
-      setReadingError('连线中断，解读未完成。');
+      setReadingError(UI.errStreamCut[locale]);
     } finally {
       setReadingBusy(false);
     }
@@ -279,34 +338,49 @@ export default function Page() {
 
   const elements: Element[] = ['木', '火', '土', '金', '水'];
   const topicTemplates = TEMPLATES.filter((t) => t.topic === tab);
+  const L = locale;
 
   return (
     <main className="wrap">
-      <h1>八字排盘</h1>
-      <p className="sub">
-        可核对的排盘，与姻缘、事业两个主题的解读。每一句话都附上它所依据的命理事实。
-      </p>
+      <div className="head">
+        <div>
+          <h1>{UI.title[L]}</h1>
+          <p className="sub">{UI.tagline[L]}</p>
+        </div>
+        <div className="lang" role="group" aria-label="Language">
+          <button
+            type="button"
+            aria-pressed={L === 'zh'}
+            onClick={() => changeLocale('zh')}
+          >中文</button>
+          <button
+            type="button"
+            aria-pressed={L === 'en'}
+            onClick={() => changeLocale('en')}
+          >EN</button>
+        </div>
+      </div>
 
       <form onSubmit={submit}>
         <div>
-          <label htmlFor="date">出生日期（公历）</label>
+          <label htmlFor="date">{UI.birthDate[L]}</label>
           <input id="date" name="date" type="date" required defaultValue="1990-06-15" />
         </div>
         <div>
-          <label htmlFor="time">出生时间</label>
+          <label htmlFor="time">{UI.birthTime[L]}</label>
           <input id="time" name="time" type="time" defaultValue="14:30" disabled={!timeKnown} />
         </div>
         <div>
-          <label htmlFor="gender">性别</label>
+          <label htmlFor="gender">{UI.gender[L]}</label>
           <select id="gender" name="gender" defaultValue="male">
-            <option value="male">男</option>
-            <option value="female">女</option>
+            <option value="male">{UI.male[L]}</option>
+            <option value="female">{UI.female[L]}</option>
           </select>
         </div>
         <div>
-          <label htmlFor="place">出生地</label>
+          <label htmlFor="place">{UI.birthPlace[L]}</label>
           <select id="place" value={place} onChange={(e) => setPlace(Number(e.target.value))}>
-            {PLACES.map((p, i) => <option key={p.label} value={i}>{p.label}</option>)}
+            {PLACES.map((p, i) => <option key={p.tz + p.lon} value={i}>{p[L]}</option>)}
           </select>
         </div>
 
@@ -314,18 +388,18 @@ export default function Page() {
           <span className="checkline">
             <input id="tk" type="checkbox" checked={timeKnown}
               onChange={(e) => setTimeKnown(e.target.checked)} />
-            <label htmlFor="tk">知道出生时辰</label>
+            <label htmlFor="tk">{UI.knowTime[L]}</label>
           </span>
           <span className="checkline">
             <input id="ts" type="checkbox" checked={trueSolar}
               onChange={(e) => setTrueSolar(e.target.checked)} disabled={!timeKnown} />
-            <label htmlFor="ts">使用真太阳时（各派做法不同）</label>
+            <label htmlFor="ts">{UI.useTrueSolar[L]}</label>
           </span>
         </div>
 
         <div className="field-wide">
           <button type="submit" disabled={busy} style={{ width: '100%' }}>
-            {busy ? '排盘中…' : '排盘'}
+            {busy ? UI.casting[L] : UI.cast[L]}
           </button>
         </div>
       </form>
@@ -335,52 +409,57 @@ export default function Page() {
       {result && (
         <div ref={resultsRef}>
           <section>
-            <h2>四柱</h2>
+            <h2>{UI.pillars[L]}</h2>
             <div className="pillars">
-              <PillarCard p={result.chart.pillars.year} position="year" />
-              <PillarCard p={result.chart.pillars.month} position="month" />
-              <PillarCard p={result.chart.pillars.day} position="day" />
-              <PillarCard p={result.chart.pillars.hour} position="hour" />
+              <PillarCard p={result.chart.pillars.year} position="year" locale={L} />
+              <PillarCard p={result.chart.pillars.month} position="month" locale={L} />
+              <PillarCard p={result.chart.pillars.day} position="day" locale={L} />
+              <PillarCard p={result.chart.pillars.hour} position="hour" locale={L} />
             </div>
           </section>
 
           <section>
-            <h2>排盘依据</h2>
+            <h2>{UI.basis[L]}</h2>
             <div className="card">
               <ul className="audit">
                 {result.chart.moment.notes.map((n, i) => (
                   <li key={i} className={isCaveat(n) ? 'warn' : undefined}>
-                    {formatNote(n, 'zh')}
+                    {formatNote(n, L)}
                   </li>
                 ))}
                 <li>
-                  实际起盘时刻 {result.chart.moment.charted.year}-
+                  {UI.chartedAt[L]} {result.chart.moment.charted.year}-
                   {String(result.chart.moment.charted.month).padStart(2, '0')}-
                   {String(result.chart.moment.charted.day).padStart(2, '0')}{' '}
                   {String(result.chart.moment.charted.hour).padStart(2, '0')}:
                   {String(result.chart.moment.charted.minute).padStart(2, '0')}
                 </li>
-                <li>{result.chart.luckStartDescription}，大运{result.chart.luckForward ? '顺行' : '逆行'}</li>
+                <li>
+                  {result.chart.luckStartDescription}
+                  {' · '}
+                  {result.chart.luckForward ? UI.luckForward[L] : UI.luckBackward[L]}
+                </li>
               </ul>
             </div>
           </section>
 
           <section>
-            <h2>五行强弱</h2>
+            <h2>{UI.balance[L]}</h2>
             <div className="balance">
               {elements.map((e) => {
                 const pct = result.strength.elementPercent[e];
                 return pct > 0 ? (
                   <div key={e} className={`bg-${e}`} style={{ width: `${pct}%` }}>
-                    {pct >= 10 ? `${e}${pct}%` : e}
+                    {pct >= 12 ? `${ELEMENT[e]![L]} ${pct}%` : ELEMENT[e]![L].slice(0, 1)}
                   </div>
                 ) : null;
               })}
             </div>
             <div className="card" style={{ marginTop: 10 }}>
               <div className="verdict">
-                日主{result.chart.dayMaster}（{result.chart.dayMasterYinYang}
-                {result.chart.dayMasterElement}）· {result.strength.verdict}
+                {UI.dayMaster[L]} {result.chart.dayMaster}
+                {' · '}
+                {term(result.strength.verdict, L)}
               </div>
               <ul className="reasoning">
                 {result.strength.reasoning.map((r, i) => (
@@ -390,9 +469,17 @@ export default function Page() {
             </div>
             <div className="card">
               <div className="verdict">
-                用神 <span className={`el-${result.yongShen.primary}`}>{result.yongShen.primary}</span>
+                {UI.favourable[L]}{' '}
+                <span className={`el-${result.yongShen.primary}`}>
+                  {ELEMENT[result.yongShen.primary]![L]}
+                </span>
                 {result.yongShen.secondary && (
-                  <> · 喜神 <span className={`el-${result.yongShen.secondary}`}>{result.yongShen.secondary}</span></>
+                  <>
+                    {' · '}{UI.supporting[L]}{' '}
+                    <span className={`el-${result.yongShen.secondary}`}>
+                      {ELEMENT[result.yongShen.secondary]![L]}
+                    </span>
+                  </>
                 )}
               </div>
               <ul className="reasoning">
@@ -400,19 +487,22 @@ export default function Page() {
                   <li key={i} className={r.startsWith('⚠️') ? 'warn' : undefined}>{r}</li>
                 ))}
               </ul>
-              <span className="school">取用流派：{result.yongShen.school}</span>
+              <span className="school">{UI.methodUsed[L]}: {result.yongShen.school}</span>
             </div>
           </section>
 
           <section>
-            <h2>大运</h2>
+            <h2>{UI.luck[L]}</h2>
             <div className="luck-scroll">
               <div className="luck">
                 {result.career.decades.map((d) => (
                   <div className={`luck-cell v-${d.verdict}`} key={d.index}>
-                    <div className="age">{d.startAge}岁</div>
+                    <div className="age">{d.startAge}</div>
                     <div className="gz">{d.ganZhi}</div>
                     <div className="age">{d.startYear}</div>
+                    <div className="verdict-tag">
+                      {DECADE_VERDICT[d.verdict]?.[L] ?? d.verdict}
+                    </div>
                     <div className="bar" />
                   </div>
                 ))}
@@ -421,12 +511,12 @@ export default function Page() {
           </section>
 
           <section>
-            <h2>解读</h2>
+            <h2>{UI.reading[L]}</h2>
             <div className="tabs" role="tablist">
               <button role="tab" aria-selected={tab === 'relationship'}
-                onClick={() => setTab('relationship')}>姻缘 · 婚姻</button>
+                onClick={() => setTab('relationship')}>{UI.relationships[L]}</button>
               <button role="tab" aria-selected={tab === 'career'}
-                onClick={() => setTab('career')}>事业 · 财运</button>
+                onClick={() => setTab('career')}>{UI.career[L]}</button>
             </div>
 
             <div className="questions">
@@ -438,8 +528,8 @@ export default function Page() {
                   disabled={readingBusy}
                   onClick={() => ask(t.id)}
                 >
-                  {t.question}
-                  <span className="q-hint">{t.hint}</span>
+                  {t.question[L]}
+                  <span className="q-hint">{t.hint[L]}</span>
                 </button>
               ))}
             </div>
@@ -448,12 +538,12 @@ export default function Page() {
 
             {(reading || readingBusy) && (
               <div className="card">
-                <Reading text={reading} streaming={readingBusy} />
+                <Reading text={reading} streaming={readingBusy} locale={L} />
                 {grounding && (
                   <div className={`grounded${grounding.ok ? '' : ' bad'}`}>
                     {grounding.ok
-                      ? `✓ 全文 ${grounding.cited.length} 处引用均对应到已算出的结论`
-                      : `⚠️ 有 ${grounding.invalid.length} 处引用不在结论清单中：${grounding.invalid.join('、')}`}
+                      ? `✓ ${grounding.cited.length} ${UI.groundedOk[L]}`
+                      : `⚠️ ${grounding.invalid.length} ${UI.groundedBadPrefix[L]}${grounding.invalid.join(', ')}`}
                   </div>
                 )}
               </div>
@@ -461,12 +551,17 @@ export default function Page() {
           </section>
 
           <section>
-            <h2>{tab === 'relationship' ? '姻缘' : '事业'} · 已算出的结论</h2>
+            <h2>
+              {tab === 'relationship' ? UI.relationships[L] : UI.career[L]}
+              {' · '}
+              {UI.findings[L]}
+            </h2>
             <div className="card">
               <FindingList
                 findings={tab === 'relationship'
                   ? result.relationship.findings
                   : result.career.findings}
+                locale={L}
               />
             </div>
           </section>

@@ -21,6 +21,8 @@
  */
 
 import type { Chart, Element, Pillar } from '../engine/types';
+import { t, type LocalizedText } from '../i18n/text';
+import { ELEMENT, TEN_GOD_FAMILY, YIN_YANG } from '../i18n/glossary';
 import {
   ELEMENTS,
   isSupporting,
@@ -66,7 +68,7 @@ export interface StrengthAnalysis {
   /** Reduced confidence when the hour pillar is missing: a quarter of the
    *  evidence is absent, and it is not evenly distributed. */
   readonly confidence: 'normal' | 'reduced-no-hour';
-  readonly reasoning: readonly string[];
+  readonly reasoning: readonly LocalizedText[];
 }
 
 interface Contribution {
@@ -154,30 +156,75 @@ export function analyzeStrength(chart: Chart): StrengthAnalysis {
     if (dominant && dominant[1] >= 40) followingCandidate = dominant[0];
   }
 
-  const reasoning: string[] = [
-    `日主 ${chart.dayMaster}（${dm}）。支持力量 比劫 ${familyPercent['比劫']}% + ` +
-      `印 ${familyPercent['印']}% = ${supportPercent}%。`,
-    `耗泄力量 食伤 ${familyPercent['食伤']}% + 财 ${familyPercent['财']}% + ` +
-      `官杀 ${familyPercent['官杀']}% = ${round1(100 - supportPercent)}%。`,
+  const el = (e: Element) => ELEMENT[e]!;
+  const fam = (f: TenGodFamily) => TEN_GOD_FAMILY[f]!;
+  const dmName = `${chart.dayMaster}`;
+
+  const reasoning: LocalizedText[] = [
+    t(
+      `日主 ${dmName}（${dm}）。支持力量 比劫 ${familyPercent['比劫']}% + ` +
+        `印 ${familyPercent['印']}% = ${supportPercent}%。`,
+      `Day Master ${dmName} (${YIN_YANG[chart.dayMasterYinYang]!.en} ${el(dm).en}). ` +
+        `Support: ${fam('比劫').en} ${familyPercent['比劫']}% + ` +
+        `${fam('印').en} ${familyPercent['印']}% = ${supportPercent}%.`,
+    ),
+    t(
+      `耗泄力量 食伤 ${familyPercent['食伤']}% + 财 ${familyPercent['财']}% + ` +
+        `官杀 ${familyPercent['官杀']}% = ${round1(100 - supportPercent)}%。`,
+      `Drain: ${fam('食伤').en} ${familyPercent['食伤']}% + ` +
+        `${fam('财').en} ${familyPercent['财']}% + ` +
+        `${fam('官杀').en} ${familyPercent['官杀']}% = ${round1(100 - supportPercent)}%.`,
+    ),
     hasMonthCommand
-      ? `得令：月支 ${chart.pillars.month.branch} 本气${monthMain?.stem ?? ''}生扶日主。`
-      : `失令：月支 ${chart.pillars.month.branch} 本气不生扶日主，此为判弱的主因。`,
+      ? t(
+          `得令：月支 ${chart.pillars.month.branch} 本气${monthMain?.stem ?? ''}生扶日主。`,
+          `In season: the month branch ${chart.pillars.month.branch} holds ` +
+            `${monthMain?.stem ?? ''}, which feeds the Day Master. This is the ` +
+            `single strongest claim on strength.`,
+        )
+      : t(
+          `失令：月支 ${chart.pillars.month.branch} 本气不生扶日主，此为判弱的主因。`,
+          `Out of season: the month branch ${chart.pillars.month.branch} does not ` +
+            `feed the Day Master. This is the main reason it reads weak.`,
+        ),
     hasDaySeat
-      ? `得地：日支 ${chart.pillars.day.branch} 为日主根气。`
-      : `不得地：日支 ${chart.pillars.day.branch} 未为日主根气。`,
-    hasAllies ? '得势：天干有帮身之神。' : '失势：天干帮身之神不足。',
-    `判定 ${verdict}（阈值 身强≥${STRONG_PCT}%，身弱≤${WEAK_PCT}%）。`,
+      ? t(
+          `得地：日支 ${chart.pillars.day.branch} 为日主根气。`,
+          `Rooted: the day branch ${chart.pillars.day.branch} gives the Day Master ` +
+            `something to stand on.`,
+        )
+      : t(
+          `不得地：日支 ${chart.pillars.day.branch} 未为日主根气。`,
+          `Unrooted: the day branch ${chart.pillars.day.branch} gives the Day Master ` +
+            `no root of its own.`,
+        ),
+    hasAllies
+      ? t('得势：天干有帮身之神。', 'Allied: supporting stems are present above.')
+      : t('失势：天干帮身之神不足。', 'Unallied: too few supporting stems above.'),
+    t(
+      `判定 ${verdict}（阈值 身强≥${STRONG_PCT}%，身弱≤${WEAK_PCT}%）。`,
+      `Verdict: ${verdict === '身强' ? 'strong' : verdict === '身弱' ? 'weak' : 'balanced'} ` +
+        `(thresholds: strong ≥${STRONG_PCT}%, weak ≤${WEAK_PCT}%).`,
+    ),
   ];
 
   if (followingCandidate) {
-    reasoning.push(
+    reasoning.push(t(
       `⚠️ 日主无根且${followingCandidate}极旺，可能成从格。从格与扶抑取用神相反，` +
         `此判断有争议，建议人工复核。`,
-    );
+      `⚠️ The Day Master has almost no root and ${fam(followingCandidate).en} ` +
+        `overwhelms the chart, so a "following" (从格) reading is possible. That ` +
+        `reading inverts the favourable element entirely. It is contested — worth ` +
+        `a human check.`,
+    ));
   }
 
   if (!chart.hourKnown) {
-    reasoning.push('⚠️ 时柱未知，约四分之一的判断依据缺失，旺衰结论的可信度降低。');
+    reasoning.push(t(
+      '⚠️ 时柱未知，约四分之一的判断依据缺失，旺衰结论的可信度降低。',
+      '⚠️ The hour is unknown, so roughly a quarter of the evidence is missing and ' +
+        'this strength verdict is correspondingly less certain.',
+    ));
   }
 
   return {

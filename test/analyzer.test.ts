@@ -151,7 +151,8 @@ describe('旺衰', () => {
     expect(a.chart.pillars.day.stem).toBe('辛');
     expect(a.strength.verdict).toBe('身弱');
     expect(a.strength.hasMonthCommand).toBe(false);
-    expect(a.strength.reasoning.join('')).toContain('失令');
+    expect(a.strength.reasoning.map((r) => r.zh).join('')).toContain('失令');
+    expect(a.strength.reasoning.map((r) => r.en).join('')).toContain('Out of season');
   });
 
   it('sums element percentages to 100', () => {
@@ -171,7 +172,8 @@ describe('旺衰', () => {
     const s = analyzeStrength(c);
     expect(Object.values(s.elementPercent).reduce((a, b) => a + b, 0)).toBeCloseTo(100, 1);
     expect(s.confidence).toBe('reduced-no-hour');
-    expect(s.reasoning.join('')).toContain('时柱未知');
+    expect(s.reasoning.map((r) => r.zh).join('')).toContain('时柱未知');
+    expect(s.reasoning.map((r) => r.en).join('')).toContain('hour is unknown');
   });
 
   it('reports 得令 when the month branch does support the day master', () => {
@@ -184,8 +186,11 @@ describe('旺衰', () => {
   });
 
   it('uses integer thresholds in its explanation, not floats', () => {
-    expect(analyse().strength.reasoning.join('')).toContain('身强≥55%');
-    expect(analyse().strength.reasoning.join('')).not.toContain('55.00');
+    const zh = analyse().strength.reasoning.map((r) => r.zh).join('');
+    const en = analyse().strength.reasoning.map((r) => r.en).join('');
+    expect(zh).toContain('身强≥55%');
+    expect(zh).not.toContain('55.00');
+    expect(en).toContain('strong ≥55%');
   });
 });
 
@@ -208,15 +213,18 @@ describe('用神', () => {
   });
 
   it('always labels its school', () => {
-    expect(analyse().yongShen.school).toContain('扶抑');
-    expect(analyse().yongShen.reasoning.join('')).toContain('用神');
+    expect(analyse().yongShen.school.zh).toContain('扶抑');
+    expect(analyse().yongShen.school.en).toContain('Strength-based');
+    expect(analyse().yongShen.reasoning.map((r) => r.zh).join('')).toContain('用神');
+    expect(analyse().yongShen.reasoning.map((r) => r.en).join('')).toContain('Favourable');
   });
 
   it('flags a 调候 / 扶抑 conflict rather than hiding it', () => {
     const summer = analyse(); // 午 month, needs 水; 扶抑 wants 土
     expect(summer.yongShen.climateNeed).toBe('水');
     expect(summer.yongShen.climateConflict).toBe(true);
-    expect(summer.yongShen.reasoning.join('')).toContain('不同流派');
+    expect(summer.yongShen.reasoning.map((r) => r.zh).join('')).toContain('不同流派');
+    expect(summer.yongShen.reasoning.map((r) => r.en).join('')).toContain('different school');
   });
 
   it('raises no climate need for a temperate month', () => {
@@ -266,8 +274,8 @@ describe('姻缘', () => {
     if (exposed) {
       // Whatever 十神 the evidence cites must appear in the claim.
       for (const ev of exposed.evidence) {
-        const match = /（(..)）/.exec(ev);
-        if (match) expect(exposed.claim).toContain(match[1]!);
+        const match = /（(..)）/.exec(ev.zh);
+        if (match) expect(exposed.claim.zh).toContain(match[1]!);
       }
     }
   });
@@ -276,10 +284,10 @@ describe('姻缘', () => {
     const a = analyse();
     const t = a.relationship.findings.find((f) => f.id === 'rel.timing.favourable');
     if (t) {
-      const claimed = /逢(.)年即被引动/.exec(t.claim);
+      const claimed = /逢(.)年即被引动/.exec(t.claim.zh);
       if (claimed) {
         const branch = claimed[1]!;
-        const listedYears = [...t.claim.matchAll(/(\d{4})年（\d+岁）/g)].map((m) => Number(m[1]));
+        const listedYears = [...t.claim.zh.matchAll(/(\d{4})年（\d+岁）/g)].map((m) => Number(m[1]));
         for (const y of listedYears) {
           const w = a.relationship.windows.find((x) => x.year === y);
           expect(w?.ganZhi[1], `${y} should be a ${branch} year`).toBe(branch);
@@ -292,7 +300,7 @@ describe('姻缘', () => {
     const a = analyse();
     const v = a.relationship.findings.find((f) => f.id === 'rel.timing.volatile');
     if (v) {
-      expect(v.claim).toContain('方向取决于');
+      expect(v.claim.zh).toContain('方向取决于');
       expect(v.confidence).toBe('low');
     }
   });
@@ -322,7 +330,7 @@ describe('事业', () => {
   it('suggests industries matching the 用神 element', () => {
     const a = analyse();
     const f = a.career.findings.find((x) => x.id === 'career.industry')!;
-    expect(f.claim).toContain(a.yongShen.primary);
+    expect(f.claim.zh).toContain(a.yongShen.primary);
   });
 });
 
@@ -336,8 +344,11 @@ describe('神煞', () => {
 
   it('marks a doubled star rather than dropping the information', () => {
     const hits = findShenSha(analyse().chart);
-    const doubled = hits.filter((h) => h.meaning.includes('两见'));
-    for (const d of doubled) expect(d.meaning).toContain('力量加重');
+    const doubled = hits.filter((h) => h.meaning.zh.includes('两见'));
+    for (const d of doubled) {
+      expect(d.meaning.zh).toContain('力量加重');
+      expect(d.meaning.en).toContain('double');
+    }
   });
 });
 
@@ -352,7 +363,7 @@ describe('findings contract', () => {
   it('gives every finding an id, a claim and at least one piece of evidence', () => {
     for (const f of analyse().findings) {
       expect(f.id).toMatch(/^(rel|career)\./);
-      expect(f.claim.length).toBeGreaterThan(0);
+      expect(f.claim.zh.length).toBeGreaterThan(0);
       expect(f.evidence.length).toBeGreaterThan(0);
     }
   });

@@ -15,6 +15,7 @@ import { buildChart } from '../../../src/engine/chart';
 import { analyzeChart } from '../../../src/analyzer/index';
 import { narrate, hasApiKey, MissingApiKeyError } from '../../../src/narrator/narrate';
 import { routeQuestion, templateById } from '../../../src/narrator/templates';
+import { isLocale, type Locale } from '../../../src/i18n/text';
 import type { BirthInput } from '../../../src/engine/types';
 
 export const maxDuration = 120;
@@ -22,6 +23,7 @@ export const maxDuration = 120;
 interface Body extends Partial<BirthInput> {
   templateId?: string;
   question?: string;
+  locale?: unknown;
 }
 
 const sse = (event: string, data: unknown) =>
@@ -35,17 +37,25 @@ export async function POST(req: Request) {
     return Response.json({ error: '请求格式不正确。' }, { status: 400 });
   }
 
+  const locale: Locale = isLocale(body.locale) ? body.locale : 'zh';
+  const zh = locale === 'zh';
+
   const { year, month, day, timeZone, gender } = body;
   if (!year || !month || !day || !timeZone || !gender) {
-    return Response.json({ error: '缺少必要资料。' }, { status: 400 });
+    return Response.json(
+      { error: zh ? '缺少必要资料。' : 'Missing required details.' },
+      { status: 400 },
+    );
   }
 
   if (!hasApiKey()) {
     return Response.json(
       {
-        error:
-          '尚未设定 ANTHROPIC_API_KEY，无法生成解读。下方「推断」一栏的结论是程序算出的，' +
-          '不需要 API 也能看。',
+        error: zh
+          ? '尚未设定 ANTHROPIC_API_KEY，无法生成解读。下方的结论是程序算出的，' +
+            '不需要 API 也能看。'
+          : 'ANTHROPIC_API_KEY is not set, so no reading can be generated. The ' +
+            'findings below are computed and need no API key to read.',
         code: 'no_api_key',
       },
       { status: 503 },
@@ -57,7 +67,7 @@ export async function POST(req: Request) {
     analysis = analyzeChart(buildChart(body as BirthInput));
   } catch (e) {
     return Response.json(
-      { error: e instanceof Error ? e.message : '排盘失败。' },
+      { error: e instanceof Error ? e.message : (zh ? '排盘失败。' : 'Could not cast the chart.') },
       { status: 400 },
     );
   }
@@ -68,12 +78,15 @@ export async function POST(req: Request) {
   if (!template && body.question) {
     const routed = routeQuestion(body.question);
     if (routed.kind === 'declined') {
-      return Response.json({ error: routed.reason, code: 'declined' }, { status: 400 });
+      return Response.json({ error: routed.reason[locale], code: 'declined' }, { status: 400 });
     }
     template = routed.template;
   }
   if (!template) {
-    return Response.json({ error: '未指定要回答的问题。' }, { status: 400 });
+    return Response.json(
+      { error: zh ? '未指定要回答的问题。' : 'No question was specified.' },
+      { status: 400 },
+    );
   }
 
   const chosen = template;
@@ -91,12 +104,13 @@ export async function POST(req: Request) {
 
       send('meta', {
         templateId: chosen.id,
-        question: chosen.question,
+        question: chosen.question[locale],
         topic: chosen.topic,
       });
 
       try {
         const reading = await narrate(analysis, chosen, {
+          locale,
           onDelta: (text) => send('delta', { text }),
         });
         send('done', {
@@ -107,10 +121,10 @@ export async function POST(req: Request) {
       } catch (e) {
         const message =
           e instanceof MissingApiKeyError
-            ? '尚未设定 ANTHROPIC_API_KEY。'
+            ? (zh ? '尚未设定 ANTHROPIC_API_KEY。' : 'ANTHROPIC_API_KEY is not set.')
             : e instanceof Error
               ? e.message
-              : '生成解读时发生错误。';
+              : (zh ? '生成解读时发生错误。' : 'Something went wrong generating the reading.');
         send('failed', { error: message });
       } finally {
         controller.close();

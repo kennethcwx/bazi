@@ -5,7 +5,14 @@
  * narrator receives a list of these and may assert nothing outside them; the
  * grounding test walks generated prose back to finding ids. That is what makes
  * a reading auditable when a user says their 师傅 disagreed.
+ *
+ * Claims and evidence are bilingual pairs rather than strings. Both languages
+ * are authored at the point the finding is made, because the English is not a
+ * translation — 「日支坐正财而透干」 is complete for a Chinese reader and opaque
+ * rendered literally, so the English says what it means.
  */
+
+import type { LocalizedText, Locale } from '../i18n/text';
 
 export type Topic = 'base' | 'relationship' | 'career';
 
@@ -14,10 +21,10 @@ export interface Finding {
    *  must not change once a reading has been cached against it. */
   readonly id: string;
   readonly topic: Topic;
-  /** The claim itself, stated plainly. */
-  readonly claim: string;
+  /** The claim itself, stated plainly, in both languages. */
+  readonly claim: LocalizedText;
   /** The chart facts it rests on — 「日支坐正财而透干」 rather than a vibe. */
-  readonly evidence: readonly string[];
+  readonly evidence: readonly LocalizedText[];
   /**
    * high   — a direct structural reading with wide agreement between schools
    * medium — a standard reading that depends on a judgement call upstream
@@ -41,4 +48,27 @@ export function applicable(
   hourKnown: boolean,
 ): Finding[] {
   return findings.filter((f) => hourKnown || !f.requiresHour);
+}
+
+/** A finding flattened to one language, for the UI and the API. */
+export interface RenderedFinding {
+  readonly id: string;
+  readonly topic: Topic;
+  readonly claim: string;
+  readonly evidence: readonly string[];
+  readonly confidence: Finding['confidence'];
+  readonly requiresHour: boolean;
+  readonly salience?: number;
+}
+
+export function renderFinding(f: Finding, locale: Locale): RenderedFinding {
+  return {
+    id: f.id,
+    topic: f.topic,
+    claim: f.claim[locale],
+    evidence: f.evidence.map((e) => e[locale]),
+    confidence: f.confidence,
+    requiresHour: f.requiresHour,
+    ...(f.salience === undefined ? {} : { salience: f.salience }),
+  };
 }

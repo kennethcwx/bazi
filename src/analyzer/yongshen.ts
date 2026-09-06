@@ -18,6 +18,8 @@
  */
 
 import type { Chart, Element } from '../engine/types';
+import { t, type LocalizedText } from '../i18n/text';
+import { ELEMENT, TEN_GOD_FAMILY } from '../i18n/glossary';
 import {
   ELEMENTS,
   familyElement,
@@ -26,7 +28,10 @@ import {
 } from './elements';
 import type { StrengthAnalysis } from './strength';
 
-export const SCHOOL = '扶抑为主，调候为辅（子平主流）';
+export const SCHOOL: LocalizedText = t(
+  '扶抑为主，调候为辅（子平主流）',
+  'Strength-based (扶抑) with climate (调候) as a modifier — the mainstream Ziping method',
+);
 
 /** A family must hold at least this share to be usable as 用神. Below it the
  *  element is too weak to lean on and we fall through to the next choice. */
@@ -38,7 +43,7 @@ const SUMMER_BRANCHES = new Set(['巳', '午', '未']);
 
 export interface YongShenAnalysis {
   /** Always present, always shown to the user. */
-  readonly school: string;
+  readonly school: LocalizedText;
   /** 用神 — the single element the chart most needs. */
   readonly primary: Element;
   /** 喜神 — supporting cast; helps the 用神 do its work. */
@@ -54,7 +59,7 @@ export interface YongShenAnalysis {
   /** True when 调候 wants something 扶抑 considers unfavourable. Surfaced, not
    *  resolved — it is a real disagreement between two valid readings. */
   readonly climateConflict: boolean;
-  readonly reasoning: readonly string[];
+  readonly reasoning: readonly LocalizedText[];
 }
 
 export function analyzeYongShen(
@@ -63,7 +68,9 @@ export function analyzeYongShen(
 ): YongShenAnalysis {
   const dm = chart.dayMasterElement;
   const share = strength.familyPercent;
-  const reasoning: string[] = [];
+  const reasoning: LocalizedText[] = [];
+  const el = (e: Element) => ELEMENT[e]!.en;
+  const fam = (f: TenGodFamily) => TEN_GOD_FAMILY[f]!.en;
 
   let primaryFamily: TenGodFamily;
   let secondaryFamily: TenGodFamily | null;
@@ -74,15 +81,27 @@ export function analyzeYongShen(
     if (share['官杀'] >= USABLE_SHARE) {
       primaryFamily = '官杀';
       secondaryFamily = '财';
-      reasoning.push(`身强，官杀 ${share['官杀']}% 有力，取官杀克身为用，财为喜（财生官）。`);
+      reasoning.push(t(
+        `身强，官杀 ${share['官杀']}% 有力，取官杀克身为用，财为喜（财生官）。`,
+        `The Day Master is strong and ${fam('官杀')} is substantial at ${share['官杀']}%, ` +
+          `so authority is what this chart should spend itself on. Wealth supports it.`,
+      ));
     } else if (share['财'] >= USABLE_SHARE) {
       primaryFamily = '财';
       secondaryFamily = '食伤';
-      reasoning.push(`身强而官杀不足，财 ${share['财']}% 可耗身，取财为用，食伤为喜（食伤生财）。`);
+      reasoning.push(t(
+        `身强而官杀不足，财 ${share['财']}% 可耗身，取财为用，食伤为喜（食伤生财）。`,
+        `The Day Master is strong but authority is thin, so wealth at ${share['财']}% ` +
+          `is what draws the excess off. Output feeds it.`,
+      ));
     } else {
       primaryFamily = '食伤';
       secondaryFamily = '财';
-      reasoning.push(`身强而官杀、财俱轻，取食伤泄秀为用，财为喜。`);
+      reasoning.push(t(
+        '身强而官杀、财俱轻，取食伤泄秀为用，财为喜。',
+        'The Day Master is strong and both authority and wealth are light, so ' +
+          'output — expression and making things — is the healthiest outlet. Wealth supports it.',
+      ));
     }
   } else if (strength.verdict === '身弱') {
     // Weak day master: reinforce it. 印 both feeds the day master and absorbs
@@ -90,11 +109,19 @@ export function analyzeYongShen(
     if (share['印'] >= USABLE_SHARE) {
       primaryFamily = '印';
       secondaryFamily = '比劫';
-      reasoning.push(`身弱，印 ${share['印']}% 可生身且化官杀，取印为用，比劫为喜。`);
+      reasoning.push(t(
+        `身弱，印 ${share['印']}% 可生身且化官杀，取印为用，比劫为喜。`,
+        `The Day Master is weak. Resource at ${share['印']}% both feeds it and absorbs ` +
+          `pressure from authority, so that is what it needs. Peers help too.`,
+      ));
     } else {
       primaryFamily = '比劫';
       secondaryFamily = '印';
-      reasoning.push(`身弱而印不足，取比劫帮身为用，印为喜。`);
+      reasoning.push(t(
+        '身弱而印不足，取比劫帮身为用，印为喜。',
+        'The Day Master is weak and resource is thin, so peers — allies and ' +
+          'self-reliance — are what shore it up. Resource supports that.',
+      ));
     }
   } else {
     // Balanced: no side needs propping, so supply what the chart lacks. This
@@ -104,10 +131,13 @@ export function analyzeYongShen(
     )[0]!;
     primaryFamily = tenGodFamily(dm, scarcest);
     secondaryFamily = null;
-    reasoning.push(
+    reasoning.push(t(
       `中和之局，无须扶抑，取最弱的 ${scarcest}（${strength.elementPercent[scarcest]}%）` +
         `补不足为用。`,
-    );
+      `The chart is balanced, so neither propping up nor draining is called for. ` +
+        `The scarcest element, ${el(scarcest)} at ${strength.elementPercent[scarcest]}%, ` +
+        `is what it lacks.`,
+    ));
   }
 
   const primary = familyElement(dm, primaryFamily);
@@ -118,10 +148,18 @@ export function analyzeYongShen(
   let climateNeed: Element | null = null;
   if (WINTER_BRANCHES.has(monthBranch)) {
     climateNeed = '火';
-    reasoning.push(`生于 ${monthBranch} 月，天寒，调候喜火暖局。`);
+    reasoning.push(t(
+      `生于 ${monthBranch} 月，天寒，调候喜火暖局。`,
+      `Born in the ${monthBranch} month, the chart is cold. On climate grounds it ` +
+        `wants Fire to warm it.`,
+    ));
   } else if (SUMMER_BRANCHES.has(monthBranch)) {
     climateNeed = '水';
-    reasoning.push(`生于 ${monthBranch} 月，火炎，调候喜水润局。`);
+    reasoning.push(t(
+      `生于 ${monthBranch} 月，火炎，调候喜水润局。`,
+      `Born in the ${monthBranch} month, the chart runs hot. On climate grounds it ` +
+        `wants Water to temper it.`,
+    ));
   }
 
   const favourable: Element[] = [primary];
@@ -132,29 +170,43 @@ export function analyzeYongShen(
   let climateConflict = false;
   if (climateNeed) {
     if (favourable.includes(climateNeed)) {
-      reasoning.push(`调候与扶抑一致，${climateNeed} 为用甚验。`);
+      reasoning.push(t(
+        `调候与扶抑一致，${climateNeed} 为用甚验。`,
+        `Climate and strength agree — ${el(climateNeed)} on both counts, which makes ` +
+          `it an unusually reliable read.`,
+      ));
     } else {
       climateConflict = true;
-      reasoning.push(
+      reasoning.push(t(
         `⚠️ 调候取 ${climateNeed}，扶抑取 ${primary}，两者不一致。` +
           `本盘以扶抑为主，但 ${climateNeed} 运仍有暖局/润局之功，` +
           `此处不同流派会有不同结论。`,
-      );
+        `⚠️ Climate wants ${el(climateNeed)}; strength wants ${el(primary)}. They ` +
+          `disagree. This reading follows strength, but ${el(climateNeed)} periods ` +
+          `still do real tempering work — and a different school would reach a ` +
+          `different answer here.`,
+      ));
     }
   }
 
   if (strength.followingCandidate) {
-    reasoning.push(
+    reasoning.push(t(
       `⚠️ 旺衰分析提示可能成从格。若作从格论，用神与上述完全相反` +
         `（从${strength.followingCandidate}则以${strength.followingCandidate}为用）。` +
         `本盘按正格扶抑取用。`,
-    );
+      `⚠️ The strength analysis flagged a possible "following" (从格) chart. Read ` +
+        `that way, the favourable element inverts completely — ${fam(strength.followingCandidate)} ` +
+        `would become what the chart wants. This reading treats it as an ordinary chart.`,
+    ));
   }
 
-  reasoning.push(
+  reasoning.push(t(
     `用神 ${primary}（${primaryFamily}）` +
       `${secondary ? `，喜神 ${secondary}` : ''}，忌神 ${unfavourable.join('、')}。`,
-  );
+    `Favourable: ${el(primary)} (${fam(primaryFamily)})` +
+      `${secondary ? `, supported by ${el(secondary)}` : ''}. ` +
+      `Unfavourable: ${unfavourable.map(el).join(', ')}.`,
+  ));
 
   return {
     school: SCHOOL,

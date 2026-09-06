@@ -65,7 +65,7 @@ describe('templates', () => {
 
   it('gives every template a focus and a length target', () => {
     for (const t of TEMPLATES) {
-      expect(t.focus.length).toBeGreaterThan(20);
+      expect(t.focus.zh.length).toBeGreaterThan(20);
       expect(t.targetLength).toBeGreaterThan(200);
       expect(t.leadWith.length).toBeGreaterThan(0);
     }
@@ -102,7 +102,10 @@ describe('question routing', () => {
     for (const q of ['我会得什么病', '我能活到几岁', '我的寿命如何']) {
       const r = routeQuestion(q);
       expect(r.kind, q).toBe('declined');
-      if (r.kind === 'declined') expect(r.reason).toContain('健康');
+      if (r.kind === 'declined') {
+        expect(r.reason.zh).toContain('健康');
+        expect(r.reason.en).toContain('health');
+      }
     }
   });
 
@@ -132,7 +135,7 @@ describe('prompt construction', () => {
   it('includes the findings with their evidence and ids', () => {
     const f = analysis.relationship.findings[0]!;
     expect(prompt).toContain(`[${f.id}]`);
-    expect(prompt).toContain(f.claim);
+    expect(prompt).toContain(f.claim.zh);
   });
 
   it('marks the template lead findings so the narrator knows what to lead with', () => {
@@ -140,7 +143,7 @@ describe('prompt construction', () => {
   });
 
   it('names the 用神 school so the reading can disclose it', () => {
-    expect(prompt).toContain(analysis.yongShen.school);
+    expect(prompt).toContain(analysis.yongShen.school.zh);
   });
 
   it('carries only the requested topic findings', () => {

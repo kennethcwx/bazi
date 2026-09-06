@@ -364,3 +364,24 @@ button:disabled { opacity: 0.5; cursor: default; }
 @media (prefers-reduced-motion: reduce) {
   .dot { transition: none; }
 }
+
+/* ---------- header with language toggle ---------- */
+.head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 14px; margin-bottom: 22px;
+}
+.head .sub { margin-bottom: 0; }
+.lang { display: flex; flex: none; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.lang button {
+  min-height: 34px; padding: 4px 11px;
+  background: transparent; color: var(--text-dim);
+  border: 0; border-radius: 0; font-size: 12px; font-weight: 500;
+  letter-spacing: 0.04em;
+}
+.lang button[aria-pressed='true'] { background: var(--gold); color: #17130a; }
+
+/* Verdict word under each luck pillar, now that it is a translated term. */
+.luck-cell .verdict-tag {
+  font-size: 9px; color: var(--text-faint); letter-spacing: 0.04em;
+  margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}

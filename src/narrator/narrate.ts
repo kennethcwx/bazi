@@ -15,11 +15,12 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { Analysis } from '../analyzer/index';
 import {
   PROMPT_VERSION,
-  SYSTEM_PROMPT,
   buildUserPrompt,
   checkGrounding,
+  systemPrompt,
   type GroundingReport,
 } from './prompt';
+import type { Locale } from '../i18n/text';
 import type { Template } from './templates';
 
 const MODEL = 'claude-opus-5';
@@ -54,8 +55,10 @@ export const hasApiKey = (): boolean => Boolean(process.env['ANTHROPIC_API_KEY']
 const CACHE_LIMIT = 300;
 const cache = new Map<string, Reading>();
 
-const cacheKey = (analysis: Analysis, template: Template): string =>
-  `${analysis.chart.chartHash}:${template.id}:${PROMPT_VERSION}`;
+// Locale is part of the key: a reading is a pure function of the chart, the
+// question, the prompt version AND the language it was written in.
+const cacheKey = (analysis: Analysis, template: Template, locale: Locale): string =>
+  `${analysis.chart.chartHash}:${template.id}:${locale}:${PROMPT_VERSION}`;
 
 function remember(key: string, reading: Reading): void {
   // Insertion-ordered Map: the first key is the oldest, so this is an LRU-ish
@@ -67,8 +70,9 @@ function remember(key: string, reading: Reading): void {
   cache.set(key, reading);
 }
 
-export const getCached = (analysis: Analysis, template: Template): Reading | undefined =>
-  cache.get(cacheKey(analysis, template));
+export const getCached = (
+  analysis: Analysis, template: Template, locale: Locale,
+): Reading | undefined => cache.get(cacheKey(analysis, template, locale));
 
 // ---------------------------------------------------------------------------
 
@@ -82,6 +86,7 @@ function getClient(): Anthropic {
 export interface NarrateOptions {
   /** Called with each text delta as it arrives. */
   readonly onDelta?: (text: string) => void;
+  readonly locale?: Locale;
 }
 
 /**
@@ -95,7 +100,8 @@ export async function narrate(
   template: Template,
   opts: NarrateOptions = {},
 ): Promise<Reading> {
-  const key = cacheKey(analysis, template);
+  const locale = opts.locale ?? 'zh';
+  const key = cacheKey(analysis, template, locale);
 
   const hit = cache.get(key);
   if (hit) {
@@ -116,12 +122,12 @@ export async function narrate(
     system: [
       {
         type: 'text',
-        text: SYSTEM_PROMPT,
+        text: systemPrompt(locale),
         // Frozen and chart-independent, so it caches across every reading.
         cache_control: { type: 'ephemeral' },
       },
     ],
-    messages: [{ role: 'user', content: buildUserPrompt(analysis, template) }],
+    messages: [{ role: 'user', content: buildUserPrompt(analysis, template, locale) }],
   });
 
   if (opts.onDelta) {
@@ -134,7 +140,10 @@ export async function narrate(
   // be checked before reading content.
   if (message.stop_reason === 'refusal') {
     throw new Error(
-      '内容安全系统拒绝了这次生成。请换一个问题，或直接查看下方已算出的结论。',
+      locale === 'en'
+        ? 'The safety system declined this generation. Try a different question, ' +
+          'or read the computed findings below.'
+        : '内容安全系统拒绝了这次生成。请换一个问题，或直接查看下方已算出的结论。',
     );
   }
 
