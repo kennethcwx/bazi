@@ -26,6 +26,8 @@ import { isLocale, type Locale } from '../src/i18n/text';
 import { TEMPLATES } from '../src/narrator/templates';
 import { Forecast } from './Forecast';
 import { Compatibility } from './Compatibility';
+import { PlacePicker } from './PlacePicker';
+import { PLACES, DEFAULT_PLACE } from '../src/places';
 import { loadSelf, saveSelf, forgetAll, hasSaved } from '../src/storage';
 
 interface DecadeView {
@@ -62,24 +64,6 @@ type Topic = 'relationship' | 'career';
 const PILLAR_KEY = {
   year: 'yearPillar', month: 'monthPillar', day: 'dayPillar', hour: 'hourPillar',
 } as const;
-
-/** Longitude drives 真太阳时, so each place carries one. */
-const PLACES = [
-  { zh: '新加坡', en: 'Singapore', tz: 'Asia/Singapore', lon: 103.82 },
-  { zh: '吉隆坡', en: 'Kuala Lumpur', tz: 'Asia/Kuala_Lumpur', lon: 101.69 },
-  { zh: '槟城', en: 'Penang', tz: 'Asia/Kuala_Lumpur', lon: 100.33 },
-  { zh: '香港', en: 'Hong Kong', tz: 'Asia/Hong_Kong', lon: 114.17 },
-  { zh: '台北', en: 'Taipei', tz: 'Asia/Taipei', lon: 121.56 },
-  { zh: '台中', en: 'Taichung', tz: 'Asia/Taipei', lon: 120.68 },
-  { zh: '北京', en: 'Beijing', tz: 'Asia/Shanghai', lon: 116.41 },
-  { zh: '上海', en: 'Shanghai', tz: 'Asia/Shanghai', lon: 121.47 },
-  { zh: '广州', en: 'Guangzhou', tz: 'Asia/Shanghai', lon: 113.26 },
-  { zh: '雅加达', en: 'Jakarta', tz: 'Asia/Jakarta', lon: 106.85 },
-  { zh: '曼谷', en: 'Bangkok', tz: 'Asia/Bangkok', lon: 100.5 },
-  { zh: '伦敦', en: 'London', tz: 'Europe/London', lon: -0.13 },
-  { zh: '悉尼', en: 'Sydney', tz: 'Australia/Sydney', lon: 151.21 },
-  { zh: '纽约', en: 'New York', tz: 'America/New_York', lon: -74.01 },
-];
 
 function PillarCard({ p, position, locale }: {
   p: Pillar | null; position: keyof typeof PILLAR_KEY; locale: Locale;
@@ -179,7 +163,7 @@ function FindingList({ findings, locale }: { findings: RenderedFinding[]; locale
 
 export default function Page() {
   const [locale, setLocale] = useState<Locale>('zh');
-  const [place, setPlace] = useState(0);
+  const [place, setPlace] = useState(DEFAULT_PLACE);
   const [timeKnown, setTimeKnown] = useState(true);
   const [trueSolar, setTrueSolar] = useState(true);
   // Controlled, because remembered details arrive after mount and
@@ -427,12 +411,7 @@ export default function Page() {
             <option value="female">{UI.female[L]}</option>
           </select>
         </div>
-        <div>
-          <label htmlFor="place">{UI.birthPlace[L]}</label>
-          <select id="place" value={place} onChange={(e) => setPlace(Number(e.target.value))}>
-            {PLACES.map((p, i) => <option key={p.tz + p.lon} value={i}>{p[L]}</option>)}
-          </select>
-        </div>
+        <PlacePicker id="place" value={place} onChange={setPlace} locale={L} />
 
         <div className="checks">
           <span className="checkline">
@@ -638,7 +617,7 @@ export default function Page() {
 
           <Forecast birth={lastInput.current} locale={L} />
 
-          <Compatibility selfBirth={lastInput.current} places={PLACES} locale={L} />
+          <Compatibility selfBirth={lastInput.current} locale={L} />
 
           <section>
             <h2>

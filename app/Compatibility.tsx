@@ -14,6 +14,8 @@ import { ELEMENT } from '../src/i18n/glossary';
 import type { Locale } from '../src/i18n/text';
 import type { RenderedFinding } from '../src/analyzer/findings';
 import { loadPartner, savePartner, type SavedBirth } from '../src/storage';
+import { PlacePicker } from './PlacePicker';
+import { PLACES, DEFAULT_PLACE } from '../src/places';
 
 interface CompatData {
   self: { pillars: (string | null)[]; dayMaster: string; favourable: string[] };
@@ -23,14 +25,13 @@ interface CompatData {
   findings: RenderedFinding[];
 }
 
-export function Compatibility({ selfBirth, places, locale }: {
+export function Compatibility({ selfBirth, locale }: {
   selfBirth: Record<string, unknown> | null;
-  places: readonly { zh: string; en: string; tz: string; lon: number }[];
   locale: Locale;
 }) {
   const [open, setOpen] = useState(false);
   const [saved, setSaved] = useState<SavedBirth | null>(null);
-  const [place, setPlace] = useState(0);
+  const [place, setPlace] = useState(DEFAULT_PLACE);
   const [timeKnown, setTimeKnown] = useState(true);
   const [data, setData] = useState<CompatData | null>(null);
   const [busy, setBusy] = useState(false);
@@ -49,7 +50,7 @@ export function Compatibility({ selfBirth, places, locale }: {
     const date = String(fd.get('pdate') ?? '');
     const time = String(fd.get('ptime') ?? '');
     const gender = String(fd.get('pgender') ?? 'female') as 'male' | 'female';
-    const p = places[place]!;
+    const p = PLACES[place]!;
 
     const record: SavedBirth = {
       date, time, gender, placeIndex: place, timeKnown,
@@ -123,12 +124,7 @@ export function Compatibility({ selfBirth, places, locale }: {
               <option value="female">{UI.female[locale]}</option>
             </select>
           </div>
-          <div>
-            <label htmlFor="pplace">{UI.birthPlace[locale]}</label>
-            <select id="pplace" value={place} onChange={(e) => setPlace(Number(e.target.value))}>
-              {places.map((p, i) => <option key={p.tz + p.lon} value={i}>{p[locale]}</option>)}
-            </select>
-          </div>
+          <PlacePicker id="pplace" value={place} onChange={setPlace} locale={locale} />
           <div className="checks">
             <span className="checkline">
               <input id="ptk" type="checkbox" checked={timeKnown}

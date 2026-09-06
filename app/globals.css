@@ -478,3 +478,34 @@ button:disabled { opacity: 0.5; cursor: default; }
   .days { grid-template-columns: repeat(7, 1fr); }
   .glance-row { grid-template-columns: 96px 1fr; }
 }
+
+/* ---------- place picker ---------- */
+.place { position: relative; }
+.place-btn {
+  width: 100%; min-height: var(--tap);
+  background: var(--ink); color: var(--text);
+  border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px 10px; font-size: 16px; font-weight: 400;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  text-align: left;
+}
+.place-lon { font-size: 11px; color: var(--text-faint); flex: none; }
+.place-list {
+  position: absolute; z-index: 20; left: 0; right: 0; top: 100%;
+  margin-top: 4px; max-height: 260px; overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--surface); border: 1px solid var(--gold);
+  border-radius: 8px; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
+}
+.place-opt {
+  width: 100%; min-height: 0; background: transparent; color: var(--text);
+  border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
+  padding: 9px 11px; font-size: 14px; font-weight: 400; text-align: left;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+}
+.place-opt:last-child { border-bottom: 0; }
+.place-opt:hover, .place-opt:focus-visible { background: var(--surface-2); }
+.place-opt[aria-selected='true'] { color: var(--gold); }
+.place-name { flex: 1; min-width: 0; }
+.place-meta { font-size: 11px; color: var(--text-faint); flex: none; }
+.place-empty { margin: 0; padding: 14px 12px; font-size: 13px; color: var(--text-dim); }
