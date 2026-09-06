@@ -58,6 +58,8 @@ export const UI = {
   methodUsed: t('取用流派', 'Method'),
   whyThis: t('看推导过程', 'Show the working'),
   showEvidence: t('依据', 'Evidence'),
+  basedOn: t('依据', 'Based on'),
+  termsUsed: t('用语说明', 'Terms used here'),
 
   // tabs
   relationships: t('姻缘 · 婚姻', 'Relationships'),

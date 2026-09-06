@@ -550,3 +550,27 @@ details.why[open] > summary::after { transform: rotate(-135deg) translateY(-1px)
   .cursor { animation: none; }
   * { transition-duration: 0.01ms !important; }
 }
+
+/* Citations name what they point at. Raw finding ids told the reader nothing. */
+.cite {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px;
+  font-size: 12px; color: var(--text-faint); line-height: 1.6;
+  border-left: 2px solid var(--line); padding-left: 10px;
+  margin: 0 0 18px;
+}
+.cite-lead { color: var(--text-faint); opacity: 0.75; }
+.cite-chip {
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 1px 9px; color: var(--text-dim); white-space: normal;
+}
+
+/* Per-reading glossary. Collapsed, so density is unaffected until wanted. */
+details.terms { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 6px; }
+.terms-list { margin: 6px 0 0; font-size: 13.5px; line-height: 1.65; }
+.terms-list > div {
+  display: grid; grid-template-columns: minmax(72px, auto) 1fr; gap: 4px 12px;
+  padding: 7px 0; border-top: 1px solid var(--line-soft);
+}
+.terms-list > div:first-child { border-top: 0; }
+.terms-list dt { color: var(--text); }
+.terms-list dd { margin: 0; color: var(--text-dim); }

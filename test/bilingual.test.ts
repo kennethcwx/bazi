@@ -20,8 +20,10 @@ import { TEMPLATES, routeQuestion, templateById } from '../src/narrator/template
 import { formatNote, formatLuckStart } from '../src/i18n/notes';
 import { UI } from '../src/i18n/ui';
 import {
-  ELEMENT, RELATION, SHENSHA, STRUCTURE, TEN_GOD, TEN_GOD_FAMILY, TERRAIN, term,
+  ELEMENT, RELATION, SHENSHA, STRUCTURE, TEN_GOD, TEN_GOD_FAMILY,
+  TEN_GOD_GLOSS, TERRAIN, term,
 } from '../src/i18n/glossary';
+import { findingLabel, FINDING_LABELS } from '../src/i18n/finding-labels';
 import { LOCALES, type Locale, type LocalizedText } from '../src/i18n/text';
 import type { BirthInput } from '../src/engine/types';
 
@@ -172,6 +174,40 @@ describe('glossary covers what the engine emits', () => {
     expect(term('海中金', 'en')).toBe('海中金');
     expect(term('正财', 'en')).toBe('Direct Wealth');
     expect(term('正财', 'zh')).toBe('正财');
+  });
+});
+
+describe('every finding is nameable in the UI', () => {
+  // The citation line under a reading names what it points at. A finding with
+  // no label falls back to its raw id, which is developer output.
+  it('has a human label for every finding id the analyzer emits', () => {
+    const emitted = new Set(sweep().flatMap((a) => a.findings.map((f) => f.id)));
+    const missing = [...emitted].filter((id) => !FINDING_LABELS[id]);
+    expect(missing, `findings with no label: ${missing.join(', ')}`).toEqual([]);
+  });
+
+  it('labels both languages, and never leaks Chinese into the English', () => {
+    for (const [id, pair] of Object.entries(FINDING_LABELS)) assertPair(pair, `label ${id}`);
+  });
+
+  it('keeps labels short — they point at a finding, not restate it', () => {
+    for (const [id, pair] of Object.entries(FINDING_LABELS)) {
+      expect(pair.zh.length, `${id} zh too long`).toBeLessThanOrEqual(14);
+      expect(pair.en.split(' ').length, `${id} en too long`).toBeLessThanOrEqual(9);
+    }
+  });
+
+  it('falls back visibly rather than blanking on an unknown id', () => {
+    expect(findingLabel('made.up.id', 'en')).toBe('made.up.id');
+  });
+});
+
+describe('term glossary', () => {
+  it('explains every 十神, in both languages', () => {
+    for (const g of Object.keys(TEN_GOD)) {
+      expect(TEN_GOD_GLOSS[g], `no gloss for ${g}`).toBeDefined();
+      assertPair(TEN_GOD_GLOSS[g]!, `gloss ${g}`);
+    }
   });
 });
 

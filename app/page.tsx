@@ -21,8 +21,11 @@ import type { Chart, Element, Pillar } from '../src/engine/types';
 import type { RenderedFinding } from '../src/analyzer/findings';
 import { formatNote, formatLuckStart, isCaveat } from '../src/i18n/notes';
 import { UI } from '../src/i18n/ui';
-import { ELEMENT, TEN_GOD, TERRAIN, DECADE_VERDICT, term } from '../src/i18n/glossary';
+import {
+  ELEMENT, TEN_GOD, TEN_GOD_GLOSS, TERRAIN, DECADE_VERDICT, term,
+} from '../src/i18n/glossary';
 import { isLocale, type Locale } from '../src/i18n/text';
+import { findingLabel } from '../src/i18n/finding-labels';
 import { TEMPLATES } from '../src/narrator/templates';
 import { Forecast } from './Forecast';
 import { Compatibility } from './Compatibility';
@@ -127,7 +130,20 @@ function Reading({ text, streaming, locale }: {
     if (line.startsWith('###')) {
       blocks.push(<h3 key={key++}>{line.replace(/^#+\s*/, '')}</h3>);
     } else if (/^(依据|Basis|Sources?)[:：]/i.test(line)) {
-      blocks.push(<p className="cite" key={key++}>{line}</p>);
+      // The raw ids are developer output. Name what each one is.
+      const ids = line
+        .replace(/^(依据|Basis|Sources?)[:：]\s*/i, '')
+        .split(/[,，、\s]+/)
+        .map((x) => x.trim().replace(/[。.]$/, ''))
+        .filter(Boolean);
+      blocks.push(
+        <p className="cite" key={key++}>
+          <span className="cite-lead">{UI.basedOn[locale]}</span>
+          {ids.map((id) => (
+            <span className="cite-chip" key={id}>{findingLabel(id, locale)}</span>
+          ))}
+        </p>,
+      );
     } else {
       blocks.push(<p key={key++}>{line}</p>);
     }
@@ -138,6 +154,34 @@ function Reading({ text, streaming, locale }: {
       {blocks}
       {streaming && <span className="cursor" aria-label={UI.generating[locale]} />}
     </div>
+  );
+}
+
+/**
+ * A short glossary for whichever 十神 the reading actually used.
+ *
+ * The reading assumes these terms. In English the claims gloss them inline,
+ * but the Chinese ones do not, and a reader meeting 伤官 for the first time has
+ * no way in. Collapsed so it costs nothing on a phone, and derived from the
+ * text so it never lists a term that was not used.
+ */
+function TermsUsed({ text, locale }: { text: string; locale: Locale }) {
+  const used = (Object.keys(TEN_GOD_GLOSS) as string[]).filter((zh) =>
+    text.includes(zh) || text.includes(TEN_GOD[zh]!.en));
+  if (used.length === 0) return null;
+
+  return (
+    <details className="why terms">
+      <summary>{UI.termsUsed[locale]}（{used.length}）</summary>
+      <dl className="terms-list">
+        {used.map((zh) => (
+          <div key={zh}>
+            <dt>{locale === 'zh' ? zh : `${TEN_GOD[zh]![locale]} ${zh}`}</dt>
+            <dd>{TEN_GOD_GLOSS[zh]![locale]}</dd>
+          </div>
+        ))}
+      </dl>
+    </details>
   );
 }
 
@@ -615,6 +659,7 @@ export default function Page() {
             {(reading || readingBusy) && (
               <div className="card">
                 <Reading text={reading} streaming={readingBusy} locale={L} />
+                {!readingBusy && reading && <TermsUsed text={reading} locale={L} />}
                 {readingSource === 'composed' && !readingBusy && (
                   <p className="caveat">
                     {UI.writtenBy[L]} {UI.composedLabel[L]}. {UI.modelHint[L]}
@@ -631,9 +676,12 @@ export default function Page() {
             )}
           </section>
 
-          <Forecast birth={lastInput.current} locale={L} />
-
-          <Compatibility selfBirth={lastInput.current} locale={L} />
+          {tab === 'relationship' && (
+            <>
+              <Forecast birth={lastInput.current} locale={L} />
+              <Compatibility selfBirth={lastInput.current} locale={L} />
+            </>
+          )}
 
           <section>
             <h2>
