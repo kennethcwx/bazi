@@ -79,6 +79,16 @@ export const UI = {
   // forecast
   forecast: t('近期运势 · 感情', 'Short-range outlook'),
   headlineLabel: t('概要', 'At a glance'),
+  trackYours: t('你', 'You'),
+  trackTheirs: t('对方', 'Them'),
+  trackBetween: t('两人之间', 'Between you'),
+  jointHint: t('已记住对方生辰，重新排一次即可看两人对照。',
+    "Partner details are remembered — run this again to see both of you side by side."),
+  nothingInPlay: t('这一天没有牵动。', 'Nothing in play on this day.'),
+  hoursTitle: t('时辰', 'Hours of the day'),
+  hoursGood: t('阻力最小', 'Least friction'),
+  hoursAvoid: t('容易起冲突', 'Most abrasive'),
+  hoursNone: t('这天没有特别顺的时辰', 'no hour stands out today'),
 
   // compatibility
   compatibility: t('合婚 · 两人对照', 'Compatibility'),

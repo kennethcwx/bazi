@@ -33,7 +33,7 @@ import { findRelations, isBranchRelation, type PositionedPillar, type RelationKi
  * say anything about a day. Weighted so that a minor relation alone leaves the
  * day quiet, which is what it should be.
  */
-const RELATION_WEIGHT: Record<RelationKind, number> = {
+export const RELATION_WEIGHT: Record<RelationKind, number> = {
   六合: 3, 三合: 3, 三会: 3, 六冲: 3,
   半合: 2, 相刑: 2,
   相害: 1, 相破: 1, 自刑: 1,
@@ -50,6 +50,21 @@ const PEACH: Record<string, string> = {
 };
 
 export type Band = 'notable' | 'mild' | 'quiet';
+
+/** 时辰 midpoints. 子 centres on midnight because it runs 23:00-01:00. */
+export const HOUR_MIDPOINTS = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22] as const;
+
+export const HOUR_RANGES: readonly string[] = [
+  '23:00–01:00', '01:00–03:00', '03:00–05:00', '05:00–07:00',
+  '07:00–09:00', '09:00–11:00', '11:00–13:00', '13:00–15:00',
+  '15:00–17:00', '17:00–19:00', '19:00–21:00', '21:00–23:00',
+];
+
+/**
+ * Weight of each relation kind. Exported because the joint view and the hour
+ * breakdown must grade a clash the same way this does, or the two disagree
+ * about the same day.
+ */
 
 export interface DayOutlook {
   /** ISO date, YYYY-MM-DD. */
@@ -79,13 +94,25 @@ export interface ForecastSummary {
 const iso = (d: Date) =>
   `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 
+/** The natal pillars of a chart, in the shape the relation finder wants. */
+export function natalPillars(chart: Chart): PositionedPillar[] {
+  return [
+    { position: '年柱', stem: chart.pillars.year.stem, branch: chart.pillars.year.branch },
+    { position: '月柱', stem: chart.pillars.month.stem, branch: chart.pillars.month.branch },
+    { position: '日柱', stem: chart.pillars.day.stem, branch: chart.pillars.day.branch },
+    ...(chart.pillars.hour
+      ? [{ position: '时柱', stem: chart.pillars.hour.stem, branch: chart.pillars.hour.branch }]
+      : []),
+  ];
+}
+
 /**
  * Score one day against the natal chart.
  *
  * Only relations that reach 日柱 count — the marriage palace is the day branch,
  * and a 流日 clashing some other pillar is not a relationship signal.
  */
-function scoreDay(
+export function scoreDay(
   chart: Chart,
   date: Date,
   primaryStar: TenGod,
@@ -200,15 +227,7 @@ export function forecastRelationship(
   const primaryStar: TenGod = isMale ? '正财' : '正官';
   const secondaryStar: TenGod = isMale ? '偏财' : '七杀';
 
-  const natal: PositionedPillar[] = [
-    { position: '年柱', stem: chart.pillars.year.stem, branch: chart.pillars.year.branch },
-    { position: '月柱', stem: chart.pillars.month.stem, branch: chart.pillars.month.branch },
-    { position: '日柱', stem: chart.pillars.day.stem, branch: chart.pillars.day.branch },
-    ...(chart.pillars.hour
-      ? [{ position: '时柱', stem: chart.pillars.hour.stem, branch: chart.pillars.hour.branch }]
-      : []),
-  ];
-
+  const natal = natalPillars(chart);
   const out: DayOutlook[] = [];
   const start = Date.UTC(
     fromDate.getUTCFullYear(), fromDate.getUTCMonth(), fromDate.getUTCDate(),

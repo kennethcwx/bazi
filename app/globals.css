@@ -574,3 +574,55 @@ details.terms { margin-top: 18px; border-top: 1px solid var(--line); padding-top
 .terms-list > div:first-child { border-top: 0; }
 .terms-list dt { color: var(--text); }
 .terms-list dd { margin: 0; color: var(--text-dim); }
+
+/* ---------- forecast tracks ---------- */
+.dot-row { display: flex; gap: 3px; margin-top: 4px; }
+.d-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--line); flex: none; display: inline-block;
+}
+.b-mild { background: var(--text-faint); }
+.b-notable { background: var(--gold); }
+.b-notable.t-friction { background: var(--fire); }
+
+.legend {
+  display: flex; flex-wrap: wrap; gap: 14px;
+  margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line-soft);
+  font-size: 12px; color: var(--text-faint);
+}
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+
+.tracks { display: flex; flex-direction: column; gap: 14px; }
+.track-head {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 13px; color: var(--text); margin-bottom: 2px;
+}
+
+/* ---------- 时辰 ---------- */
+.hours { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.hours-head {
+  font-size: 11.5px; color: var(--text-faint);
+  letter-spacing: 0.06em; margin-bottom: 10px;
+}
+.hour-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.hour {
+  background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 6px; padding: 7px 2px; text-align: center;
+  display: flex; flex-direction: column; gap: 1px;
+}
+.hour-branch { font-family: var(--serif); font-size: 15px; color: var(--text-dim); }
+.hour-range { font-size: 9.5px; color: var(--text-faint); }
+.h-good { border-color: rgba(201, 162, 39, 0.5); background: #221d15; }
+.h-good .hour-branch { color: var(--gold); }
+.h-avoid { border-color: rgba(207, 95, 87, 0.35); }
+.h-avoid .hour-branch { color: var(--fire); opacity: 0.85; }
+
+@media (min-width: 480px) {
+  .hour-grid { grid-template-columns: repeat(6, 1fr); }
+}
+
+/* Per-side marks inside an hour cell: left is you, right is them. */
+.hour-sides { display: flex; gap: 3px; justify-content: center; margin-top: 3px; }
+.hs { width: 4px; height: 4px; border-radius: 50%; background: var(--line); display: inline-block; }
+.hs-harmony { background: var(--gold); }
+.hs-clash { background: var(--fire); }
