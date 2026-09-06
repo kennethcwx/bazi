@@ -266,6 +266,10 @@ export function analyzeCareer(
       salience: 9,
     }));
   } else {
+    // Defensive only. Ten consecutive decades cover all ten stems, so at least
+    // two always carry a favourable stem and score into 偏顺 — reaching here
+    // needs every such decade to also be 空亡. Swept 3,648 charts without a
+    // single hit; kept so the topic always emits a timing finding.
     f.push(finding({
       id: 'career.timing.none',
       topic: 'career',

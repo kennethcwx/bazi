@@ -5,18 +5,21 @@
  *
  * Order is the argument: the chart comes first because it is the thing a
  * practitioner checks, then how it was derived (旺衰, 用神, with the school
- * named), then the luck timeline, and only then the readings. Putting the
- * conclusions last is deliberate — they are downstream of everything above,
- * and the layout should say so.
+ * named), then the luck timeline, then the reading, and the raw findings last.
+ * The conclusions sit downstream of everything above and the layout says so.
+ *
+ * The 依据 citations under each section of a reading are shown, not hidden.
+ * They are the product's whole claim — that a reading can be argued with.
  */
 
-import { useState, type FormEvent } from 'react';
+import { useState, useRef, type ReactNode, type FormEvent } from 'react';
 import type { Chart, Element, Pillar } from '../src/engine/types';
 import { formatNote, isCaveat } from '../src/i18n/notes';
 import type { Finding } from '../src/analyzer/findings';
 import type { StrengthAnalysis } from '../src/analyzer/strength';
 import type { YongShenAnalysis } from '../src/analyzer/yongshen';
 import type { DecadeOutlook } from '../src/analyzer/topics/career';
+import { TEMPLATES } from '../src/narrator/templates';
 
 interface Result {
   chart: Chart;
@@ -26,20 +29,34 @@ interface Result {
   career: { findings: Finding[]; decades: DecadeOutlook[]; structure: string; lean: string };
 }
 
+interface Grounding {
+  cited: string[];
+  invalid: string[];
+  uncitedLeads: string[];
+  ok: boolean;
+}
+
+type Topic = 'relationship' | 'career';
+
 const POSITION: Record<string, string> = {
   year: '年柱', month: '月柱', day: '日柱', hour: '时柱',
 };
 
-/** A few defaults so the field is not a chore. Longitude drives 真太阳时. */
+/** Longitude drives 真太阳时, so each place carries one. */
 const PLACES = [
   { label: '新加坡', tz: 'Asia/Singapore', lon: 103.82 },
   { label: '吉隆坡', tz: 'Asia/Kuala_Lumpur', lon: 101.69 },
+  { label: '槟城', tz: 'Asia/Kuala_Lumpur', lon: 100.33 },
   { label: '香港', tz: 'Asia/Hong_Kong', lon: 114.17 },
   { label: '台北', tz: 'Asia/Taipei', lon: 121.56 },
+  { label: '台中', tz: 'Asia/Taipei', lon: 120.68 },
   { label: '北京', tz: 'Asia/Shanghai', lon: 116.41 },
   { label: '上海', tz: 'Asia/Shanghai', lon: 121.47 },
   { label: '广州', tz: 'Asia/Shanghai', lon: 113.26 },
+  { label: '雅加达', tz: 'Asia/Jakarta', lon: 106.85 },
+  { label: '曼谷', tz: 'Asia/Bangkok', lon: 100.5 },
   { label: '伦敦', tz: 'Europe/London', lon: -0.13 },
+  { label: '悉尼', tz: 'Australia/Sydney', lon: 151.21 },
   { label: '纽约', tz: 'America/New_York', lon: -74.01 },
 ];
 
@@ -56,7 +73,7 @@ function PillarCard({ p, position }: { p: Pillar | null; position: string }) {
   }
   return (
     <div className={`pillar${position === 'day' ? ' is-day' : ''}`}>
-      {p.isVoid && <span className="void">空亡</span>}
+      {p.isVoid && <span className="void">空</span>}
       <div className="pos">{POSITION[position]}</div>
       <div className="tengod">{p.tenGod ?? '日主'}</div>
       <div className="gz">
@@ -70,13 +87,45 @@ function PillarCard({ p, position }: { p: Pillar | null; position: string }) {
           </div>
         ))}
       </div>
-      <div className="meta">{p.naYin} · {p.terrain}</div>
+      <div className="meta">{p.naYin}·{p.terrain}</div>
+    </div>
+  );
+}
+
+/**
+ * Render the narrator's output.
+ *
+ * The format is deliberately minimal — `### heading`, paragraphs, and a
+ * `依据：` line per section — so this needs no markdown dependency and cannot
+ * be used to inject markup.
+ */
+function Reading({ text, streaming }: { text: string; streaming: boolean }) {
+  const blocks: ReactNode[] = [];
+  let key = 0;
+
+  for (const rawLine of text.split('\n')) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    if (line.startsWith('###')) {
+      blocks.push(<h3 key={key++}>{line.replace(/^#+\s*/, '')}</h3>);
+    } else if (/^依据[:：]/.test(line)) {
+      blocks.push(<p className="cite" key={key++}>{line}</p>);
+    } else {
+      blocks.push(<p key={key++}>{line}</p>);
+    }
+  }
+
+  return (
+    <div className="reading">
+      {blocks}
+      {streaming && <span className="cursor" aria-label="生成中" />}
     </div>
   );
 }
 
 function FindingList({ findings }: { findings: Finding[] }) {
-  if (findings.length === 0) return <p className="audit">没有可报告的结论。</p>;
+  if (findings.length === 0) return <p className="note">没有可报告的结论。</p>;
   return (
     <>
       {findings.map((f) => (
@@ -103,36 +152,61 @@ export default function Page() {
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [tab, setTab] = useState<'relationship' | 'career'>('relationship');
+  const [tab, setTab] = useState<Topic>('relationship');
+
+  const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
+  const [reading, setReading] = useState('');
+  const [readingBusy, setReadingBusy] = useState(false);
+  const [readingError, setReadingError] = useState<string | null>(null);
+  const [grounding, setGrounding] = useState<Grounding | null>(null);
+
+  /** The birth payload that produced the current chart, reused for readings. */
+  const lastInput = useRef<Record<string, unknown> | null>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
+
+  function readForm(form: HTMLFormElement) {
+    const fd = new FormData(form);
+    const [y, mo, d] = String(fd.get('date') ?? '').split('-').map(Number);
+    const time = String(fd.get('time') ?? '');
+    const [h, mi] = time ? time.split(':').map(Number) : [undefined, undefined];
+    const p = PLACES[place]!;
+    return {
+      year: y, month: mo, day: d,
+      ...(timeKnown && h !== undefined ? { hour: h, minute: mi ?? 0 } : {}),
+      timeZone: p.tz,
+      longitude: p.lon,
+      gender: fd.get('gender'),
+      useTrueSolarTime: trueSolar,
+    };
+  }
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
     setError(null);
+    setReading('');
+    setActiveTemplate(null);
+    setGrounding(null);
+    setReadingError(null);
 
-    const fd = new FormData(e.currentTarget);
-    const date = String(fd.get('date') ?? '');
-    const time = String(fd.get('time') ?? '');
-    const [y, mo, d] = date.split('-').map(Number);
-    const [h, mi] = time ? time.split(':').map(Number) : [undefined, undefined];
-    const p = PLACES[place]!;
+    const payload = readForm(e.currentTarget);
+    lastInput.current = payload;
 
     try {
       const res = await fetch('/api/chart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          year: y, month: mo, day: d,
-          ...(timeKnown && h !== undefined ? { hour: h, minute: mi ?? 0 } : {}),
-          timeZone: p.tz,
-          longitude: p.lon,
-          gender: fd.get('gender'),
-          useTrueSolarTime: trueSolar,
-        }),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok) { setError(json.error ?? '排盘失败。'); setResult(null); }
-      else setResult(json as Result);
+      else {
+        setResult(json as Result);
+        // On a phone the form fills the screen; bring the chart into view.
+        requestAnimationFrame(() =>
+          resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+        );
+      }
     } catch {
       setError('无法连线，请稍后再试。');
     } finally {
@@ -140,13 +214,77 @@ export default function Page() {
     }
   }
 
+  /** Stream a reading for one template. */
+  async function ask(templateId: string) {
+    if (!lastInput.current || readingBusy) return;
+    setActiveTemplate(templateId);
+    setReading('');
+    setGrounding(null);
+    setReadingError(null);
+    setReadingBusy(true);
+
+    try {
+      const res = await fetch('/api/read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...lastInput.current, templateId }),
+      });
+
+      if (!res.ok || !res.body) {
+        const json = await res.json().catch(() => ({}));
+        setReadingError(json.error ?? '生成解读失败。');
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let acc = '';
+
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        // SSE frames are separated by a blank line; keep the trailing partial.
+        const frames = buffer.split('\n\n');
+        buffer = frames.pop() ?? '';
+
+        for (const frame of frames) {
+          const lines = frame.split('\n');
+          const evLine = lines.find((l) => l.startsWith('event: '));
+          const dataLine = lines.find((l) => l.startsWith('data: '));
+          if (!evLine || !dataLine) continue;
+
+          const event = evLine.slice(7).trim();
+          let data: Record<string, unknown>;
+          try { data = JSON.parse(dataLine.slice(6)); } catch { continue; }
+
+          if (event === 'delta') {
+            acc += String(data['text'] ?? '');
+            setReading(acc);
+          } else if (event === 'done') {
+            setGrounding(data['grounding'] as Grounding);
+          } else if (event === 'failed') {
+            setReadingError(String(data['error'] ?? '生成解读失败。'));
+          }
+        }
+      }
+    } catch {
+      setReadingError('连线中断，解读未完成。');
+    } finally {
+      setReadingBusy(false);
+    }
+  }
+
   const elements: Element[] = ['木', '火', '土', '金', '水'];
+  const topicTemplates = TEMPLATES.filter((t) => t.topic === tab);
 
   return (
     <main className="wrap">
       <h1>八字排盘</h1>
       <p className="sub">
-        可核对的排盘，与姻缘、事业两个主题的推断。每一条结论都附上它所依据的命理事实。
+        可核对的排盘，与姻缘、事业两个主题的解读。每一句话都附上它所依据的命理事实。
       </p>
 
       <form onSubmit={submit}>
@@ -171,28 +309,31 @@ export default function Page() {
             {PLACES.map((p, i) => <option key={p.label} value={i}>{p.label}</option>)}
           </select>
         </div>
-        <div>
-          <label>&nbsp;</label>
-          <button type="submit" disabled={busy}>{busy ? '排盘中…' : '排盘'}</button>
-        </div>
-        <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+
+        <div className="checks">
           <span className="checkline">
             <input id="tk" type="checkbox" checked={timeKnown}
               onChange={(e) => setTimeKnown(e.target.checked)} />
-            <label htmlFor="tk" style={{ margin: 0 }}>知道出生时辰</label>
+            <label htmlFor="tk">知道出生时辰</label>
           </span>
           <span className="checkline">
             <input id="ts" type="checkbox" checked={trueSolar}
               onChange={(e) => setTrueSolar(e.target.checked)} disabled={!timeKnown} />
-            <label htmlFor="ts" style={{ margin: 0 }}>使用真太阳时（各派做法不同）</label>
+            <label htmlFor="ts">使用真太阳时（各派做法不同）</label>
           </span>
+        </div>
+
+        <div className="field-wide">
+          <button type="submit" disabled={busy} style={{ width: '100%' }}>
+            {busy ? '排盘中…' : '排盘'}
+          </button>
         </div>
       </form>
 
       {error && <p className="err">{error}</p>}
 
       {result && (
-        <>
+        <div ref={resultsRef}>
           <section>
             <h2>四柱</h2>
             <div className="pillars">
@@ -231,7 +372,7 @@ export default function Page() {
                 const pct = result.strength.elementPercent[e];
                 return pct > 0 ? (
                   <div key={e} className={`bg-${e}`} style={{ width: `${pct}%` }}>
-                    {pct >= 8 ? `${e} ${pct}%` : e}
+                    {pct >= 10 ? `${e}${pct}%` : e}
                   </div>
                 ) : null;
               })}
@@ -265,26 +406,62 @@ export default function Page() {
 
           <section>
             <h2>大运</h2>
-            <div className="luck">
-              {result.career.decades.map((d) => (
-                <div className={`luck-cell v-${d.verdict}`} key={d.index}>
-                  <div className="age">{d.startAge}岁</div>
-                  <div className="gz">{d.ganZhi}</div>
-                  <div className="age">{d.startYear}</div>
-                  <div className="bar" />
-                </div>
-              ))}
+            <div className="luck-scroll">
+              <div className="luck">
+                {result.career.decades.map((d) => (
+                  <div className={`luck-cell v-${d.verdict}`} key={d.index}>
+                    <div className="age">{d.startAge}岁</div>
+                    <div className="gz">{d.ganZhi}</div>
+                    <div className="age">{d.startYear}</div>
+                    <div className="bar" />
+                  </div>
+                ))}
+              </div>
             </div>
           </section>
 
           <section>
-            <h2>推断</h2>
+            <h2>解读</h2>
             <div className="tabs" role="tablist">
               <button role="tab" aria-selected={tab === 'relationship'}
                 onClick={() => setTab('relationship')}>姻缘 · 婚姻</button>
               <button role="tab" aria-selected={tab === 'career'}
                 onClick={() => setTab('career')}>事业 · 财运</button>
             </div>
+
+            <div className="questions">
+              {topicTemplates.map((t) => (
+                <button
+                  key={t.id}
+                  className="q-btn"
+                  aria-pressed={activeTemplate === t.id}
+                  disabled={readingBusy}
+                  onClick={() => ask(t.id)}
+                >
+                  {t.question}
+                  <span className="q-hint">{t.hint}</span>
+                </button>
+              ))}
+            </div>
+
+            {readingError && <p className="err">{readingError}</p>}
+
+            {(reading || readingBusy) && (
+              <div className="card">
+                <Reading text={reading} streaming={readingBusy} />
+                {grounding && (
+                  <div className={`grounded${grounding.ok ? '' : ' bad'}`}>
+                    {grounding.ok
+                      ? `✓ 全文 ${grounding.cited.length} 处引用均对应到已算出的结论`
+                      : `⚠️ 有 ${grounding.invalid.length} 处引用不在结论清单中：${grounding.invalid.join('、')}`}
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <h2>{tab === 'relationship' ? '姻缘' : '事业'} · 已算出的结论</h2>
             <div className="card">
               <FindingList
                 findings={tab === 'relationship'
@@ -293,7 +470,7 @@ export default function Page() {
               />
             </div>
           </section>
-        </>
+        </div>
       )}
     </main>
   );

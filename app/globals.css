@@ -1,10 +1,8 @@
 /*
- * Design notes.
- *
- * The reference points pull in opposite directions: 问真 is dense and
- * practitioner-facing, 灵机 is glossy and empty. The intent here is 问真's
- * information density rendered with enough restraint that a layperson can find
- * their way in — nothing removed, everything ranked.
+ * Mobile-first. The base rules are the phone layout; the media queries add
+ * width, not the other way round. Most people will meet this on a phone, and
+ * a 四柱 chart is a dense grid — designing it wide first and squeezing it down
+ * is how you end up with 8px text and horizontal scroll.
  *
  * Colour carries meaning rather than decoration: each 五行 has one hue, used
  * consistently for stems, branches, the balance bar and the luck timeline, so
@@ -31,9 +29,17 @@
   --radius: 10px;
   --serif: 'Songti SC', 'SimSun', 'Noto Serif SC', Georgia, serif;
   --sans: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', system-ui, sans-serif;
+
+  /* Minimum comfortable touch target. */
+  --tap: 44px;
 }
 
 * { box-sizing: border-box; }
+
+html {
+  /* Stop iOS Safari inflating text in landscape. */
+  -webkit-text-size-adjust: 100%;
+}
 
 html, body {
   margin: 0;
@@ -43,88 +49,110 @@ html, body {
   font-size: 15px;
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
 }
 
-.wrap { max-width: 940px; margin: 0 auto; padding: 40px 20px 96px; }
+.wrap {
+  max-width: 940px;
+  margin: 0 auto;
+  padding: 20px 14px calc(56px + env(safe-area-inset-bottom));
+}
 
 h1 {
   font-family: var(--serif);
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 500;
   letter-spacing: 0.04em;
   margin: 0 0 4px;
 }
-.sub { color: var(--text-dim); font-size: 13px; margin: 0 0 32px; }
+.sub { color: var(--text-dim); font-size: 13px; margin: 0 0 22px; }
 
-section { margin-top: 36px; }
+section { margin-top: 28px; }
 h2 {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.16em;
-  text-transform: uppercase;
   color: var(--text-faint);
-  margin: 0 0 14px;
-  padding-bottom: 8px;
+  margin: 0 0 12px;
+  padding-bottom: 7px;
   border-bottom: 1px solid var(--line);
 }
 
 /* ---------- form ---------- */
 form {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 12px;
-  align-items: end;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 16px;
+  padding: 14px;
 }
+.field-wide { grid-column: 1 / -1; }
+
 label { display: block; font-size: 11px; color: var(--text-dim); margin-bottom: 5px; letter-spacing: 0.04em; }
 input, select {
   width: 100%;
+  min-height: var(--tap);
   background: var(--ink);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--text);
   padding: 8px 10px;
   font: inherit;
-  font-size: 14px;
+  /* 16px stops iOS Safari zooming the page when a field is focused. */
+  font-size: 16px;
 }
-input:focus, select:focus { outline: none; border-color: var(--gold); }
+input:focus, select:focus { outline: 2px solid var(--gold); outline-offset: -2px; border-color: var(--gold); }
+
 button {
+  min-height: var(--tap);
   background: var(--gold);
   color: #17130a;
   border: 0;
-  border-radius: 6px;
-  padding: 9px 18px;
+  border-radius: 8px;
+  padding: 10px 18px;
   font: inherit;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 button:disabled { opacity: 0.5; cursor: default; }
-.checkline { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-dim); }
-.checkline input { width: auto; }
+
+.checkline {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--text-dim);
+  min-height: var(--tap);
+}
+.checkline input { width: 20px; height: 20px; min-height: 0; flex: none; accent-color: var(--gold); }
+.checkline label { margin: 0; font-size: 13px; }
+.checks { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 2px; }
 
 /* ---------- 四柱 ---------- */
-.pillars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+/* Four columns even on the narrowest phone: a BaZi chart is read across, and
+   reflowing it to 2x2 breaks the 年月日时 reading order people expect. */
+.pillars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .pillar {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 14px 10px;
+  padding: 10px 4px;
   text-align: center;
   position: relative;
+  min-width: 0;
 }
 .pillar.is-day { border-color: var(--gold); }
-.pillar .pos { font-size: 11px; color: var(--text-faint); letter-spacing: 0.1em; }
-.pillar .tengod { font-size: 12px; color: var(--text-dim); min-height: 20px; }
-.pillar .gz { font-family: var(--serif); font-size: 40px; line-height: 1.15; margin: 2px 0 6px; }
-.pillar .hidden { font-size: 11px; color: var(--text-dim); line-height: 1.75; }
-.pillar .meta { font-size: 10px; color: var(--text-faint); margin-top: 8px; }
+.pillar .pos { font-size: 10px; color: var(--text-faint); letter-spacing: 0.08em; }
+.pillar .tengod { font-size: 11px; color: var(--text-dim); min-height: 18px; }
+.pillar .gz { font-family: var(--serif); font-size: clamp(26px, 8.5vw, 40px); line-height: 1.15; margin: 2px 0 5px; }
+.pillar .hidden { font-size: 10px; color: var(--text-dim); line-height: 1.7; }
+.pillar .meta { font-size: 9px; color: var(--text-faint); margin-top: 6px; word-break: break-all; }
 .pillar .void {
-  position: absolute; top: 8px; right: 8px;
-  font-size: 9px; color: var(--text-faint);
-  border: 1px solid var(--line); border-radius: 3px; padding: 0 4px;
+  position: absolute; top: 5px; right: 5px;
+  font-size: 8px; color: var(--text-faint);
+  border: 1px solid var(--line); border-radius: 3px; padding: 0 3px;
 }
 .pillar.unknown { border-style: dashed; opacity: 0.55; }
 
@@ -135,8 +163,11 @@ button:disabled { opacity: 0.5; cursor: default; }
 .el-水 { color: var(--water); }
 
 /* ---------- balance ---------- */
-.balance { display: flex; height: 30px; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); }
-.balance div { display: flex; align-items: center; justify-content: center; font-size: 11px; color: #12100e; font-weight: 600; min-width: 0; }
+.balance { display: flex; height: 28px; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); }
+.balance div {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: #12100e; font-weight: 600; min-width: 0; overflow: hidden;
+}
 .bg-木 { background: var(--wood); }
 .bg-火 { background: var(--fire); }
 .bg-土 { background: var(--earth); }
@@ -148,26 +179,34 @@ button:disabled { opacity: 0.5; cursor: default; }
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 16px 18px;
+  padding: 14px;
 }
-.card + .card { margin-top: 10px; }
-.verdict { font-family: var(--serif); font-size: 21px; margin-bottom: 4px; }
+.card + .card { margin-top: 8px; }
+.verdict { font-family: var(--serif); font-size: 19px; margin-bottom: 4px; }
 .reasoning { font-size: 13px; color: var(--text-dim); margin: 0; padding-left: 16px; }
-.reasoning li { margin: 3px 0; }
+.reasoning li { margin: 4px 0; }
 .warn { color: var(--gold); }
 .school {
   display: inline-block; font-size: 11px; color: var(--text-faint);
-  border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; margin-top: 8px;
+  border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; margin-top: 10px;
 }
 
 /* ---------- luck timeline ---------- */
-.luck { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; }
+/* Scrolls horizontally on a phone rather than crushing ten cells into 340px. */
+.luck-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 -14px;
+  padding: 0 14px 4px;
+  scrollbar-width: thin;
+}
+.luck { display: grid; grid-auto-flow: column; grid-auto-columns: 68px; gap: 5px; }
 .luck-cell {
   background: var(--surface); border: 1px solid var(--line);
-  border-radius: 6px; padding: 8px 3px; text-align: center;
+  border-radius: 8px; padding: 8px 3px; text-align: center;
 }
 .luck-cell .age { font-size: 10px; color: var(--text-faint); }
-.luck-cell .gz { font-family: var(--serif); font-size: 15px; margin: 3px 0; }
+.luck-cell .gz { font-family: var(--serif); font-size: 16px; margin: 3px 0; }
 .luck-cell .bar { height: 3px; border-radius: 2px; background: var(--line); margin-top: 6px; }
 .v-有利 .bar { background: var(--gold); }
 .v-偏顺 .bar { background: #7d6a2e; }
@@ -175,33 +214,109 @@ button:disabled { opacity: 0.5; cursor: default; }
 .v-不利 .bar { background: var(--fire); opacity: 0.7; }
 .v-有利 { border-color: rgba(201, 162, 39, 0.5); }
 
-/* ---------- findings ---------- */
-.tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+/* ---------- tabs ---------- */
+.tabs { display: flex; gap: 6px; margin-bottom: 12px; }
 .tabs button {
+  flex: 1;
   background: var(--surface); color: var(--text-dim);
-  border: 1px solid var(--line); font-weight: 500; font-size: 13px; padding: 6px 14px;
+  border: 1px solid var(--line); font-weight: 500; font-size: 14px; padding: 8px 10px;
 }
 .tabs button[aria-selected='true'] { background: var(--gold); color: #17130a; border-color: var(--gold); }
 
-.finding { border-top: 1px solid var(--line); padding: 14px 0; }
-.finding:first-child { border-top: 0; }
-.finding .claim { font-size: 15px; margin-bottom: 7px; }
+/* ---------- question chips ---------- */
+.questions {
+  display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px;
+}
+.q-btn {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  text-align: left;
+  padding: 11px 13px;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.4;
+  display: block;
+  width: 100%;
+}
+.q-btn .q-hint { display: block; font-size: 11px; color: var(--text-faint); font-weight: 400; margin-top: 2px; }
+.q-btn[aria-pressed='true'] { border-color: var(--gold); background: var(--surface); }
+.q-btn:disabled { opacity: 0.45; }
+
+/* ---------- reading ---------- */
+.reading { font-size: 15px; line-height: 1.85; }
+.reading h3 {
+  font-family: var(--serif);
+  font-size: 17px; font-weight: 500;
+  margin: 20px 0 8px; color: var(--gold);
+}
+.reading h3:first-child { margin-top: 0; }
+.reading p { margin: 0 0 12px; }
+.reading .cite {
+  font-size: 11px; color: var(--text-faint);
+  border-left: 2px solid var(--line); padding-left: 8px;
+  margin: 0 0 16px; word-break: break-all;
+}
+.cursor {
+  display: inline-block; width: 7px; height: 1em;
+  background: var(--gold); vertical-align: text-bottom;
+  animation: blink 1s steps(2, start) infinite;
+}
+@keyframes blink { to { visibility: hidden; } }
+
+.grounded {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--text-faint);
+  margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line);
+}
+.grounded.bad { color: var(--fire); }
+
+/* ---------- findings ---------- */
+.finding { border-top: 1px solid var(--line); padding: 13px 0; }
+.finding:first-child { border-top: 0; padding-top: 0; }
+.finding .claim { font-size: 14.5px; margin-bottom: 6px; }
 .finding .ev { margin: 0; padding-left: 15px; font-size: 12px; color: var(--text-dim); }
 .finding .ev li { margin: 2px 0; }
 .tag {
-  font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+  font-size: 10px; letter-spacing: 0.06em;
   color: var(--text-faint); border: 1px solid var(--line);
-  border-radius: 3px; padding: 0 5px; margin-left: 8px;
+  border-radius: 3px; padding: 0 5px; margin-left: 7px;
+  white-space: nowrap;
 }
 .tag.low { color: var(--fire); border-color: rgba(207, 95, 87, 0.4); }
 
-/* ---------- audit ---------- */
-.audit { font-size: 12px; color: var(--text-dim); }
-.audit li { margin: 3px 0; }
-.err { color: var(--fire); font-size: 13px; margin-top: 12px; }
+/* ---------- misc ---------- */
+.audit { font-size: 12px; color: var(--text-dim); margin: 0; padding-left: 16px; }
+.audit li { margin: 4px 0; }
+.err {
+  color: var(--fire); font-size: 13px; margin-top: 12px;
+  background: rgba(207, 95, 87, 0.08);
+  border: 1px solid rgba(207, 95, 87, 0.25);
+  border-radius: 8px; padding: 10px 12px;
+}
+.note { font-size: 12px; color: var(--text-faint); margin-top: 10px; }
 
-@media (max-width: 720px) {
-  .pillars { grid-template-columns: repeat(2, 1fr); }
-  .luck { grid-template-columns: repeat(5, 1fr); }
-  .pillar .gz { font-size: 34px; }
+/* ---------- wider screens ---------- */
+@media (min-width: 560px) {
+  .wrap { padding: 32px 20px 80px; }
+  h1 { font-size: 26px; }
+  form { grid-template-columns: repeat(4, 1fr); align-items: end; gap: 12px; }
+  .field-wide { grid-column: auto; }
+  .checks { flex-direction: row; gap: 20px; }
+  .pillars { gap: 10px; }
+  .pillar { padding: 14px 10px; }
+  .pillar .meta { font-size: 10px; }
+  .questions { display: grid; grid-template-columns: 1fr 1fr; }
+  .luck-scroll { margin: 0; padding: 0; overflow-x: visible; }
+  .luck { grid-auto-flow: unset; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+}
+
+@media (min-width: 860px) {
+  .luck { grid-template-columns: repeat(10, 1fr); }
+  .card { padding: 16px 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor { animation: none; }
 }
