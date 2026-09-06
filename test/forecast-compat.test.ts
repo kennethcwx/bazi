@@ -16,6 +16,7 @@ import { analyzeStrength } from '../src/analyzer/strength';
 import { analyzeYongShen } from '../src/analyzer/yongshen';
 import { forecastRelationship, FORECAST_CAVEAT } from '../src/analyzer/topics/forecast';
 import { analyzeCompatibility, type Side } from '../src/analyzer/topics/compatibility';
+import { analyzeChart } from '../src/analyzer/index';
 import { LOCALES } from '../src/i18n/text';
 import type { BirthInput } from '../src/engine/types';
 
@@ -137,6 +138,31 @@ describe('relationship forecast', () => {
     const f = forecastRelationship(chart, from, 7);
     expect(f.from).toBe('2026-03-01');
     expect(f.to).toBe('2026-03-07');
+  });
+});
+
+describe('合婚 stays out of the single-chart reading', () => {
+  // 合婚 findings are tagged topic:'relationship' so they render in the same UI,
+  // but they describe two charts. If they ever leaked into analyzeChart the
+  // narrator would cite them while its prompt held only one chart — a claim
+  // about a partner the model was never shown. Nothing merges them today; this
+  // is here so nothing starts to.
+  it('never appears in the findings analyzeChart produces', () => {
+    for (const gender of ['male', 'female'] as const) {
+      for (const month of [1, 4, 7, 10]) {
+        const a = analyzeChart(buildChart(birth({ month, gender })));
+        const leaked = a.findings.filter((f) => f.id.startsWith('compat.'));
+        expect(leaked.map((f) => f.id), `${gender} month ${month}`).toEqual([]);
+      }
+    }
+  });
+
+  it('only produces compat.* ids, so the two sets never collide', () => {
+    const c = analyzeCompatibility(
+      side({ gender: 'male' }),
+      side({ year: 1992, month: 11, day: 3, hour: 9, gender: 'female' }),
+    );
+    for (const f of c.findings) expect(f.id.startsWith('compat.'), f.id).toBe(true);
   });
 });
 
