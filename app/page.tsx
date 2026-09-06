@@ -24,6 +24,9 @@ import { UI } from '../src/i18n/ui';
 import { ELEMENT, TEN_GOD, TERRAIN, DECADE_VERDICT, term } from '../src/i18n/glossary';
 import { isLocale, type Locale } from '../src/i18n/text';
 import { TEMPLATES } from '../src/narrator/templates';
+import { Forecast } from './Forecast';
+import { Compatibility } from './Compatibility';
+import { loadSelf, saveSelf, forgetAll, hasSaved } from '../src/storage';
 
 interface DecadeView {
   index: number; startAge: number; endAge: number;
@@ -179,6 +182,12 @@ export default function Page() {
   const [place, setPlace] = useState(0);
   const [timeKnown, setTimeKnown] = useState(true);
   const [trueSolar, setTrueSolar] = useState(true);
+  // Controlled, because remembered details arrive after mount and
+  // defaultValue would already have been read by then.
+  const [date, setDate] = useState('1990-06-15');
+  const [time, setTime] = useState('14:30');
+  const [gender, setGender] = useState<'male' | 'female'>('male');
+  const [remembered, setRemembered] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -204,6 +213,17 @@ export default function Page() {
       if (isLocale(saved)) setLocale(saved);
       else if (!navigator.language.toLowerCase().startsWith('zh')) setLocale('en');
     } catch { /* storage unavailable; keep the default */ }
+
+    const mine = loadSelf();
+    if (mine) {
+      setDate(mine.date);
+      setTime(mine.time);
+      setGender(mine.gender);
+      setPlace(mine.placeIndex);
+      setTimeKnown(mine.timeKnown);
+      setTrueSolar(mine.useTrueSolarTime);
+      setRemembered(true);
+    }
   }, []);
 
   const castChart = useCallback(async (
@@ -266,10 +286,8 @@ export default function Page() {
     clearReading();
   }
 
-  function readForm(form: HTMLFormElement) {
-    const fd = new FormData(form);
-    const [y, mo, d] = String(fd.get('date') ?? '').split('-').map(Number);
-    const time = String(fd.get('time') ?? '');
+  function currentBirth() {
+    const [y, mo, d] = date.split('-').map(Number);
     const [h, mi] = time ? time.split(':').map(Number) : [undefined, undefined];
     const p = PLACES[place]!;
     return {
@@ -277,16 +295,25 @@ export default function Page() {
       ...(timeKnown && h !== undefined ? { hour: h, minute: mi ?? 0 } : {}),
       timeZone: p.tz,
       longitude: p.lon,
-      gender: fd.get('gender'),
+      gender,
       useTrueSolarTime: trueSolar,
     };
+  }
+
+  function forget() {
+    forgetAll();
+    setRemembered(false);
   }
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     clearReading();
-    const payload = readForm(e.currentTarget);
+    const payload = currentBirth();
     lastInput.current = payload;
+    // Remembering on cast rather than behind a checkbox: the user has already
+    // typed it, and a "remember me" box they must find is friction for no gain.
+    saveSelf({ date, time, gender, placeIndex: place, timeKnown, useTrueSolarTime: trueSolar });
+    setRemembered(true);
     await castChart(payload, locale, true);
   }
 
@@ -384,15 +411,18 @@ export default function Page() {
       <form onSubmit={submit}>
         <div>
           <label htmlFor="date">{UI.birthDate[L]}</label>
-          <input id="date" name="date" type="date" required defaultValue="1990-06-15" />
+          <input id="date" name="date" type="date" required
+            value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
         <div>
           <label htmlFor="time">{UI.birthTime[L]}</label>
-          <input id="time" name="time" type="time" defaultValue="14:30" disabled={!timeKnown} />
+          <input id="time" name="time" type="time" disabled={!timeKnown}
+            value={time} onChange={(e) => setTime(e.target.value)} />
         </div>
         <div>
           <label htmlFor="gender">{UI.gender[L]}</label>
-          <select id="gender" name="gender" defaultValue="male">
+          <select id="gender" name="gender" value={gender}
+            onChange={(e) => setGender(e.target.value as 'male' | 'female')}>
             <option value="male">{UI.male[L]}</option>
             <option value="female">{UI.female[L]}</option>
           </select>
@@ -424,10 +454,48 @@ export default function Page() {
         </div>
       </form>
 
+      {remembered && hasSaved() && (
+        <p className="remembered">
+          {UI.remembered[L]}
+          <button type="button" className="linkish" onClick={forget}>{UI.forget[L]}</button>
+        </p>
+      )}
+
       {error && <p className="err">{error}</p>}
 
       {result && (
         <div ref={resultsRef}>
+          <section>
+            <h2>{UI.headlineLabel[L]}</h2>
+            <div className="card glance">
+              <div className="glance-row">
+                <span className="glance-k">{UI.dayMaster[L]}</span>
+                <span className="glance-v">
+                  {result.chart.dayMaster} · {term(result.strength.verdict, L)}
+                </span>
+              </div>
+              <div className="glance-row">
+                <span className="glance-k">{UI.favourable[L]}</span>
+                <span className={`glance-v el-${result.yongShen.primary}`}>
+                  {ELEMENT[result.yongShen.primary]![L]}
+                  {result.yongShen.secondary && ` · ${ELEMENT[result.yongShen.secondary]![L]}`}
+                </span>
+              </div>
+              <div className="glance-row">
+                <span className="glance-k">{UI.relationships[L]}</span>
+                <span className="glance-v">
+                  {result.relationship.findings[0]?.claim ?? '—'}
+                </span>
+              </div>
+              <div className="glance-row">
+                <span className="glance-k">{UI.career[L]}</span>
+                <span className="glance-v">
+                  {result.career.findings[0]?.claim ?? '—'}
+                </span>
+              </div>
+            </div>
+          </section>
+
           <section>
             <h2>{UI.pillars[L]}</h2>
             <div className="pillars">
@@ -567,6 +635,10 @@ export default function Page() {
               </div>
             )}
           </section>
+
+          <Forecast birth={lastInput.current} locale={L} />
+
+          <Compatibility selfBirth={lastInput.current} places={PLACES} locale={L} />
 
           <section>
             <h2>

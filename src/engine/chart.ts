@@ -211,6 +211,29 @@ export function buildChart(input: BirthInput): Chart {
   };
 }
 
+/**
+ * The 干支 in force on a given calendar day: 流年, 流月 and 流日.
+ *
+ * Charted at noon so the day is unambiguous — a 23:00 boundary would push the
+ * day pillar forward, which is right for a birth and wrong for "what is today".
+ *
+ * A caution that belongs in the code, not only the UI: 流日 is the weakest
+ * layer in the system. 大运 and 流年 move a life; a day pillar nudges a mood.
+ * Anything built on this should say so.
+ */
+export function transitPillars(
+  year: number,
+  month: number,
+  day: number,
+): { year: SixtyCycle; month: SixtyCycle; day: SixtyCycle } {
+  const hour = SolarTime.fromYmdHms(year, month, day, 12, 0, 0).getSixtyCycleHour();
+  return {
+    year: hour.getYear(),
+    month: hour.getMonth(),
+    day: hour.getDay(),
+  };
+}
+
 /** 流年 for a span of calendar years, with the age at each. */
 export function annualLuck(
   chart: Chart,

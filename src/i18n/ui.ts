@@ -69,6 +69,33 @@ export const UI = {
   confMedium: t('中', 'likely'),
   confLow: t('存疑', 'contested'),
 
+  // forecast
+  forecast: t('近期运势 · 感情', 'Short-range outlook'),
+  headlineLabel: t('概要', 'At a glance'),
+
+  // compatibility
+  compatibility: t('合婚 · 两人对照', 'Compatibility'),
+  addPartner: t('加入对方的生辰', "Add your partner's birth details"),
+  addPartnerHint: t('两盘对照，看彼此补益与夫妻宫相合', 'Reads both charts against each other'),
+  partnerName: t('称呼（可留空）', 'Name (optional)'),
+  partnerNamePlaceholder: t('例如：阿明', 'e.g. Karin'),
+  compare: t('对照', 'Compare'),
+  theyGiveYou: t('对方补你', 'They supply you'),
+  youGiveThem: t('你补对方', 'You supply them'),
+  supplyExplainer: t(
+    '这两个数字是对方命局里、你所需五行所占的比例，反之亦然。刻意分开列出——' +
+      '两人的补益本来就少有对等，把它压成一个「匹配度」会抹掉最有用的信息。',
+    'Each figure is how much of one chart is made of the elements the other ' +
+      'needs. They are shown separately on purpose: the benefit is rarely equal, ' +
+      'and averaging it into a single "match score" hides the most useful thing here.',
+  ),
+  you: t('你', 'You'),
+  them: t('对方', 'Them'),
+
+  // remembered data
+  remembered: t('已记住这份生辰（仅存在本机）', 'Birth details remembered on this device only'),
+  forget: t('清除', 'Forget'),
+
   // errors
   errConnect: t('无法连线，请稍后再试。', 'Could not connect. Try again shortly.'),
   errCast: t('排盘失败。', 'Could not cast the chart.'),
