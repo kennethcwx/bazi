@@ -385,3 +385,13 @@ button:disabled { opacity: 0.5; cursor: default; }
   font-size: 9px; color: var(--text-faint); letter-spacing: 0.04em;
   margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+
+/* A configuration state — the deployment is unfinished — rather than a fault
+   in what the user did. Muted, not alarming. */
+.setup {
+  font-size: 13px; color: var(--text-dim); margin-top: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--gold);
+  border-radius: 8px; padding: 11px 13px;
+}

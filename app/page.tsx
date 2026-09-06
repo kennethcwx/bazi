@@ -188,6 +188,8 @@ export default function Page() {
   const [reading, setReading] = useState('');
   const [readingBusy, setReadingBusy] = useState(false);
   const [readingError, setReadingError] = useState<string | null>(null);
+  /** True when the failure is a missing API key — a setup state, not a fault. */
+  const [readingIsSetup, setReadingIsSetup] = useState(false);
   const [grounding, setGrounding] = useState<Grounding | null>(null);
 
   /** The birth payload that produced the current chart, reused for readings. */
@@ -239,11 +241,29 @@ export default function Page() {
     try { window.localStorage.setItem('bazi_locale', next); } catch { /* ignore */ }
     // A reading is language-specific; drop it rather than show Chinese prose
     // under an English interface.
+    clearReading();
+    if (lastInput.current) void castChart(lastInput.current, next, false);
+  }
+
+  /**
+   * Clear whatever reading is on screen.
+   *
+   * A reading answers one question; it must not survive a tab switch, a
+   * language change or a new chart. This also stops a stale error — an API
+   * failure from a question clicked earlier — looking like the tab caused it.
+   */
+  function clearReading() {
     setReading('');
     setActiveTemplate(null);
     setGrounding(null);
     setReadingError(null);
-    if (lastInput.current) void castChart(lastInput.current, next, false);
+    setReadingIsSetup(false);
+  }
+
+  function switchTab(next: Topic) {
+    if (next === tab) return;
+    setTab(next);
+    clearReading();
   }
 
   function readForm(form: HTMLFormElement) {
@@ -264,10 +284,7 @@ export default function Page() {
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setReading('');
-    setActiveTemplate(null);
-    setGrounding(null);
-    setReadingError(null);
+    clearReading();
     const payload = readForm(e.currentTarget);
     lastInput.current = payload;
     await castChart(payload, locale, true);
@@ -291,6 +308,9 @@ export default function Page() {
 
       if (!res.ok || !res.body) {
         const json = await res.json().catch(() => ({}));
+        // A missing key is a deployment that is not finished, not a fault in
+        // the request — say so quietly rather than in red.
+        setReadingIsSetup(json.code === 'no_api_key');
         setReadingError(json.error ?? UI.errReading[locale]);
         return;
       }
@@ -510,9 +530,9 @@ export default function Page() {
             <h2>{UI.reading[L]}</h2>
             <div className="tabs" role="tablist">
               <button role="tab" aria-selected={tab === 'relationship'}
-                onClick={() => setTab('relationship')}>{UI.relationships[L]}</button>
+                onClick={() => switchTab('relationship')}>{UI.relationships[L]}</button>
               <button role="tab" aria-selected={tab === 'career'}
-                onClick={() => setTab('career')}>{UI.career[L]}</button>
+                onClick={() => switchTab('career')}>{UI.career[L]}</button>
             </div>
 
             <div className="questions">
@@ -530,7 +550,9 @@ export default function Page() {
               ))}
             </div>
 
-            {readingError && <p className="err">{readingError}</p>}
+            {readingError && (
+              <p className={readingIsSetup ? 'setup' : 'err'}>{readingError}</p>
+            )}
 
             {(reading || readingBusy) && (
               <div className="card">
