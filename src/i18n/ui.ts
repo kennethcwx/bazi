@@ -83,6 +83,8 @@ export const UI = {
   partnerName: t('称呼（可留空）', 'Name (optional)'),
   partnerNamePlaceholder: t('例如：阿明', 'e.g. Karin'),
   compare: t('对照', 'Compare'),
+  comparePartner: t('对照对方的盘', "Compare with your partner's chart"),
+  rememberedShort: t('已记住，仅存本机', 'remembered on this device'),
   theyGiveYou: t('对方补你', 'They supply you'),
   youGiveThem: t('你补对方', 'You supply them'),
   supplyExplainer: t(

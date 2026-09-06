@@ -33,35 +33,45 @@ export function Compatibility({ selfBirth, locale }: {
   const [saved, setSaved] = useState<SavedBirth | null>(null);
   const [place, setPlace] = useState(DEFAULT_PLACE);
   const [timeKnown, setTimeKnown] = useState(true);
+  // Controlled, for the same reason the main form is: remembered details
+  // arrive after mount, and defaultValue is read once and never again. It
+  // happened to work here only because the form mounts lazily — which is luck,
+  // not design, and would break the moment this section opened by default.
+  const [pname, setPname] = useState('');
+  const [pdate, setPdate] = useState('');
+  const [ptime, setPtime] = useState('');
+  const [pgender, setPgender] = useState<'male' | 'female'>('female');
   const [data, setData] = useState<CompatData | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const p = loadPartner();
-    if (p) { setSaved(p); setPlace(p.placeIndex); setTimeKnown(p.timeKnown); }
+    if (!p) return;
+    setSaved(p);
+    setPlace(p.placeIndex);
+    setTimeKnown(p.timeKnown);
+    setPname(p.label ?? '');
+    setPdate(p.date);
+    setPtime(p.time);
+    setPgender(p.gender);
   }, []);
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!selfBirth) return;
 
-    const fd = new FormData(e.currentTarget);
-    const date = String(fd.get('pdate') ?? '');
-    const time = String(fd.get('ptime') ?? '');
-    const gender = String(fd.get('pgender') ?? 'female') as 'male' | 'female';
     const p = PLACES[place]!;
-
     const record: SavedBirth = {
-      date, time, gender, placeIndex: place, timeKnown,
-      useTrueSolarTime: true,
-      label: String(fd.get('pname') ?? ''),
+      date: pdate, time: ptime, gender: pgender,
+      placeIndex: place, timeKnown, useTrueSolarTime: true,
+      label: pname,
     };
     savePartner(record);
     setSaved(record);
 
-    const [y, mo, d] = date.split('-').map(Number);
-    const [h, mi] = time ? time.split(':').map(Number) : [undefined, undefined];
+    const [y, mo, d] = pdate.split('-').map(Number);
+    const [h, mi] = ptime ? ptime.split(':').map(Number) : [undefined, undefined];
 
     setBusy(true);
     setError(null);
@@ -74,7 +84,7 @@ export function Compatibility({ selfBirth, locale }: {
           partner: {
             year: y, month: mo, day: d,
             ...(timeKnown && h !== undefined ? { hour: h, minute: mi ?? 0 } : {}),
-            timeZone: p.tz, longitude: p.lon, gender,
+            timeZone: p.tz, longitude: p.lon, gender: pgender,
             useTrueSolarTime: true,
           },
           locale,
@@ -96,8 +106,14 @@ export function Compatibility({ selfBirth, locale }: {
 
       {!open && !data && (
         <button className="q-btn" onClick={() => setOpen(true)} disabled={!selfBirth}>
-          {UI.addPartner[locale]}
-          <span className="q-hint">{UI.addPartnerHint[locale]}</span>
+          {saved
+            ? `${UI.comparePartner[locale]}${saved.label ? ` — ${saved.label}` : ''}`
+            : UI.addPartner[locale]}
+          <span className="q-hint">
+            {saved
+              ? `${saved.date}${saved.time && saved.timeKnown ? ` ${saved.time}` : ''} · ${UI.rememberedShort[locale]}`
+              : UI.addPartnerHint[locale]}
+          </span>
         </button>
       )}
 
@@ -105,21 +121,24 @@ export function Compatibility({ selfBirth, locale }: {
         <form onSubmit={submit} style={{ marginBottom: 12 }}>
           <div className="field-wide">
             <label htmlFor="pname">{UI.partnerName[locale]}</label>
-            <input id="pname" name="pname" type="text" defaultValue={saved?.label ?? ''}
+            <input id="pname" name="pname" type="text" value={pname}
+              onChange={(e) => setPname(e.target.value)}
               placeholder={UI.partnerNamePlaceholder[locale]} />
           </div>
           <div>
             <label htmlFor="pdate">{UI.birthDate[locale]}</label>
-            <input id="pdate" name="pdate" type="date" required defaultValue={saved?.date ?? ''} />
+            <input id="pdate" name="pdate" type="date" required
+              value={pdate} onChange={(e) => setPdate(e.target.value)} />
           </div>
           <div>
             <label htmlFor="ptime">{UI.birthTime[locale]}</label>
-            <input id="ptime" name="ptime" type="time" defaultValue={saved?.time ?? ''}
-              disabled={!timeKnown} />
+            <input id="ptime" name="ptime" type="time" disabled={!timeKnown}
+              value={ptime} onChange={(e) => setPtime(e.target.value)} />
           </div>
           <div>
             <label htmlFor="pgender">{UI.gender[locale]}</label>
-            <select id="pgender" name="pgender" defaultValue={saved?.gender ?? 'female'}>
+            <select id="pgender" name="pgender" value={pgender}
+              onChange={(e) => setPgender(e.target.value as 'male' | 'female')}>
               <option value="male">{UI.male[locale]}</option>
               <option value="female">{UI.female[locale]}</option>
             </select>
