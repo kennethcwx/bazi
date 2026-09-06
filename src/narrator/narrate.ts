@@ -1,17 +1,21 @@
 /**
- * L3: findings -> prose, via Claude.
+ * L3: findings -> prose.
  *
- * Streaming, because a reading takes long enough that a non-streaming request
- * risks a serverless timeout and reads as a dead page on a phone.
+ * Two narrators behind one function. When a model key is configured the prose
+ * is written by that model; when none is, `composeReading` builds it from the
+ * findings in code. Both produce the same format, so nothing downstream — the
+ * UI, the grounding check, the cache — can tell them apart.
  *
- * Caching is the main cost lever and it is nearly free here: a reading is a
- * pure function of (chartHash, templateId, promptVersion), so identical charts
- * share one generation for the life of the process. The store below is
- * in-memory and therefore per-instance — fine for a single box, and the place
- * to swap in Turso when this needs to survive a redeploy.
+ * That fallback is not a degraded mode so much as the honest floor of the
+ * product: L2 has already done every judgement, so if the composed reading
+ * says nothing useful, a model was only ever adding polish.
+ *
+ * Caching is the main cost lever and nearly free here: a reading is a pure
+ * function of (chartHash, template, locale, source, promptVersion). The store
+ * is in-memory and therefore per-instance — the place to swap in Turso when it
+ * needs to survive a redeploy.
  */
 
-import Anthropic from '@anthropic-ai/sdk';
 import type { Analysis } from '../analyzer/index';
 import {
   PROMPT_VERSION,
@@ -20,19 +24,20 @@ import {
   systemPrompt,
   type GroundingReport,
 } from './prompt';
+import { composeReading } from './compose';
+import { selectProvider, providerStatus, type ProviderId } from './providers';
 import type { Locale } from '../i18n/text';
 import type { Template } from './templates';
 
-const MODEL = 'claude-opus-5';
-
-/** Generous: adaptive thinking draws from the same budget as the prose. */
-const MAX_TOKENS = 16_000;
+export type ReadingSource = ProviderId | 'composed';
 
 export interface Reading {
   readonly templateId: string;
   readonly text: string;
   readonly grounding: GroundingReport;
   readonly cached: boolean;
+  /** Which narrator wrote it. Surfaced in the UI rather than hidden. */
+  readonly source: ReadingSource;
   readonly usage?: {
     readonly inputTokens: number;
     readonly outputTokens: number;
@@ -40,14 +45,9 @@ export interface Reading {
   };
 }
 
-export class MissingApiKeyError extends Error {
-  constructor() {
-    super('ANTHROPIC_API_KEY is not set');
-    this.name = 'MissingApiKeyError';
-  }
-}
-
-export const hasApiKey = (): boolean => Boolean(process.env['ANTHROPIC_API_KEY']);
+/** True when a model is configured. Readings work either way. */
+export const hasModel = (): boolean => selectProvider() !== null;
+export { providerStatus };
 
 // ---------------------------------------------------------------------------
 // Cache
@@ -55,10 +55,9 @@ export const hasApiKey = (): boolean => Boolean(process.env['ANTHROPIC_API_KEY']
 const CACHE_LIMIT = 300;
 const cache = new Map<string, Reading>();
 
-// Locale is part of the key: a reading is a pure function of the chart, the
-// question, the prompt version AND the language it was written in.
-const cacheKey = (analysis: Analysis, template: Template, locale: Locale): string =>
-  `${analysis.chart.chartHash}:${template.id}:${locale}:${PROMPT_VERSION}`;
+const cacheKey = (
+  analysis: Analysis, template: Template, locale: Locale, source: ReadingSource,
+): string => `${analysis.chart.chartHash}:${template.id}:${locale}:${source}:${PROMPT_VERSION}`;
 
 function remember(key: string, reading: Reading): void {
   // Insertion-ordered Map: the first key is the oldest, so this is an LRU-ish
@@ -70,38 +69,21 @@ function remember(key: string, reading: Reading): void {
   cache.set(key, reading);
 }
 
-export const getCached = (
-  analysis: Analysis, template: Template, locale: Locale,
-): Reading | undefined => cache.get(cacheKey(analysis, template, locale));
-
-// ---------------------------------------------------------------------------
-
-let client: Anthropic | undefined;
-function getClient(): Anthropic {
-  if (!process.env['ANTHROPIC_API_KEY']) throw new MissingApiKeyError();
-  client ??= new Anthropic();
-  return client;
-}
-
 export interface NarrateOptions {
   /** Called with each text delta as it arrives. */
   readonly onDelta?: (text: string) => void;
   readonly locale?: Locale;
 }
 
-/**
- * Generate a reading, streaming deltas as they arrive.
- *
- * A cached reading is replayed through `onDelta` in one chunk so callers do
- * not need a second code path for the cache hit.
- */
 export async function narrate(
   analysis: Analysis,
   template: Template,
   opts: NarrateOptions = {},
 ): Promise<Reading> {
   const locale = opts.locale ?? 'zh';
-  const key = cacheKey(analysis, template, locale);
+  const provider = selectProvider();
+  const source: ReadingSource = provider?.id ?? 'composed';
+  const key = cacheKey(analysis, template, locale, source);
 
   const hit = cache.get(key);
   if (hit) {
@@ -109,60 +91,48 @@ export async function narrate(
     return { ...hit, cached: true };
   }
 
-  const anthropic = getClient();
-
-  const stream = anthropic.messages.stream({
-    model: MODEL,
-    max_tokens: MAX_TOKENS,
-    // The analysis is already done; the narrator is writing, not reasoning
-    // its way to a verdict. Low effort keeps latency and cost down without
-    // costing prose quality.
-    thinking: { type: 'adaptive' },
-    output_config: { effort: 'low' },
-    system: [
-      {
-        type: 'text',
-        text: systemPrompt(locale),
-        // Frozen and chart-independent, so it caches across every reading.
-        cache_control: { type: 'ephemeral' },
-      },
-    ],
-    messages: [{ role: 'user', content: buildUserPrompt(analysis, template, locale) }],
-  });
-
-  if (opts.onDelta) {
-    stream.on('text', (delta) => opts.onDelta!(delta));
+  // --- No model configured: compose it. Instant, free, always available. ---
+  if (!provider) {
+    const text = composeReading(analysis, template, locale);
+    opts.onDelta?.(text);
+    const reading: Reading = {
+      templateId: template.id,
+      text,
+      grounding: checkGrounding(text, analysis, template),
+      cached: false,
+      source: 'composed',
+    };
+    remember(key, reading);
+    return reading;
   }
 
-  const message = await stream.finalMessage();
-
-  // A safety decline arrives as a 200 with stop_reason "refusal", so it has to
-  // be checked before reading content.
-  if (message.stop_reason === 'refusal') {
-    throw new Error(
-      locale === 'en'
-        ? 'The safety system declined this generation. Try a different question, ' +
-          'or read the computed findings below.'
-        : '内容安全系统拒绝了这次生成。请换一个问题，或直接查看下方已算出的结论。',
+  // --- A model is configured. ---
+  let result;
+  try {
+    result = await provider.stream(
+      systemPrompt(locale),
+      buildUserPrompt(analysis, template, locale),
+      (t) => opts.onDelta?.(t),
     );
+  } catch (e) {
+    if (e instanceof Error && e.message === 'REFUSAL') {
+      throw new Error(
+        locale === 'en'
+          ? 'The safety system declined this generation. Try a different question, ' +
+            'or read the computed findings below.'
+          : '内容安全系统拒绝了这次生成。请换一个问题，或直接查看下方已算出的结论。',
+      );
+    }
+    throw e;
   }
-
-  const text = message.content
-    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-    .map((b) => b.text)
-    .join('')
-    .trim();
 
   const reading: Reading = {
     templateId: template.id,
-    text,
-    grounding: checkGrounding(text, analysis, template),
+    text: result.text,
+    grounding: checkGrounding(result.text, analysis, template),
     cached: false,
-    usage: {
-      inputTokens: message.usage.input_tokens,
-      outputTokens: message.usage.output_tokens,
-      cacheReadTokens: message.usage.cache_read_input_tokens ?? 0,
-    },
+    source,
+    ...(result.usage ? { usage: result.usage } : {}),
   };
 
   // Only cache a reading whose citations all check out. A hallucinated

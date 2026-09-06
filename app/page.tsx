@@ -181,8 +181,7 @@ export default function Page() {
   const [reading, setReading] = useState('');
   const [readingBusy, setReadingBusy] = useState(false);
   const [readingError, setReadingError] = useState<string | null>(null);
-  /** True when the failure is a missing API key — a setup state, not a fault. */
-  const [readingIsSetup, setReadingIsSetup] = useState(false);
+  const [readingSource, setReadingSource] = useState<string | null>(null);
   const [grounding, setGrounding] = useState<Grounding | null>(null);
 
   /** The birth payload that produced the current chart, reused for readings. */
@@ -261,7 +260,7 @@ export default function Page() {
     setActiveTemplate(null);
     setGrounding(null);
     setReadingError(null);
-    setReadingIsSetup(false);
+    setReadingSource(null);
   }
 
   function switchTab(next: Topic) {
@@ -319,9 +318,6 @@ export default function Page() {
 
       if (!res.ok || !res.body) {
         const json = await res.json().catch(() => ({}));
-        // A missing key is a deployment that is not finished, not a fault in
-        // the request — say so quietly rather than in red.
-        setReadingIsSetup(json.code === 'no_api_key');
         setReadingError(json.error ?? UI.errReading[locale]);
         return;
       }
@@ -350,7 +346,9 @@ export default function Page() {
           let data: Record<string, unknown>;
           try { data = JSON.parse(dataLine.slice(6)); } catch { continue; }
 
-          if (event === 'delta') {
+          if (event === 'meta') {
+            setReadingSource(String(data['source'] ?? ''));
+          } else if (event === 'delta') {
             acc += String(data['text'] ?? '');
             setReading(acc);
           } else if (event === 'done') {
@@ -597,13 +595,16 @@ export default function Page() {
               ))}
             </div>
 
-            {readingError && (
-              <p className={readingIsSetup ? 'setup' : 'err'}>{readingError}</p>
-            )}
+            {readingError && <p className="err">{readingError}</p>}
 
             {(reading || readingBusy) && (
               <div className="card">
                 <Reading text={reading} streaming={readingBusy} locale={L} />
+                {readingSource === 'composed' && !readingBusy && (
+                  <p className="caveat">
+                    {UI.writtenBy[L]} {UI.composedLabel[L]}. {UI.modelHint[L]}
+                  </p>
+                )}
                 {grounding && (
                   <div className={`grounded${grounding.ok ? '' : ' bad'}`}>
                     {grounding.ok

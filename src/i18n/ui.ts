@@ -99,6 +99,12 @@ export const UI = {
   remembered: t('已记住这份生辰（仅存在本机）', 'Birth details remembered on this device only'),
   forget: t('清除', 'Forget'),
 
+  // narrator provenance
+  writtenBy: t('本文由', 'Written by'),
+  composedLabel: t('程序据结论直接组稿（未使用模型）', 'composed from the findings in code — no model used'),
+  modelHint: t('设定任一模型金钥（Gemini／Groq 皆有免费额度）可得更流畅的行文。',
+    'Add any model key — Gemini and Groq both have free tiers — for more fluent prose.'),
+
   // errors
   errConnect: t('无法连线，请稍后再试。', 'Could not connect. Try again shortly.'),
   errCast: t('排盘失败。', 'Could not cast the chart.'),

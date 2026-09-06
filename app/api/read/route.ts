@@ -13,7 +13,7 @@
 
 import { buildChart } from '../../../src/engine/chart';
 import { analyzeChart } from '../../../src/analyzer/index';
-import { narrate, hasApiKey, MissingApiKeyError } from '../../../src/narrator/narrate';
+import { narrate, providerStatus } from '../../../src/narrator/narrate';
 import { routeQuestion, templateById } from '../../../src/narrator/templates';
 import { isLocale, type Locale } from '../../../src/i18n/text';
 import type { BirthInput } from '../../../src/engine/types';
@@ -45,20 +45,6 @@ export async function POST(req: Request) {
     return Response.json(
       { error: zh ? '缺少必要资料。' : 'Missing required details.' },
       { status: 400 },
-    );
-  }
-
-  if (!hasApiKey()) {
-    return Response.json(
-      {
-        error: zh
-          ? '尚未设定 ANTHROPIC_API_KEY，无法生成解读。下方的结论是程序算出的，' +
-            '不需要 API 也能看。'
-          : 'ANTHROPIC_API_KEY is not set, so no reading can be generated. The ' +
-            'findings below are computed and need no API key to read.',
-        code: 'no_api_key',
-      },
-      { status: 503 },
     );
   }
 
@@ -106,6 +92,9 @@ export async function POST(req: Request) {
         templateId: chosen.id,
         question: chosen.question[locale],
         topic: chosen.topic,
+        // Say which narrator is writing, rather than letting composed prose
+        // pass as a model's.
+        source: providerStatus().id,
       });
 
       try {
@@ -115,16 +104,14 @@ export async function POST(req: Request) {
         });
         send('done', {
           cached: reading.cached,
+          source: reading.source,
           grounding: reading.grounding,
           usage: reading.usage ?? null,
         });
       } catch (e) {
-        const message =
-          e instanceof MissingApiKeyError
-            ? (zh ? '尚未设定 ANTHROPIC_API_KEY。' : 'ANTHROPIC_API_KEY is not set.')
-            : e instanceof Error
-              ? e.message
-              : (zh ? '生成解读时发生错误。' : 'Something went wrong generating the reading.');
+        const message = e instanceof Error
+          ? e.message
+          : (zh ? '生成解读时发生错误。' : 'Something went wrong generating the reading.');
         send('failed', { error: message });
       } finally {
         controller.close();
