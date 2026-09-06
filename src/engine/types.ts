@@ -165,6 +165,9 @@ export interface Chart {
     readonly day: Pillar;
     readonly hour: Pillar | null;
   };
+  /** Days elapsed since the 节 that opened the birth month.
+   *  Drives 人元司令: which of the month branch's 藏干 is actually in charge. */
+  readonly monthTermDays: number;
   /** 日主 / 日元 — the day stem, reference point for the whole reading. */
   readonly dayMaster: string;
   readonly dayMasterElement: Element;

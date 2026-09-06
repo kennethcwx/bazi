@@ -1,0 +1,202 @@
+{
+  "_readme": [
+    "Charts to check against 问真八字.",
+    "",
+    "Run `npm run verify` to print each one in a layout you can hold beside 问真.",
+    "Then fill in the `wenzhen` block from what 问真 shows and run it again — any",
+    "fixture with a filled block is diffed, and test/wenzhen.test.ts turns it into",
+    "a permanent regression test.",
+    "",
+    "Transcribe only these fields. 藏干, 十神, 纳音 and 星运 all follow",
+    "deterministically once the four pillars agree, and the invariant suite",
+    "already proves those derivations.",
+    "  pillars       four 干支, space separated, 年 月 日 时 ('--' for an unknown hour)",
+    "  luckStartAge  起运 age as 问真 prints it",
+    "  firstLuck     the first 大运 干支",
+    "",
+    "In 问真, set 真太阳时 to match `useTrueSolarTime` on each fixture."
+  ],
+
+  "cases": [
+    {
+      "label": "Singapore before the 1982 change (+07:30)",
+      "why": "The single most likely source of a wrong chart for this audience.",
+      "birth": { "year": 1981, "month": 12, "day": 15, "hour": 8, "minute": 0, "timeZone": "Asia/Singapore", "longitude": 103.82, "gender": "female", "useTrueSolarTime": true },
+      "wenzhen": null
+    },
+    {
+      "label": "Singapore just after the 1982 change (+08:00)",
+      "why": "Same clock reading, three weeks later, half an hour of real difference.",
+      "birth": { "year": 1982, "month": 1, "day": 5, "hour": 8, "minute": 0, "timeZone": "Asia/Singapore", "longitude": 103.82, "gender": "female", "useTrueSolarTime": true },
+      "wenzhen": null
+    },
+    {
+      "label": "Singapore, no true solar correction",
+      "why": "Isolates the -65 minute correction from everything else.",
+      "birth": { "year": 1990, "month": 6, "day": 15, "hour": 14, "minute": 30, "timeZone": "Asia/Singapore", "longitude": 103.82, "gender": "male", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+    {
+      "label": "Singapore, with true solar correction",
+      "why": "Same birth as above. The two should differ by about an hour.",
+      "birth": { "year": 1990, "month": 6, "day": 15, "hour": 14, "minute": 30, "timeZone": "Asia/Singapore", "longitude": 103.82, "gender": "male", "useTrueSolarTime": true },
+      "wenzhen": null
+    },
+
+    {
+      "label": "Hours before 立春 2024 (16:26 CST)",
+      "why": "The year pillar must still be the old one.",
+      "birth": { "year": 2024, "month": 2, "day": 4, "hour": 14, "minute": 0, "timeZone": "Asia/Shanghai", "longitude": 121.47, "gender": "male", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+    {
+      "label": "Hours after 立春 2024",
+      "why": "Year and month must both have turned; the day must not.",
+      "birth": { "year": 2024, "month": 2, "day": 4, "hour": 18, "minute": 0, "timeZone": "Asia/Shanghai", "longitude": 121.47, "gender": "male", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+
+    {
+      "label": "22:30, before 子时",
+      "why": "Pairs with the next case to check the 晚子时 convention.",
+      "birth": { "year": 2024, "month": 3, "day": 10, "hour": 22, "minute": 30, "timeZone": "Asia/Shanghai", "longitude": 121.47, "gender": "male", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+    {
+      "label": "23:30, 晚子时",
+      "why": "Does 问真 advance the day pillar here? We do. Schools differ.",
+      "birth": { "year": 2024, "month": 3, "day": 10, "hour": 23, "minute": 30, "timeZone": "Asia/Shanghai", "longitude": 121.47, "gender": "male", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+
+    {
+      "label": "China during DST, summer 1988",
+      "why": "China ran +09:00 from 1986 to 1991.",
+      "birth": { "year": 1988, "month": 7, "day": 15, "hour": 14, "minute": 0, "timeZone": "Asia/Shanghai", "longitude": 116.41, "gender": "female", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+    {
+      "label": "Ürümqi, Beijing time on a 87°E longitude",
+      "why": "The largest true-solar correction in the table, about -130 minutes.",
+      "birth": { "year": 1995, "month": 9, "day": 20, "hour": 9, "minute": 0, "timeZone": "Asia/Shanghai", "longitude": 87.62, "gender": "male", "useTrueSolarTime": true },
+      "wenzhen": null
+    },
+    {
+      "label": "Gifu, Japan",
+      "why": "Japan sits on its own meridian, so the correction is small and positive.",
+      "birth": { "year": 1987, "month": 4, "day": 3, "hour": 6, "minute": 45, "timeZone": "Asia/Tokyo", "longitude": 136.76, "gender": "female", "useTrueSolarTime": true },
+      "wenzhen": null
+    },
+
+    {
+      "label": "寅月 day 4, under 戊司令",
+      "why": "人元司令 boundary. Pairs with the next two.",
+      "birth": { "year": 2024, "month": 2, "day": 8, "hour": 12, "minute": 0, "timeZone": "Asia/Shanghai", "longitude": 121.47, "gender": "male", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+    {
+      "label": "寅月 day 11, under 丙司令",
+      "why": "Same month pillar, different ruler.",
+      "birth": { "year": 2024, "month": 2, "day": 15, "hour": 12, "minute": 0, "timeZone": "Asia/Shanghai", "longitude": 121.47, "gender": "male", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+    {
+      "label": "寅月 day 22, under 甲司令",
+      "why": "Same month pillar again, the 本气 now in charge.",
+      "birth": { "year": 2024, "month": 2, "day": 26, "hour": 12, "minute": 0, "timeZone": "Asia/Shanghai", "longitude": 121.47, "gender": "male", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+
+    {
+      "label": "Same moment, male",
+      "why": "大运 must run forward here and backward for the next case.",
+      "birth": { "year": 1990, "month": 6, "day": 15, "hour": 14, "minute": 30, "timeZone": "Asia/Shanghai", "longitude": 121.47, "gender": "male", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+    {
+      "label": "Same moment, female",
+      "why": "阳男阴女顺行. The 起运 age should differ too.",
+      "birth": { "year": 1990, "month": 6, "day": 15, "hour": 14, "minute": 30, "timeZone": "Asia/Shanghai", "longitude": 121.47, "gender": "female", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+    {
+      "label": "Yin year, male",
+      "why": "The other half of the 大运 direction rule.",
+      "birth": { "year": 1991, "month": 8, "day": 20, "hour": 3, "minute": 15, "timeZone": "Asia/Taipei", "longitude": 121.56, "gender": "male", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+
+    {
+      "label": "Unknown birth hour",
+      "why": "Three pillars only. 问真 will ask for a time; leave the hour column blank.",
+      "birth": { "year": 1975, "month": 11, "day": 8, "timeZone": "Asia/Hong_Kong", "longitude": 114.17, "gender": "female", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+
+    {
+      "label": "Early 1900s",
+      "why": "Checks the calendar far from the present day.",
+      "birth": { "year": 1918, "month": 5, "day": 2, "hour": 17, "minute": 20, "timeZone": "Asia/Shanghai", "longitude": 121.47, "gender": "male", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+    {
+      "label": "Leap day",
+      "why": "29 February, in a century-divisible leap year.",
+      "birth": { "year": 2000, "month": 2, "day": 29, "hour": 10, "minute": 0, "timeZone": "Asia/Shanghai", "longitude": 121.47, "gender": "female", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+    {
+      "label": "Near midnight, 00:10",
+      "why": "The other side of the 子时 boundary.",
+      "birth": { "year": 2005, "month": 12, "day": 31, "hour": 0, "minute": 10, "timeZone": "Asia/Taipei", "longitude": 121.56, "gender": "male", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+
+    {
+      "label": "卯月",
+      "why": "One birth in each remaining month branch, so all twelve are covered.",
+      "birth": { "year": 1993, "month": 3, "day": 18, "hour": 8, "minute": 0, "timeZone": "Asia/Shanghai", "longitude": 121.47, "gender": "female", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+    {
+      "label": "辰月",
+      "birth": { "year": 1996, "month": 4, "day": 20, "hour": 15, "minute": 30, "timeZone": "Asia/Shanghai", "longitude": 121.47, "gender": "male", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+    {
+      "label": "巳月",
+      "birth": { "year": 1984, "month": 5, "day": 22, "hour": 21, "minute": 45, "timeZone": "Asia/Shanghai", "longitude": 121.47, "gender": "female", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+    {
+      "label": "未月",
+      "birth": { "year": 2001, "month": 7, "day": 25, "hour": 4, "minute": 0, "timeZone": "Asia/Shanghai", "longitude": 121.47, "gender": "male", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+    {
+      "label": "申月",
+      "birth": { "year": 1979, "month": 8, "day": 30, "hour": 11, "minute": 10, "timeZone": "Asia/Shanghai", "longitude": 121.47, "gender": "female", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+    {
+      "label": "酉月",
+      "birth": { "year": 2010, "month": 9, "day": 28, "hour": 19, "minute": 5, "timeZone": "Asia/Shanghai", "longitude": 121.47, "gender": "male", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+    {
+      "label": "戌月",
+      "birth": { "year": 1968, "month": 10, "day": 26, "hour": 13, "minute": 40, "timeZone": "Asia/Shanghai", "longitude": 121.47, "gender": "female", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+    {
+      "label": "亥月",
+      "birth": { "year": 2003, "month": 11, "day": 22, "hour": 2, "minute": 25, "timeZone": "Asia/Shanghai", "longitude": 121.47, "gender": "male", "useTrueSolarTime": false },
+      "wenzhen": null
+    },
+    {
+      "label": "丑月",
+      "birth": { "year": 1999, "month": 1, "day": 18, "hour": 16, "minute": 55, "timeZone": "Asia/Shanghai", "longitude": 121.47, "gender": "female", "useTrueSolarTime": false },
+      "wenzhen": null
+    }
+  ]
+}

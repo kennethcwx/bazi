@@ -12,12 +12,10 @@
  * The numbers sum to 100 for a fully-timed chart so the output reads as a
  * percentage rather than an arbitrary index.
  *
- * KNOWN SIMPLIFICATION. A stricter engine weights the month branch's hidden
- * stems by 人元司令 — which hidden stem "rules" depends on how many days into
- * the solar term the birth falls. We weight by role (本气/中气/余气) instead,
- * which is the common simplification and is stable, but it will differ from a
- * 司令-aware tool for births early or late in a term. Flagged rather than
- * hidden, because a practitioner will notice.
+ * 人元司令. The month branch is weighted by which of its 藏干 is actually in
+ * charge on the day, which depends on how far past the opening 节 the birth
+ * falls — see ./siling. Every other branch is weighted by role, since 司令 is
+ * a month-branch concept.
  */
 
 import type { Chart, Element, Pillar } from '../engine/types';
@@ -29,6 +27,7 @@ import {
   tenGodFamily,
   type TenGodFamily,
 } from './elements';
+import { rulingStem, silingShares, type SiLing } from './siling';
 
 /** Weight of each stem position. The day stem is the subject, not evidence. */
 const STEM_WEIGHT = { year: 10, month: 12, day: 0, hour: 10 } as const;
@@ -57,8 +56,10 @@ export interface StrengthAnalysis {
   /** 比劫 + 印, the share supporting the day master. The headline number. */
   readonly supportPercent: number;
   readonly verdict: StrengthVerdict;
-  /** 得令 — the month branch's 本气 supports the day master. */
+  /** 得令 — the ruling stem of the month branch supports the day master. */
   readonly hasMonthCommand: boolean;
+  /** Who is in charge of the month branch, and on what day count. */
+  readonly siLing: SiLing;
   /** 得地 — the day branch's 本气 supports the day master. */
   readonly hasDaySeat: boolean;
   /** 得势 — supporting stems outnumber opposing ones. */
@@ -77,8 +78,9 @@ interface Contribution {
   source: string;
 }
 
-function collect(chart: Chart): Contribution[] {
+function collect(chart: Chart, siLing: SiLing): Contribution[] {
   const out: Contribution[] = [];
+  const monthShares = silingShares(chart.pillars.month.hiddenStems, siLing.stem);
   const pillars: readonly (Pillar | null)[] = [
     chart.pillars.year, chart.pillars.month, chart.pillars.day, chart.pillars.hour,
   ];
@@ -93,9 +95,13 @@ function collect(chart: Chart): Contribution[] {
 
     const branchWeight = BRANCH_WEIGHT[p.position];
     for (const h of p.hiddenStems) {
+      // 司令 governs the month branch only; elsewhere role is the right proxy.
+      const share = p.position === 'month'
+        ? monthShares.get(h.stem) ?? ROLE_SHARE[h.role]
+        : ROLE_SHARE[h.role];
       out.push({
         element: h.element,
-        weight: branchWeight * ROLE_SHARE[h.role],
+        weight: branchWeight * share,
         source: `${p.position}支 ${p.branch} 藏 ${h.stem}`,
       });
     }
@@ -104,7 +110,12 @@ function collect(chart: Chart): Contribution[] {
 }
 
 export function analyzeStrength(chart: Chart): StrengthAnalysis {
-  const contributions = collect(chart);
+  const siLing = rulingStem(
+    chart.pillars.month.branch,
+    chart.monthTermDays,
+    chart.pillars.month.hiddenStems,
+  );
+  const contributions = collect(chart, siLing);
   const total = contributions.reduce((s, c) => s + c.weight, 0);
 
   const elementRaw = Object.fromEntries(ELEMENTS.map((e) => [e, 0])) as Record<Element, number>;
@@ -131,9 +142,11 @@ export function analyzeStrength(chart: Chart): StrengthAnalysis {
 
   const supportPercent = round1(familyPercent['比劫'] + familyPercent['印']);
 
-  const monthMain = chart.pillars.month.hiddenStems.find((h) => h.role === 'main');
+  const monthRuler = chart.pillars.month.hiddenStems.find((h) => h.stem === siLing.stem);
   const dayMain = chart.pillars.day.hiddenStems.find((h) => h.role === 'main');
-  const hasMonthCommand = !!monthMain && isSupporting(tenGodFamily(dm, monthMain.element));
+  // 得令 asks whether the stem in charge supports the day master, which is not
+  // always the 本气 — that was the old approximation.
+  const hasMonthCommand = !!monthRuler && isSupporting(tenGodFamily(dm, monthRuler.element));
   const hasDaySeat = !!dayMain && isSupporting(tenGodFamily(dm, dayMain.element));
 
   const supportingStems = [chart.pillars.year, chart.pillars.month, chart.pillars.hour]
@@ -175,17 +188,29 @@ export function analyzeStrength(chart: Chart): StrengthAnalysis {
         `${fam('财').en} ${familyPercent['财']}% + ` +
         `${fam('官杀').en} ${familyPercent['官杀']}% = ${round1(100 - supportPercent)}%.`,
     ),
+    t(
+      `月支 ${chart.pillars.month.branch}：生日距节 ${siLing.daysIntoTerm.toFixed(1)} 天，` +
+        `${siLing.stem}司令` +
+        (siLing.substituted ? `（分野本作${siLing.classicalStem}，非本支所藏，故以本气代之）` : '') +
+        '。',
+      `Month branch ${chart.pillars.month.branch}: born ` +
+        `${siLing.daysIntoTerm.toFixed(1)} days after the opening term, so ` +
+        `${siLing.stem} is in charge` +
+        (siLing.substituted
+          ? ` (the classical table names ${siLing.classicalStem} here, which this ` +
+            `branch does not hold, so its 本气 stands in)`
+          : '') + '.',
+    ),
     hasMonthCommand
       ? t(
-          `得令：月支 ${chart.pillars.month.branch} 本气${monthMain?.stem ?? ''}生扶日主。`,
-          `In season: the month branch ${chart.pillars.month.branch} holds ` +
-            `${monthMain?.stem ?? ''}, which feeds the Day Master. This is the ` +
-            `single strongest claim on strength.`,
+          `得令：司令之${siLing.stem}生扶日主，此为判强的主因。`,
+          `In season: ${siLing.stem}, the stem in charge, feeds the Day Master. ` +
+            `This is the single strongest claim on strength.`,
         )
       : t(
-          `失令：月支 ${chart.pillars.month.branch} 本气不生扶日主，此为判弱的主因。`,
-          `Out of season: the month branch ${chart.pillars.month.branch} does not ` +
-            `feed the Day Master. This is the main reason it reads weak.`,
+          `失令：司令之${siLing.stem}不生扶日主，此为判弱的主因。`,
+          `Out of season: ${siLing.stem}, the stem in charge, does not feed the ` +
+            `Day Master. This is the main reason it reads weak.`,
         ),
     hasDaySeat
       ? t(
@@ -233,6 +258,7 @@ export function analyzeStrength(chart: Chart): StrengthAnalysis {
     supportPercent,
     verdict,
     hasMonthCommand,
+    siLing,
     hasDaySeat,
     hasAllies,
     followingCandidate,

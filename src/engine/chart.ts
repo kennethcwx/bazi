@@ -141,6 +141,12 @@ export function buildChart(input: BirthInput): Chart {
   const solar = SolarTime.fromYmdHms(c.year, c.month, c.day, c.hour, c.minute, 0);
   const eightChar = solar.getSixtyCycleHour().getEightChar();
 
+  // Days since the 节 that opened this month. Terms alternate 节 / 气, and only
+  // 节 start a month, so step back one when the birth sits past the mid-month 气.
+  let term = solar.getTerm();
+  if (!term.isJie()) term = term.next(-1);
+  const monthTermDays = solar.getJulianDay().getDay() - term.getJulianDay().getDay();
+
   const dayCycle = eightChar.getDay();
   const dayStem = dayCycle.getHeavenStem();
 
@@ -197,6 +203,7 @@ export function buildChart(input: BirthInput): Chart {
     gender: input.gender,
     hourKnown,
     pillars,
+    monthTermDays,
     dayMaster: dayStem.getName(),
     dayMasterElement: dayStem.getElement().getName() as Element,
     dayMasterYinYang: yinYang(dayStem.getYinYang()),

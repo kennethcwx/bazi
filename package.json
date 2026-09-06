@@ -11,7 +11,8 @@
     "chart": "tsx src/cli.ts",
     "read": "tsx src/read.ts",
     "typecheck": "tsc --noEmit --incremental false",
-    "check": "npm run typecheck && vitest run"
+    "check": "npm run typecheck && vitest run",
+    "verify": "tsx src/verify.ts"
   },
   "keywords": [],
   "author": "",
