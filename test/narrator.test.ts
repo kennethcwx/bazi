@@ -196,8 +196,9 @@ describe('grounding check', () => {
     if (two.length < 2) return;
     const a = checkGrounding(`依据：${two[0]}、${two[1]}`, analysis, template);
     const b = checkGrounding(`依据: ${two[0]}, ${two[1]}`, analysis, template);
-    expect(a.cited.sort()).toEqual(two.slice().sort());
-    expect(b.cited.sort()).toEqual(two.slice().sort());
+    // `cited` is readonly, so copy before sorting.
+    expect([...a.cited].sort()).toEqual([...two].sort());
+    expect([...b.cited].sort()).toEqual([...two].sort());
   });
 
   it('counts sections that carry no citation line', () => {
