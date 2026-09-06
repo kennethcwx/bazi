@@ -278,9 +278,9 @@ export function forecastRelationship(
 
 /** The caveat, in one place, so every surface that shows a forecast repeats it. */
 export const FORECAST_CAVEAT: LocalizedText = t(
-  '流日是八字里最轻的一层：大运定十年，流年定一年，流日只是当天的一点气氛。' +
-    '此处只讲"今天动到了什么"，不讲吉凶，也不该拿来做决定。',
-  'The day pillar is the lightest layer in BaZi. A luck pillar shapes a decade ' +
-    'and a year pillar shapes a year; a day pillar is a nudge. This says what ' +
-    'today touches, not whether it is lucky — and it is not a basis for decisions.',
+  '流日是八字里最轻的一层。大运定十年，流年定一年，流日只动当天的一点气氛。' +
+    '这里讲的是今天动到了什么。它不讲吉凶，也别拿它做决定。',
+  'The day pillar is the lightest layer in BaZi. A luck pillar shapes a decade; ' +
+    'a day pillar nudges a mood. This tells you what today touches. It does not ' +
+    'tell you whether today is lucky, and you should not decide anything on it.',
 );

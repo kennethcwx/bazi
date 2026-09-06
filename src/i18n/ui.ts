@@ -12,9 +12,9 @@ import { t, type LocalizedText } from './text';
 export const UI = {
   title: t('八字排盘', 'BaZi Chart'),
   tagline: t(
-    '可核对的排盘，与姻缘、事业两个主题的解读。每一句话都附上它所依据的命理事实。',
-    'A chart you can check, with readings on two subjects: relationships and ' +
-      'career. Every claim carries the chart facts it rests on.',
+    '排盘可以核对，姻缘与事业两个主题的解读都附上推导依据。',
+    'A chart you can check, and readings on relationships and career that show ' +
+      'their working.',
   ),
 
   // form
@@ -56,6 +56,8 @@ export const UI = {
   favourable: t('用神', 'Favourable'),
   supporting: t('喜神', 'Supporting'),
   methodUsed: t('取用流派', 'Method'),
+  whyThis: t('看推导过程', 'Show the working'),
+  showEvidence: t('依据', 'Evidence'),
 
   // tabs
   relationships: t('姻缘 · 婚姻', 'Relationships'),
@@ -88,11 +90,11 @@ export const UI = {
   theyGiveYou: t('对方补你', 'They supply you'),
   youGiveThem: t('你补对方', 'You supply them'),
   supplyExplainer: t(
-    '这两个数字是对方命局里、你所需五行所占的比例，反之亦然。刻意分开列出——' +
-      '两人的补益本来就少有对等，把它压成一个「匹配度」会抹掉最有用的信息。',
+    '这两个数字，是对方命局里你所需五行的占比，以及反过来的占比。' +
+      '两人的补益少有对等，所以分开列。压成一个「匹配度」，就看不出补益往哪边走了。',
     'Each figure is how much of one chart is made of the elements the other ' +
-      'needs. They are shown separately on purpose: the benefit is rarely equal, ' +
-      'and averaging it into a single "match score" hides the most useful thing here.',
+      'needs. We keep them apart because the benefit is rarely equal, and one ' +
+      'blended score would hide which direction it runs.',
   ),
   you: t('你', 'You'),
   them: t('对方', 'Them'),
@@ -103,9 +105,9 @@ export const UI = {
 
   // narrator provenance
   writtenBy: t('本文由', 'Written by'),
-  composedLabel: t('程序据结论直接组稿（未使用模型）', 'composed from the findings in code — no model used'),
-  modelHint: t('设定任一模型金钥（Gemini／Groq 皆有免费额度）可得更流畅的行文。',
-    'Add any model key — Gemini and Groq both have free tiers — for more fluent prose.'),
+  composedLabel: t('程序据结论直接组稿，未使用模型', 'composed from the findings in code, with no model'),
+  modelHint: t('Gemini 与 Groq 都有免费额度。设定任一金钥，行文会更流畅。',
+    'Gemini and Groq both have free tiers. Add either key for more fluent prose.'),
 
   // errors
   errConnect: t('无法连线，请稍后再试。', 'Could not connect. Try again shortly.'),

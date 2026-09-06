@@ -231,11 +231,10 @@ export function routeQuestion(
       return {
         kind: 'declined',
         reason: t(
-          `这个盘不回答${subject.zh}相关的问题。八字在这些事情上给不出可靠的答案，` +
-            `讲了反而误事。本站只谈姻缘与事业两个主题。`,
-          `This does not answer questions about ${subject.en}. BaZi gives no ` +
-            `reliable answer there, and pretending otherwise does harm. This site ` +
-            `covers relationships and career only.`,
+          `本站不回答${subject.zh}相关的问题。八字在这些事情上给不出可靠答案，` +
+            `只谈姻缘与事业两个主题。`,
+          `This site does not answer questions about ${subject.en}. BaZi has no ` +
+            `reliable answer there. It covers relationships and career only.`,
         ),
       };
     }

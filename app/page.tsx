@@ -99,7 +99,10 @@ function PillarCard({ p, position, locale }: {
           </div>
         ))}
       </div>
-      <div className="meta">{p.naYin}·{TERRAIN[p.terrain]?.[locale] ?? p.terrain}</div>
+      <div className="meta">
+        <div>{p.naYin}</div>
+        <div>{TERRAIN[p.terrain]?.[locale] ?? p.terrain}</div>
+      </div>
     </div>
   );
 }
@@ -152,9 +155,12 @@ function FindingList({ findings, locale }: { findings: RenderedFinding[]; locale
                 : UI.confLow[locale]}
             </span>
           </div>
-          <ul className="ev">
-            {f.evidence.map((e, i) => <li key={i}>{e}</li>)}
-          </ul>
+          <details className="why">
+            <summary>{UI.showEvidence[locale]}</summary>
+            <ul className="ev">
+              {f.evidence.map((e, i) => <li key={i}>{e}</li>)}
+            </ul>
+          </details>
         </div>
       ))}
     </>
@@ -486,21 +492,24 @@ export default function Page() {
           <section>
             <h2>{UI.basis[L]}</h2>
             <div className="card">
-              <ul className="audit">
-                {result.chart.moment.notes.map((n, i) => (
-                  <li key={i} className={isCaveat(n) ? 'warn' : undefined}>
-                    {formatNote(n, L)}
-                  </li>
-                ))}
-                <li>
-                  {UI.chartedAt[L]} {result.chart.moment.charted.year}-
-                  {String(result.chart.moment.charted.month).padStart(2, '0')}-
-                  {String(result.chart.moment.charted.day).padStart(2, '0')}{' '}
-                  {String(result.chart.moment.charted.hour).padStart(2, '0')}:
-                  {String(result.chart.moment.charted.minute).padStart(2, '0')}
-                </li>
-                <li>{formatLuckStart(result.chart.luckStart, result.chart.luckForward, L)}</li>
-              </ul>
+              <div className="glance-v">
+                {UI.chartedAt[L]} {result.chart.moment.charted.year}-
+                {String(result.chart.moment.charted.month).padStart(2, '0')}-
+                {String(result.chart.moment.charted.day).padStart(2, '0')}{' '}
+                {String(result.chart.moment.charted.hour).padStart(2, '0')}:
+                {String(result.chart.moment.charted.minute).padStart(2, '0')}
+              </div>
+              <details className="why">
+                <summary>{UI.whyThis[L]}</summary>
+                <ul className="audit">
+                  {result.chart.moment.notes.map((n, i) => (
+                    <li key={i} className={isCaveat(n) ? 'warn' : undefined}>
+                      {formatNote(n, L)}
+                    </li>
+                  ))}
+                  <li>{formatLuckStart(result.chart.luckStart, result.chart.luckForward, L)}</li>
+                </ul>
+              </details>
             </div>
           </section>
 
@@ -522,11 +531,14 @@ export default function Page() {
                 {' · '}
                 {term(result.strength.verdict, L)}
               </div>
-              <ul className="reasoning">
-                {result.strength.reasoning.map((r, i) => (
-                  <li key={i} className={r.startsWith('⚠️') ? 'warn' : undefined}>{r}</li>
-                ))}
-              </ul>
+              <details className="why">
+                <summary>{UI.whyThis[L]}</summary>
+                <ul className="reasoning">
+                  {result.strength.reasoning.map((r, i) => (
+                    <li key={i} className={r.startsWith('⚠️') ? 'warn' : undefined}>{r}</li>
+                  ))}
+                </ul>
+              </details>
             </div>
             <div className="card">
               <div className="verdict">
@@ -543,11 +555,14 @@ export default function Page() {
                   </>
                 )}
               </div>
-              <ul className="reasoning">
-                {result.yongShen.reasoning.map((r, i) => (
-                  <li key={i} className={r.startsWith('⚠️') ? 'warn' : undefined}>{r}</li>
-                ))}
-              </ul>
+              <details className="why">
+                <summary>{UI.whyThis[L]}</summary>
+                <ul className="reasoning">
+                  {result.yongShen.reasoning.map((r, i) => (
+                    <li key={i} className={r.startsWith('⚠️') ? 'warn' : undefined}>{r}</li>
+                  ))}
+                </ul>
+              </details>
               <span className="school">{UI.methodUsed[L]}: {result.yongShen.school}</span>
             </div>
           </section>

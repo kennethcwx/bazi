@@ -211,9 +211,12 @@ export function Compatibility({ selfBirth, locale }: {
                       : UI.confLow[locale]}
                   </span>
                 </div>
-                <ul className="ev">
-                  {f.evidence.map((e, i) => <li key={i}>{e}</li>)}
-                </ul>
+                <details className="why">
+                  <summary>{UI.showEvidence[locale]}</summary>
+                  <ul className="ev">
+                    {f.evidence.map((e, i) => <li key={i}>{e}</li>)}
+                  </ul>
+                </details>
               </div>
             ))}
           </div>

@@ -107,7 +107,7 @@ export function analyzeCompatibility(a: Side, b: Side): CompatibilityAnalysis {
             `what yours needs (${bandA.en}), while yours supplies ${supplyToB}% of ` +
             `what theirs needs (${bandB.en}). ` +
             `${supplyToA > supplyToB ? 'You draw more from this than you give.' : 'You give more to this than you draw.'} ` +
-            `That is not a fault on either side, but it is worth both of you knowing.`,
+            `Neither of you is at fault for that, but you should both know it.`,
         )
       : t(
           `两人互补大致对等：对方为你提供 ${supplyToA}% 的用神之气（${bandA.zh}），` +

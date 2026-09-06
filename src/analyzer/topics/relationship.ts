@@ -322,7 +322,7 @@ function buildFindings(ctx: FindingContext): Finding[] {
     topic: 'relationship',
     claim: t(
       `夫妻宫（日支${palace.branch}）本气为${palaceTenGod}，配偶的基本性情由此定调。`,
-      `Your ${TERM['夫妻宫']!.en} — the day branch ${palace.branch} — is governed by ` +
+      `Your ${TERM['夫妻宫']!.en}, the day branch ${palace.branch}, is governed by ` +
         `${TEN_GOD[palaceTenGod]!.en}. That sets the basic character of the partnership.`,
     ),
     evidence: [
@@ -391,9 +391,9 @@ function buildFindings(ctx: FindingContext): Finding[] {
             `${names.join('、')}透干而${primaryStar}不透，异性缘不缺，但偏向随性、缘起缘落，` +
               `稳定的正缘要靠运引动。`,
             `${names.map((n) => TEN_GOD[n]!.en).join(' and ')} shows openly in your ` +
-              `stems, but ${TEN_GOD[primaryStar]!.en} — the steadier of the two — ` +
-              `does not. Attention is not in short supply; it simply arrives and ` +
-              `leaves easily. A lasting match needs the luck cycles to bring it.`,
+              `stems. ${TEN_GOD[primaryStar]!.en}, the steadier of the two, does not. ` +
+              `Attention is not in short supply; it simply arrives and leaves easily. ` +
+              `A lasting match needs the luck cycles to bring it.`,
           )
         : t(
             `${names.join('、')}透干，感情态度外显，异性缘来得直接。`,
@@ -420,7 +420,7 @@ function buildFindings(ctx: FindingContext): Finding[] {
       ? t(
           `${primaryStar}为用神一路，婚姻对本人是助力，配偶多能带来实质帮助。`,
           `Your ${star.en} is one of the elements this chart actually needs. ` +
-            `Marriage works in your favour — a partner is likely to bring real, ` +
+            `Marriage works in your favour. A partner is likely to bring real, ` +
             `practical help rather than only company.`,
         )
       : t(
@@ -520,7 +520,7 @@ function buildFindings(ctx: FindingContext): Finding[] {
         topic: 'relationship',
         claim: t(
           '官杀混杂，感情选择多而杂，易有拉扯，宜专一取舍。',
-          'Both husband stars appear — the steady one and the forceful one. ' +
+          'Both husband stars appear, the steady one and the forceful one. ' +
             'Options are plentiful but muddled, and the pull between two types ' +
             'creates its own trouble. Deciding what you actually want matters ' +
             'more here than being chosen.',
@@ -606,8 +606,8 @@ function buildFindings(ctx: FindingContext): Finding[] {
               `Any ${recurring} year stirs your Spouse Palace, so relationship ` +
                 `matters tend to move roughly once every twelve years: ` +
                 matching.map((w) => `${w.year} (age ${w.age})`).join(', ') +
-                `. That is a structural feature of the chart repeating, not a ` +
-                `run of separate strokes of luck.` +
+                `. That is a structural feature of the chart repeating, rather than ` +
+                `a run of separate strokes of luck.` +
                 (others.length > 0
                   ? ` ${others.map((w) => `${w.year} (${w.ganZhi})`).join(', ')} also ` +
                     `carries weight, through a different combination.`
