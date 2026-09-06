@@ -320,3 +320,47 @@ button:disabled { opacity: 0.5; cursor: default; }
 @media (prefers-reduced-motion: reduce) {
   .cursor { animation: none; }
 }
+
+/* ---------- PIN gate ---------- */
+.gate {
+  min-height: 100svh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+}
+.gate-inner { width: 100%; max-width: 300px; text-align: center; }
+.gate-inner h1 { margin-bottom: 6px; }
+.gate-sub { color: var(--text-dim); font-size: 13px; margin: 0 0 24px; }
+.gate-err { color: var(--fire); font-size: 13px; margin: 0 0 16px; min-height: 1.2em; }
+
+.dots { display: flex; gap: 14px; justify-content: center; margin-bottom: 22px; }
+.dot {
+  width: 13px; height: 13px; border-radius: 50%;
+  border: 1px solid var(--line); background: transparent;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.dot.filled { background: var(--gold); border-color: var(--gold); }
+
+.keypad {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+}
+.keypad button {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-family: var(--serif);
+  font-size: 23px;
+  font-weight: 400;
+  min-height: 58px;
+}
+.keypad button:active { background: var(--surface-2); }
+.keypad .ghost {
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--text-dim);
+  background: transparent;
+  border-color: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dot { transition: none; }
+}
