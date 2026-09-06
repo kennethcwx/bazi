@@ -47,3 +47,26 @@ export function formatNote(note: MomentNote, locale: Locale = 'zh'): string {
 export function isCaveat(note: MomentNote): boolean {
   return note.code === 'historical-offset' || note.code === 'true-solar-no-longitude';
 }
+
+/**
+ * When the 大运 begin, in words.
+ *
+ * The engine emits the counts; choosing how to say them is a presentation
+ * decision, so it lives here alongside the other rendered text.
+ */
+export function formatLuckStart(
+  luckStart: { years: number; months: number; days: number },
+  forward: boolean,
+  locale: Locale = 'zh',
+): string {
+  const { years, months, days } = luckStart;
+  if (locale === 'zh') {
+    return `${years}年${months}个月${days}天起运，大运${forward ? '顺行' : '逆行'}`;
+  }
+  const parts: string[] = [];
+  if (years) parts.push(`${years} year${years === 1 ? '' : 's'}`);
+  if (months) parts.push(`${months} month${months === 1 ? '' : 's'}`);
+  if (days) parts.push(`${days} day${days === 1 ? '' : 's'}`);
+  const span = parts.length ? parts.join(', ') : 'no time at all';
+  return `Luck pillars begin ${span} after birth, running ${forward ? 'forward' : 'backward'}`;
+}

@@ -171,7 +171,13 @@ export interface Chart {
   readonly dayMasterYinYang: YinYang;
   /** 起运 age and the 大运 direction (阳男阴女顺行). */
   readonly luckStartAge: number;
-  readonly luckStartDescription: string;
+  /** How long after birth the luck pillars begin. Structured rather than a
+   *  sentence — the engine has no business choosing a language. */
+  readonly luckStart: {
+    readonly years: number;
+    readonly months: number;
+    readonly days: number;
+  };
   readonly luckForward: boolean;
   readonly decades: readonly DecadeLuck[];
   /** Stable hash of the charted moment + gender + conventions. Cache key for

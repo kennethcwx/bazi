@@ -10,7 +10,7 @@
  */
 
 import { buildChart } from './engine/chart';
-import { formatNote } from './i18n/notes';
+import { formatNote, formatLuckStart } from './i18n/notes';
 import { isLocale } from './i18n/text';
 import type { BirthInput, Gender, Pillar } from './engine/types';
 
@@ -96,7 +96,7 @@ function main() {
   }
 
   console.log(`\n  日主 ${c.dayMaster}（${c.dayMasterYinYang}${c.dayMasterElement}）` +
-    `　${c.luckStartDescription}　大运${c.luckForward ? '顺行' : '逆行'}`);
+    `　${formatLuckStart(c.luckStart, c.luckForward, L)}`);
 
   console.log('\n  大运');
   for (const d of c.decades.slice(0, 8)) {

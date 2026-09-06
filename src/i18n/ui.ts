@@ -48,8 +48,6 @@ export const UI = {
 
   // basis card
   chartedAt: t('实际起盘时刻', 'Charted at'),
-  luckForward: t('大运顺行', 'luck runs forward'),
-  luckBackward: t('大运逆行', 'luck runs backward'),
 
   // yongshen card
   favourable: t('用神', 'Favourable'),

@@ -185,9 +185,11 @@ export function buildChart(input: BirthInput): Chart {
   }
 
   const startAge = decades[0]?.startAge ?? 0;
-  const luckStartDescription =
-    `${childLimit.getYearCount()}年${childLimit.getMonthCount()}个月` +
-    `${childLimit.getDayCount()}天起运`;
+  const luckStart = {
+    years: childLimit.getYearCount(),
+    months: childLimit.getMonthCount(),
+    days: childLimit.getDayCount(),
+  };
 
   return {
     input,
@@ -199,7 +201,7 @@ export function buildChart(input: BirthInput): Chart {
     dayMasterElement: dayStem.getElement().getName() as Element,
     dayMasterYinYang: yinYang(dayStem.getYinYang()),
     luckStartAge: startAge,
-    luckStartDescription,
+    luckStart,
     luckForward: childLimit.isForward(),
     decades,
     chartHash: hashChart([

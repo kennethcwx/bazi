@@ -19,7 +19,7 @@
 import { useState, useRef, useEffect, useCallback, type ReactNode, type FormEvent } from 'react';
 import type { Chart, Element, Pillar } from '../src/engine/types';
 import type { RenderedFinding } from '../src/analyzer/findings';
-import { formatNote, isCaveat } from '../src/i18n/notes';
+import { formatNote, formatLuckStart, isCaveat } from '../src/i18n/notes';
 import { UI } from '../src/i18n/ui';
 import { ELEMENT, TEN_GOD, TERRAIN, DECADE_VERDICT, term } from '../src/i18n/glossary';
 import { isLocale, type Locale } from '../src/i18n/text';
@@ -434,11 +434,7 @@ export default function Page() {
                   {String(result.chart.moment.charted.hour).padStart(2, '0')}:
                   {String(result.chart.moment.charted.minute).padStart(2, '0')}
                 </li>
-                <li>
-                  {result.chart.luckStartDescription}
-                  {' · '}
-                  {result.chart.luckForward ? UI.luckForward[L] : UI.luckBackward[L]}
-                </li>
+                <li>{formatLuckStart(result.chart.luckStart, result.chart.luckForward, L)}</li>
               </ul>
             </div>
           </section>
@@ -450,7 +446,7 @@ export default function Page() {
                 const pct = result.strength.elementPercent[e];
                 return pct > 0 ? (
                   <div key={e} className={`bg-${e}`} style={{ width: `${pct}%` }}>
-                    {pct >= 12 ? `${ELEMENT[e]![L]} ${pct}%` : ELEMENT[e]![L].slice(0, 1)}
+                    {pct >= 12 ? `${ELEMENT[e]![L]} ${pct}%` : `${pct}%`}
                   </div>
                 ) : null;
               })}

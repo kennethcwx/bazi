@@ -17,7 +17,7 @@ import { findShenSha } from '../src/analyzer/shensha';
 import { findRelations } from '../src/analyzer/relations';
 import { buildUserPrompt, systemPrompt } from '../src/narrator/prompt';
 import { TEMPLATES, routeQuestion, templateById } from '../src/narrator/templates';
-import { formatNote } from '../src/i18n/notes';
+import { formatNote, formatLuckStart } from '../src/i18n/notes';
 import { UI } from '../src/i18n/ui';
 import {
   ELEMENT, RELATION, SHENSHA, STRUCTURE, TEN_GOD, TEN_GOD_FAMILY, TERRAIN, term,
@@ -178,6 +178,18 @@ describe('glossary covers what the engine emits', () => {
 describe('interface strings', () => {
   it('gives every UI entry both languages', () => {
     for (const [key, value] of Object.entries(UI)) assertPair(value, `UI.${key}`);
+  });
+
+  it('renders 起运 in both languages from structured data', () => {
+    const c = buildChart(base());
+    expect(c.luckStart.years).toBeGreaterThanOrEqual(0);
+    const zh = formatLuckStart(c.luckStart, c.luckForward, 'zh');
+    const en = formatLuckStart(c.luckStart, c.luckForward, 'en');
+    expect(zh).toContain('起运');
+    expect(en).toContain('Luck pillars begin');
+    expect(CHINESE_PROSE.test(en), `leaked Chinese: "${en}"`).toBe(false);
+    // The engine must not be building a sentence itself.
+    expect(Object.keys(c.luckStart).sort()).toEqual(['days', 'months', 'years']);
   });
 
   it('renders 排盘依据 notes in both languages without leaking the other', () => {
