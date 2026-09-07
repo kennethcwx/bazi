@@ -21,6 +21,7 @@ import {
   DIRECTION, ELEMENT, SHENSHA, STRUCTURE, TEN_GOD, TEN_GOD_FAMILY,
 } from '../../i18n/glossary';
 import { elementOfBranch, elementOfStem, type TenGodFamily } from '../elements';
+import { findRelations, isBranchRelation, natalPillars } from '../relations';
 import { finding, type Finding } from '../findings';
 import { rulingStem } from '../siling';
 import { findShenSha } from '../shensha';
@@ -216,6 +217,120 @@ function determineLean(strength: StrengthAnalysis): { lean: CareerLean; why: Loc
   };
 }
 
+/**
+ * How a decade's branch engages the natal chart — 合冲 with the four pillars.
+ *
+ * Element favourability (does the decade carry the 用神) says whether a decade
+ * HELPS; it says nothing about whether it is turbulent. That is what 合冲 adds,
+ * and it is often the more consequential reading: a decade full of the right
+ * element that 冲s the 日支 is not a smooth good decade, it is an eventful one.
+ *
+ * Kept bounded on purpose — the whole file's claim is that a reader can follow
+ * the score, so this is a modifier over the element base, capped at ±2, and
+ * every point it moves leaves a note. Where a note is added but no score moves,
+ * the relation is real but too minor to change the verdict — said, not scored.
+ *
+ * Only branch relations, and only those reaching a natal pillar. The palace
+ * decides the weight: the 日支 (self, and the spouse palace) and the 月支 (the
+ * 提纲, the chart's governing seat) are the ones a 冲 actually shakes; the 年
+ * and 时 branches are the outer edges.
+ */
+const CORE_POSITIONS = new Set(['日柱', '月柱']);
+const RELATION_CAP = 2;
+
+function scoreDecadeRelations(
+  chart: Chart,
+  stem: string,
+  branch: string,
+  fav: ReadonlySet<Element>,
+): { delta: number; notes: LocalizedText[] } {
+  const positioned = [...natalPillars(chart), { position: '大运', stem, branch }];
+  const rels = findRelations(positioned)
+    .filter(isBranchRelation)
+    .filter((r) => r.positions.includes('大运'));
+
+  const notes: LocalizedText[] = [];
+  let delta = 0;
+  const posZh: Record<string, string> = { 年柱: '年支', 月柱: '月支（提纲）', 日柱: '日支（自身/夫妻宫）', 时柱: '时支' };
+  const posEn: Record<string, string> = { 年柱: 'year branch', 月柱: 'month branch (the 提纲)', 日柱: 'day branch (self / spouse palace)', 时柱: 'hour branch' };
+
+  for (const r of rels) {
+    const targets = r.positions.filter((p) => p !== '大运');
+    const hitsCore = targets.some((p) => CORE_POSITIONS.has(p));
+    const targetZh = targets.map((p) => posZh[p] ?? p).join('、');
+    const targetEn = targets.map((p) => posEn[p] ?? p).join(', ');
+
+    if (r.kind === '六冲') {
+      // A 冲 to the 日支 or 月支 shakes the seat the chart is read from, and
+      // that is what makes a decade eventful. A 冲 to the outer 年/时 branches
+      // is real but does not define the decade's character — named, not scored.
+      if (hitsCore) {
+        delta -= 2;
+        notes.push(t(
+          `此运${branch}冲${targetZh}，主动荡变迁`,
+          `This decade's ${branch} clashes the ${targetEn} — an unsettled, shifting stretch`,
+        ));
+      } else {
+        notes.push(t(
+          `此运${branch}冲${targetZh}，边角有触动`,
+          `This decade's ${branch} clashes the ${targetEn} — stirs the edges of the chart`,
+        ));
+      }
+    } else if (r.kind === '三合' || r.kind === '三会' || r.kind === '六合') {
+      // A 合 binds, and binding is steadying more often than not. Its sign
+      // follows what it produces where that is clear — forming the 用神 helps,
+      // forming a 忌神 hinders — and where it transforms into nothing definite,
+      // a 合 onto a core palace still reads as a settling, cohering influence.
+      if (r.resultElement && fav.has(r.resultElement)) {
+        delta += 1;
+        notes.push(t(
+          `此运${targetZh}相合化${r.resultElement}，正是用神，主稳中有成`,
+          `This decade combines with the ${targetEn} into ${ELEMENT[r.resultElement]!.en}, ` +
+            `the favourable element — steadying, and things come together`,
+        ));
+      } else if (r.resultElement && !fav.has(r.resultElement)) {
+        delta -= 1;
+        notes.push(t(
+          `此运${targetZh}相合化${r.resultElement}，反为忌神，牵绊多`,
+          `This decade combines with the ${targetEn} into ${ELEMENT[r.resultElement]!.en}, ` +
+            `which the chart does not want — binding, and progress drags`,
+        ));
+      } else if (hitsCore) {
+        delta += 1;
+        notes.push(t(
+          `此运${targetZh}相合，主安定、多助力`,
+          `This decade combines with the ${targetEn} — a settling stretch, with support around you`,
+        ));
+      } else {
+        notes.push(t(
+          `此运${targetZh}相合，气机牵引`,
+          `This decade combines with the ${targetEn} — a pull at the edges of the chart`,
+        ));
+      }
+    } else if (r.kind === '半合') {
+      notes.push(t(
+        `此运${targetZh}半合，牵引较轻`,
+        `This decade half-combines with the ${targetEn} — a lighter pull`,
+      ));
+    } else if (r.kind === '相刑' || r.kind === '自刑') {
+      delta -= 1;
+      notes.push(t(
+        `此运${targetZh}相刑，主内耗、口舌或健康之扰`,
+        `This decade punishes the ${targetEn} — friction, disputes, or a drain on health`,
+      ));
+    } else {
+      // 相害 / 相破 — real blemishes, but not enough to move the verdict.
+      notes.push(t(
+        `此运与${targetZh}${r.kind === '相害' ? '相害' : '相破'}，小有嫌隙`,
+        `This decade ${r.kind === '相害' ? 'harms' : 'breaks'} the ${targetEn} — a minor snag`,
+      ));
+    }
+  }
+
+  // Bounded so 合冲 modulates the element base rather than overwhelming it.
+  return { delta: Math.max(-RELATION_CAP, Math.min(RELATION_CAP, delta)), notes };
+}
+
 function scoreDecades(chart: Chart, yongShen: YongShenAnalysis): DecadeOutlook[] {
   const fav = new Set(yongShen.favourable);
 
@@ -245,6 +360,11 @@ function scoreDecades(chart: Chart, yongShen: YongShenAnalysis): DecadeOutlook[]
         `Branch ${d.branch} is ${ELEMENT[branchEl]!.en} — not favourable`));
     }
 
+    // 合冲 with the natal chart — the character layer over element favourability.
+    const rel = scoreDecadeRelations(chart, d.stem, d.branch, fav);
+    score += rel.delta;
+    notes.push(...rel.notes);
+
     if (d.isVoid) {
       score -= 1;
       notes.push(t('此运落空亡，力量打折', 'This pillar falls void, which discounts its force'));
@@ -258,8 +378,9 @@ function scoreDecades(chart: Chart, yongShen: YongShenAnalysis): DecadeOutlook[]
       endYear: d.endYear,
       ganZhi: d.ganZhi,
       score,
-      // Range is -3..+4. 有利 needs at least one favourable pillar plus no
-      // drag; 不利 needs both pillars against.
+      // Range is -5..+6: element base -3..+4, plus a bounded 合冲 layer of ±2.
+      // 有利 wants favourable elements and no turbulence; a favourable decade
+      // that 冲s a core palace falls to 偏顺, which is the point of the layer.
       verdict: score >= 3 ? '有利' : score >= 1 ? '偏顺' : score >= -1 ? '平稳' : '不利',
       notes,
     } satisfies DecadeOutlook;
