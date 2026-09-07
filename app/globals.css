@@ -107,27 +107,57 @@ h2 {
 
 /* ---------- form ---------- */
 /* Single column until there is genuinely room. Two 165px columns forced a
-   native date picker into a box it does not fit. */
+   native date picker into a box it does not fit.
+
+   And `minmax(0, 1fr)`, not `1fr`. A bare `1fr` is `minmax(auto, 1fr)`, so the
+   track refuses to shrink below its content's min-content width — and a
+   native date or time input reports one: the widest its own picker text can
+   get. In Chinese that is `yyyy年mm月dd日` and `上午08:00`, wider than the
+   English placeholders this was laid out against, so the control pushed the
+   track past the form and out of the card. Letting the track go to zero and
+   capping the control at 100% keeps it inside on any width. */
 form {
-  display: grid; grid-template-columns: 1fr; gap: 14px;
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px;
   background: var(--surface);
   border: 1px solid var(--line); border-radius: var(--radius);
   padding: 16px;
 }
 .field-wide { grid-column: 1 / -1; }
+/* Grid and flex children default to min-width:auto, which is the same trap
+   one level down — the field wrapper has to be allowed to shrink too. */
+form > div { min-width: 0; }
 
 label {
   display: block; font-size: 12px; color: var(--text-dim);
   margin-bottom: 6px; letter-spacing: 0.02em;
 }
 input, select {
-  width: 100%; min-height: var(--tap);
+  width: 100%; max-width: 100%; min-width: 0; min-height: var(--tap);
   background: var(--ink); color: var(--text);
   border: 1px solid var(--line); border-radius: var(--radius-sm);
   padding: 10px 12px; font: inherit;
   /* 16px keeps iOS Safari from zooming the page on focus. */
   font-size: 16px;
   transition: border-color 0.15s ease;
+}
+/* iOS Safari gives date and time inputs their own inner layout: the value is
+   centred in a box sized to the control's intrinsic width, so once the control
+   is capped the text sits off-centre and clips at the right edge instead of
+   filling the field. Dropping the native appearance and left-aligning the
+   value makes them behave like the other fields. */
+input[type='date'], input[type='time'] {
+  -webkit-appearance: none; appearance: none;
+  display: block; text-align: left;
+}
+input[type='date']::-webkit-date-and-time-value,
+input[type='time']::-webkit-date-and-time-value {
+  text-align: left; margin: 0;
+}
+/* The picker glyph is a fixed-width element WebKit lays out after the value;
+   without a shrink guard it is what actually pushes the content over. */
+input[type='date']::-webkit-calendar-picker-indicator,
+input[type='time']::-webkit-calendar-picker-indicator {
+  flex: none; margin-left: auto; opacity: 0.55;
 }
 input:focus-visible, select:focus-visible,
 button:focus-visible, summary:focus-visible {
@@ -237,15 +267,36 @@ button:active:not(:disabled) { background: #b08e1f; }
 .el-水 { color: var(--water); }
 
 /* ---------- element balance ---------- */
+/* One row per 五行 rather than five segments of one bar. On a phone the bar
+   gave a 4% element about twelve pixels, and the label only fitted above 12%,
+   so the scarce elements — the ones a reading turns on — were unlabelled
+   slivers. Rows name all five and measure them from a shared left edge, which
+   is also the easier comparison at any width.
+   The three columns are declared on the container and each row is
+   `display: contents`, so names and percentages line up across rows. */
 .balance {
-  display: flex; height: 34px; border-radius: var(--radius-sm);
-  overflow: hidden; border: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px 10px;
 }
-.balance div {
-  display: flex; align-items: center; justify-content: center;
-  font-size: 11px; color: #12100e; font-weight: 600;
-  min-width: 0; overflow: hidden; white-space: nowrap;
+.bal { display: contents; }
+.bal-name { font-size: 13px; font-weight: 600; white-space: nowrap; }
+.bal-track {
+  height: 10px; border-radius: 999px;
+  background: var(--surface-2); overflow: hidden;
 }
+.bal-fill {
+  display: block; height: 100%; width: var(--pct); border-radius: 999px;
+}
+.bal-pct {
+  font-size: 12px; color: var(--text-dim); text-align: right;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+/* An absent 五行 is a real finding (五行缺), so it keeps its row and reads
+   as deliberately empty rather than dropping out of the list. */
+.bal.zero .bal-name { color: var(--text-faint); font-weight: 500; }
+.bal.zero .bal-pct { color: var(--text-faint); }
 .bg-木 { background: var(--wood); }
 .bg-火 { background: var(--fire); }
 .bg-土 { background: var(--earth); }
@@ -520,7 +571,7 @@ details.why[open] > summary::after { transform: rotate(-135deg) translateY(-1px)
 
 /* ---------- wider screens ---------- */
 @media (min-width: 480px) {
-  form { grid-template-columns: 1fr 1fr; }
+  form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .checks { flex-direction: row; gap: 22px; }
   .supply { grid-template-columns: 1fr 1fr; }
   .supply-side { flex-direction: column; align-items: center; text-align: center; gap: 4px; }
@@ -530,7 +581,7 @@ details.why[open] > summary::after { transform: rotate(-135deg) translateY(-1px)
 @media (min-width: 640px) {
   .wrap { padding: 34px 24px 88px; }
   h1 { font-size: 27px; }
-  form { grid-template-columns: repeat(4, 1fr); align-items: end; }
+  form { grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: end; }
   .field-wide { grid-column: 1 / -1; }
   .pillars { gap: 11px; }
   .pillar { padding: 16px 11px 14px; }

@@ -16,7 +16,10 @@
  * never translate — they are the chart itself.
  */
 
-import { useState, useRef, useEffect, useCallback, type ReactNode, type FormEvent } from 'react';
+import {
+  useState, useRef, useEffect, useCallback,
+  type ReactNode, type FormEvent, type CSSProperties,
+} from 'react';
 import type { Chart, Element, Pillar } from '../src/engine/types';
 import type { RenderedFinding } from '../src/analyzer/findings';
 import { formatNote, formatLuckStart, isCaveat } from '../src/i18n/notes';
@@ -559,14 +562,29 @@ export default function Page() {
 
           <section>
             <h2>{UI.balance[L]}</h2>
+            {/* Rows, not a stacked bar. Five segments sharing a phone's width
+                left the small ones a few pixels wide, and the label only fit
+                above 12% — so the elements you most want named, the scarce
+                ones, were the ones rendered as an unlabelled sliver. A row per
+                element names all five against a common baseline, and an
+                element at 0% now shows as 0% instead of vanishing, which is
+                the 五行缺 case people specifically look for. */}
             <div className="balance">
               {elements.map((e) => {
                 const pct = result.strength.elementPercent[e];
-                return pct > 0 ? (
-                  <div key={e} className={`bg-${e}`} style={{ width: `${pct}%` }}>
-                    {pct >= 12 ? `${ELEMENT[e]![L]} ${pct}%` : `${pct}%`}
+                return (
+                  <div
+                    key={e}
+                    className={pct > 0 ? 'bal' : 'bal zero'}
+                    style={{ '--pct': `${pct}%` } as CSSProperties}
+                  >
+                    <span className={`bal-name el-${e}`}>{ELEMENT[e]![L]}</span>
+                    <span className="bal-track">
+                      <span className={`bal-fill bg-${e}`} />
+                    </span>
+                    <span className="bal-pct">{pct}%</span>
                   </div>
-                ) : null;
+                );
               })}
             </div>
             <div className="card" style={{ marginTop: 10 }}>
