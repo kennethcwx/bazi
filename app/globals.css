@@ -25,7 +25,10 @@
   --line-soft: #262120;
   --text: #ece7de;
   --text-dim: #a49a8b;
-  --text-faint: #7b7268;
+  /* Lightened from #7b7268: the faint captions (9–13px) were 3.4–4.0:1 on the
+     three surfaces — below WCAG AA (4.5:1) for normal text. #94897b clears AA
+     on all three (4.7–5.5:1) while staying visibly fainter than --text-dim. */
+  --text-faint: #94897b;
   --gold: #c9a227;
   --gold-dim: #6f5c1c;
 
@@ -419,7 +422,7 @@ details.why[open] > summary::after { transform: rotate(-135deg) translateY(-1px)
   border: 1px solid var(--line); font-weight: 500; font-size: 14.5px;
   padding: 10px 8px;
 }
-.tabs button[aria-selected='true'] { background: var(--gold); color: #17130a; border-color: var(--gold); }
+.tabs button[aria-pressed='true'] { background: var(--gold); color: #17130a; border-color: var(--gold); }
 
 /* ---------- question buttons ---------- */
 .questions { display: flex; flex-direction: column; gap: 9px; margin-bottom: 16px; }

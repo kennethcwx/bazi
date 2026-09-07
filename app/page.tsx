@@ -679,10 +679,14 @@ export default function Page() {
 
           <section>
             <h2>{UI.reading[L]}</h2>
-            <div className="tabs" role="tablist">
-              <button role="tab" aria-selected={tab === 'relationship'}
+            {/* Toggle buttons, not a role="tab" widget: the tab pattern owes a
+                screen reader arrow-key navigation and an associated tabpanel,
+                and this control has neither (it switches a whole topic, not one
+                panel). aria-pressed is the honest, complete semantics here. */}
+            <div className="tabs" role="group" aria-label={UI.reading[L]}>
+              <button type="button" aria-pressed={tab === 'relationship'}
                 onClick={() => switchTab('relationship')}>{UI.relationships[L]}</button>
-              <button role="tab" aria-selected={tab === 'career'}
+              <button type="button" aria-pressed={tab === 'career'}
                 onClick={() => switchTab('career')}>{UI.career[L]}</button>
             </div>
 
