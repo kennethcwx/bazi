@@ -379,9 +379,14 @@ function scoreDecades(chart: Chart, yongShen: YongShenAnalysis): DecadeOutlook[]
       ganZhi: d.ganZhi,
       score,
       // Range is -5..+6: element base -3..+4, plus a bounded 合冲 layer of ±2.
-      // 有利 wants favourable elements and no turbulence; a favourable decade
-      // that 冲s a core palace falls to 偏顺, which is the point of the layer.
-      verdict: score >= 3 ? '有利' : score >= 1 ? '偏顺' : score >= -1 ? '平稳' : '不利',
+      //
+      // 不利 is reserved for a decade that is actively adverse — 忌 elements AND
+      // a real disruption on top (a core 冲 -2, a 刑, or 旬空). A decade that
+      // merely lacks the 用神 sits at the element base's -2 and reads as 平稳:
+      // absence of help is not the presence of harm, and calling an unremarkable
+      // decade "difficult" makes the whole timeline read as relentless and
+      // untrustworthy. So 平稳 runs down to -2, and 不利 begins at -3.
+      verdict: score >= 3 ? '有利' : score >= 1 ? '偏顺' : score >= -2 ? '平稳' : '不利',
       notes,
     } satisfies DecadeOutlook;
   });
