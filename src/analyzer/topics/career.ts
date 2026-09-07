@@ -22,6 +22,7 @@ import {
 } from '../../i18n/glossary';
 import { elementOfBranch, elementOfStem, type TenGodFamily } from '../elements';
 import { finding, type Finding } from '../findings';
+import { rulingStem } from '../siling';
 import { findShenSha } from '../shensha';
 import type { StrengthAnalysis } from '../strength';
 import type { YongShenAnalysis } from '../yongshen';
@@ -101,28 +102,62 @@ export interface CareerAnalysis {
 }
 
 /**
- * 格局 from the 月令.
+ * 格局 from the 月令 — 月令人元透干取格.
  *
- * The month branch's 本气 gives the structure. 比肩 and 劫财 do not form a 格
- * in the ordinary sense — they are named 建禄 and 羊刃 instead.
+ * Standard 子平 does not read the 本气 and stop. It looks at all three of the
+ * month branch's 藏干 and takes the one that is 透干 — exposed in a visible
+ * heavenly stem — because an exposed 人元 is the one actually able to act. Only
+ * when none is exposed does the 本气 stand in.
+ *
+ * The 日干 does not count as an exposure. It is the subject the whole chart is
+ * measured against, not evidence about the month.
+ *
+ * 比肩 and 劫财 do not form a 格 in the ordinary sense; they are named for the
+ * position instead. 羊刃 is classically a 阳干 phenomenon (甲→卯, 丙戊→午,
+ * 庚→酉, 壬→子) and most schools hold 阴干无刃, so a 阴干 day master with 劫财
+ * in the month is 月劫格, not 羊刃格.
  */
 function determineStructure(chart: Chart): { name: string; exposed: boolean; tenGod: TenGod } {
-  const monthMain = chart.pillars.month.hiddenStems.find((h) => h.role === 'main');
-  const tenGod: TenGod = monthMain?.tenGod ?? '比肩';
+  const hidden = chart.pillars.month.hiddenStems;
+  const monthMain = hidden.find((h) => h.role === 'main');
 
-  const name =
-    tenGod === '比肩' ? '建禄格'
-    : tenGod === '劫财' ? '羊刃格'
-    : `${tenGod}格`;
-
-  // 透干: the structure's stem also appears in a visible stem, which makes the
-  // structure "clean" and the person's direction clearer.
-  const stems = [
+  // 日干 excluded on purpose — see above.
+  const visibleStems = [
     chart.pillars.year.stem,
     chart.pillars.month.stem,
     ...(chart.pillars.hour ? [chart.pillars.hour.stem] : []),
   ];
-  const exposed = monthMain ? stems.includes(monthMain.stem) : false;
+
+  const ruler = rulingStem(
+    chart.pillars.month.branch,
+    chart.monthTermDays,
+    hidden,
+  );
+
+  // Among the exposed 人元, depth of role decides first: 本气透 takes the 格
+  // even when a 中气 is also exposed. That ordering is the common textbook rule
+  // (本气透则取本气；本气不透而中气透则取中气), and putting 司令 above it would
+  // let the day-count override the branch's own principal stem. 司令 is the
+  // tie-break, reusing what 旺衰 already derived rather than re-deriving it.
+  const ROLE_RANK = { main: 0, middle: 1, residual: 2 } as const;
+  const revealed = hidden
+    .filter((h) => visibleStems.includes(h.stem))
+    .sort((a, b) =>
+      ROLE_RANK[a.role] - ROLE_RANK[b.role]
+      || (a.stem === ruler.stem ? -1 : 0) - (b.stem === ruler.stem ? -1 : 0),
+    );
+
+  const chosen = revealed[0] ?? monthMain;
+  const tenGod: TenGod = chosen?.tenGod ?? '比肩';
+
+  const name =
+    tenGod === '比肩' ? '建禄格'
+    : tenGod === '劫财' ? (chart.dayMasterYinYang === '阳' ? '羊刃格' : '月劫格')
+    : `${tenGod}格`;
+
+  // True when the structure was named from an exposed 人元 rather than falling
+  // back to the 本气 — which is what this flag was always reaching for.
+  const exposed = revealed.length > 0;
 
   return { name, exposed, tenGod };
 }

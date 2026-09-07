@@ -266,6 +266,12 @@ button:active:not(:disabled) { background: #b08e1f; }
 .el-金 { color: var(--metal); }
 .el-水 { color: var(--water); }
 
+/* A one-line note under a heading, for saying what scale a number is on. */
+.scale-note {
+  margin: -6px 0 12px; font-size: 12px; line-height: 1.5;
+  color: var(--text-faint);
+}
+
 /* ---------- element balance ---------- */
 /* One row per 五行 rather than five segments of one bar. On a phone the bar
    gave a 4% element about twelve pixels, and the label only fitted above 12%,

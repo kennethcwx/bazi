@@ -22,24 +22,14 @@ import type { Chart, TenGod } from '../../engine/types';
 import { t, type LocalizedText } from '../../i18n/text';
 import { RELATION, TEN_GOD } from '../../i18n/glossary';
 import { elementOfBranch, elementOfStem, tenGodFamily, FAMILY_OF } from '../elements';
-import { findRelations, isBranchRelation, type PositionedPillar, type RelationKind } from '../relations';
+import {
+  findRelations, isBranchRelation, natalPillars, RELATION_WEIGHT,
+  type PositionedPillar,
+} from '../relations';
 
-/**
- * Not every relation carries the same weight, and treating them alike is how a
- * day forecast turns into noise.
- *
- * 六合, 三合 and 冲 are the ones classical practice actually reads on a day.
- * 害, 破 and 自刑 are minor blemishes — real, but not enough on their own to
- * say anything about a day. Weighted so that a minor relation alone leaves the
- * day quiet, which is what it should be.
- */
-export const RELATION_WEIGHT: Record<RelationKind, number> = {
-  六合: 3, 三合: 3, 三会: 3, 六冲: 3,
-  半合: 2, 相刑: 2,
-  相害: 1, 相破: 1, 自刑: 1,
-  // Stem relations never reach the palace; filtered out before this is used.
-  天干五合: 0, 天干相冲: 0,
-};
+// 旺衰 grades on the same table now, so it lives in relations.ts. Re-exported
+// here because joint.ts and the tests already import them from this module.
+export { natalPillars, RELATION_WEIGHT };
 
 /** 桃花 lookup, duplicated narrowly here to keep the forecast self-contained. */
 const PEACH: Record<string, string> = {
@@ -93,18 +83,6 @@ export interface ForecastSummary {
 
 const iso = (d: Date) =>
   `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
-
-/** The natal pillars of a chart, in the shape the relation finder wants. */
-export function natalPillars(chart: Chart): PositionedPillar[] {
-  return [
-    { position: '年柱', stem: chart.pillars.year.stem, branch: chart.pillars.year.branch },
-    { position: '月柱', stem: chart.pillars.month.stem, branch: chart.pillars.month.branch },
-    { position: '日柱', stem: chart.pillars.day.stem, branch: chart.pillars.day.branch },
-    ...(chart.pillars.hour
-      ? [{ position: '时柱', stem: chart.pillars.hour.stem, branch: chart.pillars.hour.branch }]
-      : []),
-  ];
-}
 
 /**
  * Score one day against the natal chart.

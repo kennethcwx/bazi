@@ -10,9 +10,16 @@
  * This makes the check cheap. It prints each fixture in a layout you can hold
  * beside 问真, and diffs whatever you transcribe back into the fixture file.
  *
- * Only three fields need transcribing: the four pillars, the 起运 age and the
- * first 大运. 藏干, 十神, 纳音 and 星运 all follow deterministically once the
- * pillars agree, and the invariant suite already covers those derivations.
+ * Only the four pillars, the 起运 span and the first 大运 need transcribing.
+ * 藏干, 十神, 纳音 and 星运 all follow deterministically once the pillars agree,
+ * and the invariant suite already covers those derivations.
+ *
+ * ⚠️ 起运 and the 大运 ages are on DIFFERENT SCALES, and mixing them up reads as
+ * a disagreement that is not there. 起运 is an elapsed span from birth — 7年2个月.
+ * The age against each 大运 is 虚岁 in the calendar year the pillar is entered,
+ * so the same chart shows 起运 7年2个月 and a first 大运 at 9. Both are ordinary
+ * conventions. Each is printed here with its scale named, and transcribed into
+ * its own field, so a real mismatch cannot hide behind a units confusion.
  *
  *   npm run verify              print every fixture for comparison
  *   npm run verify -- --check   diff only the ones you have filled in
@@ -26,8 +33,14 @@ import type { BirthInput, Chart } from './engine/types';
 
 interface WenZhen {
   pillars: string;
-  luckStartAge: number;
+  /** 起运 as an elapsed span, e.g. 7 years 2 months. Not an age. */
+  luckStartYears: number;
+  luckStartMonths: number;
   firstLuck: string;
+  /** The age 问真 prints against the first 大运, if it shows one. Optional
+   *  because the age scale is a convention and this field is the one most
+   *  likely to differ for a reason that is not an error. */
+  firstLuckAge?: number | null;
 }
 interface Case {
   label: string;
@@ -69,13 +82,16 @@ function show(c: Case, index: number): void {
   console.log('');
   console.log(`  ${pad('四柱', 10)}${pillarsOf(chart)}`);
   console.log(`  ${pad('起运', 10)}${formatLuckStart(chart.luckStart, chart.luckForward, 'zh')}`);
-  console.log(`  ${pad('大运', 10)}${chart.decades.slice(0, 4).map((d) => `${d.startAge}:${d.ganZhi}`).join('  ')}`);
+  console.log(`  ${pad('大运', 10)}${chart.decades.slice(0, 4)
+    .map((d) => `${d.ganZhi} ${d.startAge}虚岁(${d.startYear}年)`).join('  ')}`);
+  console.log(`  ${pad('', 10)}↑ 虚岁，与上面的「起运」不同尺度，勿直接相比。`);
   console.log(`  ${pad('月令司令', 10)}距节 ${chart.monthTermDays.toFixed(1)} 天`);
 
   if (!c.wenzhen) {
     console.log('\n  问真 says — paste into the fixture:');
     const shape = c.birth.hour === undefined ? '__ __ __ --' : '__ __ __ __';
-    console.log(`    "wenzhen": { "pillars": "${shape}", "luckStartAge": 0, "firstLuck": "__" }`);
+    console.log(`    "wenzhen": { "pillars": "${shape}", "luckStartYears": 0, ` +
+      `"luckStartMonths": 0, "firstLuck": "__", "firstLuckAge": null }`);
   }
 }
 
@@ -94,9 +110,23 @@ function diff(c: Case): { label: string; diffs: Diff[] } | null {
       diffs.push({ field: names[i]!, ours: ours[i] ?? '--', theirs: theirs[i] ?? '--' });
     }
   }
-  const startAge = chart.decades[0]?.startAge ?? 0;
-  if (startAge !== c.wenzhen.luckStartAge) {
-    diffs.push({ field: '起运', ours: String(startAge), theirs: String(c.wenzhen.luckStartAge) });
+  // Compared against the ELAPSED span, not the 大运 age. Comparing 起运 to
+  // decades[0].startAge was the old bug: two different scales, so almost every
+  // fixture would have reported a mismatch that was never there.
+  const w = c.wenzhen;
+  if (chart.luckStart.years !== w.luckStartYears
+      || chart.luckStart.months !== w.luckStartMonths) {
+    diffs.push({
+      field: '起运',
+      ours: `${chart.luckStart.years}年${chart.luckStart.months}个月`,
+      theirs: `${w.luckStartYears}年${w.luckStartMonths}个月`,
+    });
+  }
+  if (w.firstLuckAge != null) {
+    const startAge = chart.decades[0]?.startAge ?? 0;
+    if (startAge !== w.firstLuckAge) {
+      diffs.push({ field: '大运首步虚岁', ours: String(startAge), theirs: String(w.firstLuckAge) });
+    }
   }
   const first = chart.decades[0]?.ganZhi ?? '';
   if (first !== c.wenzhen.firstLuck) {

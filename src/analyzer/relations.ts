@@ -10,7 +10,7 @@
  * serves the natal chart alone and the natal chart plus incoming luck pillars.
  */
 
-import type { Element } from '../engine/types';
+import type { Chart, Element } from '../engine/types';
 
 export interface PositionedPillar {
   /** 年 / 月 / 日 / 时 / 大运 / 流年 — free-form so luck pillars can join. */
@@ -331,6 +331,37 @@ function resolveOverlaps(relations: readonly Relation[]): Relation[] {
     if (!extra || extra.length === 0) return r;
     return { ...r, label: `${r.label}（兼${extra.join('、')}，以合为主）` };
   });
+}
+
+/**
+ * How much weight each relation carries.
+ *
+ * 六合, 三合 and 冲 are the ones classical practice actually reads. 害, 破 and
+ * 自刑 are minor blemishes — real, but not enough on their own to say anything.
+ * Graded so a minor relation alone leaves things where it found them.
+ *
+ * Lives here rather than in a topic module because three callers now grade on
+ * it: the 流日 forecast, the joint hour bands, and the 旺衰 weighting. One
+ * table, so a change to what counts as major reaches all three.
+ */
+export const RELATION_WEIGHT: Record<RelationKind, number> = {
+  六合: 3, 三合: 3, 三会: 3, 六冲: 3,
+  半合: 2, 相刑: 2,
+  相害: 1, 相破: 1, 自刑: 1,
+  // Stem relations never reach a branch; filtered out before this is used.
+  天干五合: 0, 天干相冲: 0,
+};
+
+/** The natal pillars of a chart, in the shape the relation finder wants. */
+export function natalPillars(chart: Chart): PositionedPillar[] {
+  return [
+    { position: '年柱', stem: chart.pillars.year.stem, branch: chart.pillars.year.branch },
+    { position: '月柱', stem: chart.pillars.month.stem, branch: chart.pillars.month.branch },
+    { position: '日柱', stem: chart.pillars.day.stem, branch: chart.pillars.day.branch },
+    ...(chart.pillars.hour
+      ? [{ position: '时柱', stem: chart.pillars.hour.stem, branch: chart.pillars.hour.branch }]
+      : []),
+  ];
 }
 
 /** Stem-level relations. Everything else acts on branches, and the difference

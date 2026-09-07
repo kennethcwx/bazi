@@ -19,7 +19,13 @@ import type { BirthInput, Chart } from '../src/engine/types';
 interface Case {
   label: string;
   birth: BirthInput;
-  wenzhen: { pillars: string; luckStartAge: number; firstLuck: string } | null;
+  wenzhen: {
+    pillars: string;
+    luckStartYears: number;
+    luckStartMonths: number;
+    firstLuck: string;
+    firstLuckAge?: number | null;
+  } | null;
 }
 
 const cases: Case[] = JSON.parse(
@@ -50,9 +56,23 @@ describe('问真八字 agreement', () => {
         if (ours !== w.pillars.trim()) {
           failures.push(`${c.label}: pillars ours "${ours}" vs 问真 "${w.pillars}"`);
         }
-        const startAge = chart.decades[0]?.startAge ?? 0;
-        if (startAge !== w.luckStartAge) {
-          failures.push(`${c.label}: 起运 ours ${startAge} vs 问真 ${w.luckStartAge}`);
+        // 起运 is an elapsed span; the age on a 大运 is 虚岁 in the year it is
+        // entered. Comparing one to the other reports mismatches that are only
+        // a difference of units.
+        if (chart.luckStart.years !== w.luckStartYears
+            || chart.luckStart.months !== w.luckStartMonths) {
+          failures.push(
+            `${c.label}: 起运 ours ${chart.luckStart.years}年${chart.luckStart.months}个月 ` +
+            `vs 问真 ${w.luckStartYears}年${w.luckStartMonths}个月`,
+          );
+        }
+        if (w.firstLuckAge != null) {
+          const startAge = chart.decades[0]?.startAge ?? 0;
+          if (startAge !== w.firstLuckAge) {
+            failures.push(
+              `${c.label}: 大运首步虚岁 ours ${startAge} vs 问真 ${w.firstLuckAge}`,
+            );
+          }
         }
         const first = chart.decades[0]?.ganZhi ?? '';
         if (first !== w.firstLuck) {

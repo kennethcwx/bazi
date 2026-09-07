@@ -37,6 +37,13 @@ export const UI = {
   basis: t('排盘依据', 'How this was cast'),
   balance: t('五行强弱', 'Element balance'),
   luck: t('大运', 'Luck pillars'),
+  // 起运 is an elapsed span from birth; the age on a pillar is 虚岁 in the
+  // year it is entered. Two scales, so the one shown here is named.
+  luckAgeScale: t(
+    '每步标示交运虚岁与年份；与「起运」的年月日不同尺度。',
+    'Each pillar shows the 虚岁 age and calendar year it is entered — a '
+      + 'different scale from the elapsed 起运 span above.',
+  ),
   reading: t('解读', 'Reading'),
   findings: t('已算出的结论', 'Computed findings'),
 

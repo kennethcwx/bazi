@@ -50,13 +50,26 @@ const pad = (s: string, w: number) => {
   return s + ' '.repeat(Math.max(0, w - width));
 };
 
+/**
+ * One column of the chart table.
+ *
+ * 藏干 get a line each rather than being joined onto one. Three of them read
+ * `甲伤官 丙正财 戊正官` — twenty display columns of CJK in a cell sized for
+ * sixteen, so `pad()` returned nothing and the cell bled into its neighbour.
+ * Stacking is what the web UI does, and it removes the width guess entirely.
+ */
+const HIDDEN_ROWS = 3;
+
 function pillarColumn(p: Pillar | null, label: string): string[] {
-  if (!p) return [label, '—', '—', '(time unknown)', '', '', ''];
+  if (!p) {
+    return [label, '—', '—', ...Array<string>(HIDDEN_ROWS).fill(''), '(时辰未知)', '', ''];
+  }
+  const hidden = p.hiddenStems.map((h) => `${h.stem}${h.tenGod}`);
   return [
     label,
     `${p.stem}${p.branch}`,
     p.tenGod ?? '日主',
-    p.hiddenStems.map((h) => `${h.stem}${h.tenGod}`).join(' '),
+    ...Array.from({ length: HIDDEN_ROWS }, (_, i) => hidden[i] ?? ''),
     p.naYin,
     p.terrain,
     p.isVoid ? '空亡' : '',
@@ -86,7 +99,7 @@ function main() {
     pillarColumn(c.pillars.day, '日柱'),
     pillarColumn(c.pillars.hour, '时柱'),
   ];
-  const rowLabels = ['', '干支', '十神', '藏干', '纳音', '长生', ''];
+  const rowLabels = ['', '干支', '十神', '藏干', '', '', '纳音', '长生', ''];
 
   console.log('');
   for (let r = 0; r < rowLabels.length; r++) {

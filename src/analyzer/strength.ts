@@ -18,9 +18,9 @@
  * a month-branch concept.
  */
 
-import type { Chart, Element, Pillar } from '../engine/types';
+import type { Chart, Element, Pillar, PillarPosition } from '../engine/types';
 import { t, type LocalizedText } from '../i18n/text';
-import { ELEMENT, TEN_GOD_FAMILY, YIN_YANG } from '../i18n/glossary';
+import { ELEMENT, RELATION, TEN_GOD_FAMILY, YIN_YANG } from '../i18n/glossary';
 import {
   ELEMENTS,
   isSupporting,
@@ -28,6 +28,10 @@ import {
   type TenGodFamily,
 } from './elements';
 import { rulingStem, silingShares, type SiLing } from './siling';
+import {
+  findRelations, isBranchRelation, natalPillars, RELATION_WEIGHT,
+  type RelationKind,
+} from './relations';
 
 /** Weight of each stem position. The day stem is the subject, not evidence. */
 const STEM_WEIGHT = { year: 10, month: 12, day: 0, hour: 10 } as const;
@@ -66,6 +70,11 @@ export interface StrengthAnalysis {
   readonly hasAllies: boolean;
   /** Set when support is so scarce that a 从格 reading is plausible. */
   readonly followingCandidate: TenGodFamily | null;
+  /** Every branch whose weight was moved by 刑冲合会, and by how much. Shown,
+   *  not hidden — an unexplained discount reads as a bug. */
+  readonly relationAdjustments: readonly RelationAdjustment[];
+  /** 比劫 + 印 before relations were applied, so the shift is visible. */
+  readonly supportPercentBeforeRelations: number;
   /** Reduced confidence when the hour pillar is missing: a quarter of the
    *  evidence is absent, and it is not evenly distributed. */
   readonly confidence: 'normal' | 'reduced-no-hour';
@@ -78,7 +87,100 @@ interface Contribution {
   source: string;
 }
 
-function collect(chart: Chart, siLing: SiLing): Contribution[] {
+/** Position label used by the relation finder, per pillar. */
+const RELATION_POSITION: Record<PillarPosition, string> = {
+  year: '年柱', month: '月柱', day: '日柱', hour: '时柱',
+};
+
+/** The same positions in English, for the reasoning list. */
+const POSITION_EN: Record<string, string> = {
+  年柱: 'year', 月柱: 'month', 日柱: 'day', 时柱: 'hour',
+};
+
+/**
+ * How much of its weight a branch keeps once 刑冲合会 are accounted for.
+ *
+ * A branch does not sit in a chart in isolation. A 月令 that is 冲开 cannot
+ * command the way an untouched one does, and a branch tied up in a 合 is
+ * committed elsewhere. Reading the weighting without this is the single place
+ * this analyzer diverged most from ordinary practice, because 旺衰 decides
+ * 用神 and 用神 decides the whole reading.
+ *
+ * Graded on RELATION_WEIGHT, the same table the 流日 forecast and the joint
+ * hour bands already grade on — one definition of what counts as major.
+ *
+ * 冲 costs more than 合. A 合 does not destroy a branch, it occupies it, so the
+ * discount is milder. And note what is deliberately NOT done here: a 合 is
+ * never transformed into its 化 element. A real 化 needs the 化神 exposed in a
+ * stem and the 月令 behind it; asserting one on thinner evidence would put a
+ * fabricated element into the very number the reading rests on.
+ */
+const CLASH_COST = 0.10;
+const COMBINE_COST = 0.05;
+
+/** No branch may lose more than this share of its weight, however many
+ *  relations land on it. Relations modulate the weighting; they do not become
+ *  it, and a branch buried in minor relations must not vanish. */
+const MAX_BRANCH_DISCOUNT = 0.35;
+
+export interface RelationAdjustment {
+  readonly position: string;
+  readonly branch: string;
+  /** Relation labels that acted on this branch, as the Chinese chart writes
+   *  them — 亥子丑三会水局. Kept for the Chinese reasoning and the audit trail. */
+  readonly relations: readonly string[];
+  /** The same relations as kinds, so English prose can name them from the
+   *  glossary. Pasting the Chinese label into an English sentence is what the
+   *  bilingual guard is there to catch. */
+  readonly kinds: readonly RelationKind[];
+  /** Multiplier applied to the branch's weight, e.g. 0.8. */
+  readonly factor: number;
+}
+
+/**
+ * Weight kept by each branch after its relations are counted.
+ *
+ * Returned rather than applied in place so the reasoning list can name every
+ * adjustment: a discount the reader cannot see is indistinguishable from a bug.
+ */
+function branchFactors(chart: Chart): Map<PillarPosition, RelationAdjustment> {
+  const relations = findRelations(natalPillars(chart)).filter(isBranchRelation);
+  const out = new Map<PillarPosition, RelationAdjustment>();
+
+  const positions: readonly PillarPosition[] = ['year', 'month', 'day', 'hour'];
+  for (const position of positions) {
+    const pillar = chart.pillars[position];
+    if (!pillar) continue;
+
+    const label = RELATION_POSITION[position];
+    const hits = relations.filter((r) => r.positions.includes(label));
+    if (hits.length === 0) continue;
+
+    let discount = 0;
+    for (const r of hits) {
+      const grade = RELATION_WEIGHT[r.kind];
+      if (grade === 0) continue;
+      discount += grade * (r.polarity === 'disturbing' ? CLASH_COST : COMBINE_COST);
+    }
+    discount = Math.min(discount, MAX_BRANCH_DISCOUNT);
+    if (discount === 0) continue;
+
+    out.set(position, {
+      position: label,
+      branch: pillar.branch,
+      relations: hits.map((r) => r.label),
+      kinds: hits.map((r) => r.kind),
+      factor: 1 - discount,
+    });
+  }
+  return out;
+}
+
+function collect(
+  chart: Chart,
+  siLing: SiLing,
+  factors: Map<PillarPosition, RelationAdjustment>,
+): Contribution[] {
   const out: Contribution[] = [];
   const monthShares = silingShares(chart.pillars.month.hiddenStems, siLing.stem);
   const pillars: readonly (Pillar | null)[] = [
@@ -93,7 +195,10 @@ function collect(chart: Chart, siLing: SiLing): Contribution[] {
       out.push({ element: p.stemElement, weight: stemWeight, source: `${p.position}干 ${p.stem}` });
     }
 
-    const branchWeight = BRANCH_WEIGHT[p.position];
+    // Relations act on branches. A stem clash is real but it does not reach
+    // into the branch, which is where the day master's rooting is measured.
+    const factor = factors.get(p.position)?.factor ?? 1;
+    const branchWeight = BRANCH_WEIGHT[p.position] * factor;
     for (const h of p.hiddenStems) {
       // 司令 governs the month branch only; elsewhere role is the right proxy.
       const share = p.position === 'month'
@@ -115,7 +220,8 @@ export function analyzeStrength(chart: Chart): StrengthAnalysis {
     chart.monthTermDays,
     chart.pillars.month.hiddenStems,
   );
-  const contributions = collect(chart, siLing);
+  const adjustments = branchFactors(chart);
+  const contributions = collect(chart, siLing, adjustments);
   const total = contributions.reduce((s, c) => s + c.weight, 0);
 
   const elementRaw = Object.fromEntries(ELEMENTS.map((e) => [e, 0])) as Record<Element, number>;
@@ -141,6 +247,20 @@ export function analyzeStrength(chart: Chart): StrengthAnalysis {
   }
 
   const supportPercent = round1(familyPercent['比劫'] + familyPercent['印']);
+
+  // The same sum with every branch at full weight. Computed so the reasoning
+  // can state what the relations actually moved, rather than asserting that
+  // they were considered.
+  const supportPercentBeforeRelations = (() => {
+    if (adjustments.size === 0) return supportPercent;
+    const plain = collect(chart, siLing, new Map());
+    const plainTotal = plain.reduce((s, c) => s + c.weight, 0);
+    let support = 0;
+    for (const c of plain) {
+      if (isSupporting(tenGodFamily(dm, c.element))) support += c.weight;
+    }
+    return round1((support / plainTotal) * 100);
+  })();
 
   const monthRuler = chart.pillars.month.hiddenStems.find((h) => h.stem === siLing.stem);
   const dayMain = chart.pillars.day.hiddenStems.find((h) => h.role === 'main');
@@ -233,6 +353,32 @@ export function analyzeStrength(chart: Chart): StrengthAnalysis {
     ),
   ];
 
+  // Named before the verdict is justified, because a discount the reader cannot
+  // see is indistinguishable from a bug in the number above it.
+  for (const a of adjustments.values()) {
+    const pct = Math.round((1 - a.factor) * 100);
+    // English names the relation KIND from the glossary; the Chinese label
+    // (亥子丑三会水局) is chart notation and does not belong in English prose.
+    // English names only. The guard in test/bilingual.test.ts treats 会 as a
+    // Chinese function word, so 三会 cannot ride along in parentheses — and the
+    // auditable characters, the branches themselves, are already in the line.
+    const kindsEn = [...new Set(a.kinds)]
+      .map((k) => RELATION[k]?.en ?? k)
+      .join(', ');
+    reasoning.splice(reasoning.length - 1, 0, t(
+      `${a.position} ${a.branch} 逢${a.relations.join('、')}，力量按 ${pct}% 折减。`,
+      `The ${POSITION_EN[a.position] ?? a.position} branch ${a.branch} is caught by ` +
+        `${kindsEn}, so its weight is discounted by ${pct}%.`,
+    ));
+  }
+  if (adjustments.size > 0 && supportPercentBeforeRelations !== supportPercent) {
+    reasoning.splice(reasoning.length - 1, 0, t(
+      `刑冲合会计入后，帮身由 ${supportPercentBeforeRelations}% 变为 ${supportPercent}%。`,
+      `With those relations counted, support moves from ` +
+        `${supportPercentBeforeRelations}% to ${supportPercent}%.`,
+    ));
+  }
+
   if (followingCandidate) {
     reasoning.push(t(
       `⚠️ 日主无根且${followingCandidate}极旺，可能成从格。从格与扶抑取用神相反，` +
@@ -262,6 +408,8 @@ export function analyzeStrength(chart: Chart): StrengthAnalysis {
     hasDaySeat,
     hasAllies,
     followingCandidate,
+    relationAdjustments: [...adjustments.values()],
+    supportPercentBeforeRelations,
     confidence: chart.hourKnown ? 'normal' : 'reduced-no-hour',
     reasoning,
   };

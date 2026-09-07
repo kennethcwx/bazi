@@ -14,6 +14,19 @@ import { analyzeRelationship, type RelationshipAnalysis } from './topics/relatio
 import { analyzeCareer, type CareerAnalysis } from './topics/career';
 import { applicable, type Finding, type Topic } from './findings';
 
+/**
+ * Bump whenever a change to L2 alters the findings a chart produces.
+ *
+ * A reading is cached on the chart hash, and `chartHash` covers L1 only — the
+ * charted moment, gender and conventions. Change the analyzer without changing
+ * this and a warm instance keeps serving prose grounded in findings that no
+ * longer exist, while the UI renders the new ones beside it. Citations that do
+ * not match their evidence is the one failure this product cannot absorb.
+ *
+ * v2: 旺衰 counts 刑冲合会; 格局 taken by 月令人元透干; 阴干 no longer 羊刃格.
+ */
+export const ANALYZER_VERSION = 'v2';
+
 export interface Analysis {
   readonly chart: Chart;
   readonly strength: StrengthAnalysis;

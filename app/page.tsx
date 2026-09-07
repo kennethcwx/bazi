@@ -631,6 +631,7 @@ export default function Page() {
 
           <section>
             <h2>{UI.luck[L]}</h2>
+            <p className="scale-note">{UI.luckAgeScale[L]}</p>
             <div className="luck-scroll">
               <div className="luck">
                 {result.career.decades.map((d) => (

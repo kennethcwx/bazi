@@ -161,6 +161,7 @@ export const TERM: Record<string, LocalizedText> = {
 export const STRUCTURE: Record<string, LocalizedText> = {
   建禄格: t('建禄格', 'Prosperity Structure'),
   羊刃格: t('羊刃格', 'Yang Blade Structure'),
+  月劫格: t('月劫格', 'Month Rob Wealth Structure'),
   正财格: t('正财格', 'Direct Wealth Structure'),
   偏财格: t('偏财格', 'Indirect Wealth Structure'),
   正官格: t('正官格', 'Direct Officer Structure'),

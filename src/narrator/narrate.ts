@@ -16,7 +16,7 @@
  * needs to survive a redeploy.
  */
 
-import type { Analysis } from '../analyzer/index';
+import { ANALYZER_VERSION, type Analysis } from '../analyzer/index';
 import {
   PROMPT_VERSION,
   buildUserPrompt,
@@ -55,9 +55,14 @@ export { providerStatus };
 const CACHE_LIMIT = 300;
 const cache = new Map<string, Reading>();
 
+/** ANALYZER_VERSION is in here on purpose: chartHash is L1-only, so without it
+ *  an analyzer change leaves cached prose citing findings that have moved. */
 const cacheKey = (
   analysis: Analysis, template: Template, locale: Locale, source: ReadingSource,
-): string => `${analysis.chart.chartHash}:${template.id}:${locale}:${source}:${PROMPT_VERSION}`;
+): string => `${analysis.chart.chartHash}:${template.id}:${locale}:${source}` +
+  `:${PROMPT_VERSION}:${ANALYZER_VERSION}`;
+
+export { cacheKey as __cacheKeyForTest };
 
 function remember(key: string, reading: Reading): void {
   // Insertion-ordered Map: the first key is the oldest, so this is an LRU-ish
