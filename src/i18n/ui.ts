@@ -44,6 +44,16 @@ export const UI = {
     'Each pillar shows the 虚岁 age and calendar year it is entered — a '
       + 'different scale from the elapsed 起运 span above.',
   ),
+  annual: t('流年', 'Annual pillars'),
+  // The 流年 band shows the years of the 大运 currently in force (or the coming
+  // decade if 起运 has not yet begun), so it reads as "this luck period, year
+  // by year", the way a practitioner scans it.
+  annualNote: t(
+    '当前大运内逐年流年，每年标示虚岁、干支与十神；本年高亮。',
+    'Each year of the luck pillar currently in force — 虚岁 age, 干支 and '
+      + 'the Ten God it brings; the present year is highlighted.',
+  ),
+  annualNow: t('今年', 'this year'),
   reading: t('解读', 'Reading'),
   findings: t('已算出的结论', 'Computed findings'),
 

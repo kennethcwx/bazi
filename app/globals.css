@@ -247,7 +247,10 @@ button:active:not(:disabled) { background: #b08e1f; }
   font-size: clamp(28px, 9vw, 42px); line-height: 1.1; margin: 4px 0 7px;
 }
 .pillar .hidden { font-size: 11px; color: var(--text-dim); line-height: 1.6; }
-.pillar .hidden div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 藏干 十神 names wrap rather than clip — the long English terms (Indirect
+   Wealth, Hurting Officer) do not fit a 4-across column on a phone, and a
+   clipped audit trail is unreadable, which defeats the point of showing it. */
+.pillar .hidden div { white-space: normal; overflow-wrap: break-word; }
 .pillar .meta {
   font-size: 10px; color: var(--text-faint); margin-top: 8px; line-height: 1.5;
   /* Never break-all: it splits English mid-word into "Illnes / s". */
@@ -390,6 +393,24 @@ details.why[open] > summary::after { transform: rotate(-135deg) translateY(-1px)
 .v-平稳 .bar { background: var(--line); }
 .v-不利 .bar { background: var(--fire); opacity: 0.7; }
 .v-有利 { border-color: rgba(201, 162, 39, 0.45); }
+
+/* ---------- 流年 band ---------- */
+.annual { display: grid; grid-auto-flow: column; grid-auto-columns: 64px; gap: 6px; }
+.annual-cell {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 9px 4px; text-align: center;
+}
+.annual-cell .age { font-size: 10.5px; color: var(--text-faint); }
+.annual-cell .gz { font-family: var(--serif); font-size: 16px; margin: 3px 0; }
+.annual-cell .tg {
+  font-size: 10px; color: var(--text-dim); letter-spacing: 0.01em;
+  line-height: 1.35; margin-top: 3px; overflow-wrap: break-word;
+}
+.annual-cell .tg.dim { color: var(--text-faint); }
+.annual-cell.now { border-color: var(--gold); background: #1e1a16; }
+.annual-cell .now-tag {
+  font-size: 9.5px; color: var(--gold); letter-spacing: 0.04em; margin-top: 5px;
+}
 
 /* ---------- tabs ---------- */
 .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
@@ -600,6 +621,14 @@ details.why[open] > summary::after { transform: rotate(-135deg) translateY(-1px)
 @media (min-width: 900px) {
   .luck { grid-template-columns: repeat(10, 1fr); }
   .card { padding: 18px 20px; }
+}
+
+/* The 流年 band always scrolls — up to 10 year-cells never flatten into the
+   row the 大运 strip uses at width, so keep its own overflow at every size. */
+.annual-scroll {
+  overflow-x: auto; margin: 0 calc(var(--gutter) * -1);
+  padding: 0 var(--gutter) 6px;
+  mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 28px), transparent 100%);
 }
 
 @media (prefers-reduced-motion: reduce) {

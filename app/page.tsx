@@ -42,9 +42,16 @@ interface DecadeView {
   score: number; verdict: string; notes: string[];
 }
 
+interface AnnualView {
+  year: number; age: number; ganZhi: string;
+  stem: string; branch: string;
+  stemTenGod: string; branchTenGod: string; current: boolean;
+}
+
 interface Result {
   locale: Locale;
   chart: Chart;
+  annual: AnnualView[];
   strength: {
     elementPercent: Record<Element, number>;
     supportPercent: number;
@@ -648,6 +655,27 @@ export default function Page() {
               </div>
             </div>
           </section>
+
+          {result.annual.length > 0 && (
+            <section>
+              <h2>{UI.annual[L]}</h2>
+              <p className="scale-note">{UI.annualNote[L]}</p>
+              <div className="luck-scroll annual-scroll">
+                <div className="annual">
+                  {result.annual.map((a) => (
+                    <div className={`annual-cell${a.current ? ' now' : ''}`} key={a.year}>
+                      <div className="age">{a.year}</div>
+                      <div className="gz">{a.ganZhi}</div>
+                      <div className="age">{L === 'zh' ? `${a.age}岁` : `age ${a.age}`}</div>
+                      <div className="tg">{TEN_GOD[a.stemTenGod]?.[L] ?? a.stemTenGod}</div>
+                      <div className="tg dim">{TEN_GOD[a.branchTenGod]?.[L] ?? a.branchTenGod}</div>
+                      {a.current && <div className="now-tag">{UI.annualNow[L]}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
 
           <section>
             <h2>{UI.reading[L]}</h2>

@@ -11,7 +11,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { buildChart } from '../../../src/engine/chart';
+import { buildChart, annualLuck } from '../../../src/engine/chart';
 import { analyzeChart } from '../../../src/analyzer/index';
 import { renderFinding } from '../../../src/analyzer/findings';
 import { isLocale, type Locale } from '../../../src/i18n/text';
@@ -44,7 +44,28 @@ export async function POST(req: Request) {
     const chart = buildChart(body as BirthInput);
     const analysis = analyzeChart(chart);
 
+    // 流年 for the 大运 currently in force, so the band reads as "this luck
+    // period, year by year". Before 起运 (or past the last decade) there is no
+    // enclosing 大运, so fall back to the coming ten years from now.
+    const nowYear = new Date().getFullYear();
+    const decades = analysis.career.decades;
+    const active = decades.find((d) => nowYear >= d.startYear && nowYear <= d.endYear);
+    const [fromYear, toYear] = active
+      ? [active.startYear, active.endYear]
+      : [nowYear, nowYear + 9];
+    const annual = annualLuck(chart, fromYear, toYear).map((a) => ({
+      year: a.year,
+      age: a.age,
+      ganZhi: a.ganZhi,
+      stem: a.stem,
+      branch: a.branch,
+      stemTenGod: a.stemTenGod,
+      branchTenGod: a.branchMainTenGod,
+      current: a.year === nowYear,
+    }));
+
     return NextResponse.json({
+      annual,
       locale,
       chart,
       strength: {
