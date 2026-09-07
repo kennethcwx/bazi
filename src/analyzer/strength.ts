@@ -32,6 +32,7 @@ import {
   findRelations, isBranchRelation, natalPillars, RELATION_WEIGHT,
   type RelationKind,
 } from './relations';
+import { analyzeFollowing, type FollowingAnalysis } from './following';
 
 /** Weight of each stem position. The day stem is the subject, not evidence. */
 const STEM_WEIGHT = { year: 10, month: 12, day: 0, hour: 10 } as const;
@@ -41,10 +42,6 @@ const BRANCH_WEIGHT = { year: 10, month: 30, day: 16, hour: 12 } as const;
 
 /** Share of a branch's weight taken by each 藏干 role. */
 const ROLE_SHARE = { main: 0.6, middle: 0.3, residual: 0.1 } as const;
-
-/** Below this share of total weight, a 从格 (following structure) is worth
- *  raising as a candidate — never asserted, because 从格 is contested. */
-const FOLLOWING_THRESHOLD = 0.12;
 
 /** Percentages, not fractions — these are shown to the user verbatim. */
 const STRONG_PCT = 55;
@@ -68,8 +65,9 @@ export interface StrengthAnalysis {
   readonly hasDaySeat: boolean;
   /** 得势 — supporting stems outnumber opposing ones. */
   readonly hasAllies: boolean;
-  /** Set when support is so scarce that a 从格 reading is plausible. */
-  readonly followingCandidate: TenGodFamily | null;
+  /** 从格 when the chart genuinely follows, null for every ordinary chart.
+   *  Determined rather than flagged — see ./following for the conditions. */
+  readonly following: FollowingAnalysis | null;
   /** Every branch whose weight was moved by 刑冲合会, and by how much. Shown,
    *  not hidden — an unexplained discount reads as a bug. */
   readonly relationAdjustments: readonly RelationAdjustment[];
@@ -279,15 +277,15 @@ export function analyzeStrength(chart: Chart): StrengthAnalysis {
     : supportPercent <= WEAK_PCT ? '身弱'
     : '中和';
 
-  // 从格: the day master has almost nothing to stand on and one opposing
-  // family overwhelms the chart. Raised as a candidate for a human to judge.
-  let followingCandidate: TenGodFamily | null = null;
-  if (supportPercent < FOLLOWING_THRESHOLD * 100 && !hasMonthCommand) {
-    const dominant = (Object.entries(familyPercent) as [TenGodFamily, number][])
-      .filter(([f]) => !isSupporting(f))
-      .sort((a, b) => b[1] - a[1])[0];
-    if (dominant && dominant[1] >= 40) followingCandidate = dominant[0];
-  }
+  // 从格 is decided here, not merely suspected. The conditions live in
+  // ./following because they are a different judgement from 扶抑, not a
+  // variation on it — see that module for why each one is required.
+  const following = analyzeFollowing(
+    chart,
+    familyPercent,
+    hasMonthCommand,
+    monthRuler ? tenGodFamily(dm, monthRuler.element) : null,
+  );
 
   const el = (e: Element) => ELEMENT[e]!;
   const fam = (f: TenGodFamily) => TEN_GOD_FAMILY[f]!;
@@ -379,16 +377,7 @@ export function analyzeStrength(chart: Chart): StrengthAnalysis {
     ));
   }
 
-  if (followingCandidate) {
-    reasoning.push(t(
-      `⚠️ 日主无根且${followingCandidate}极旺，可能成从格。从格与扶抑取用神相反，` +
-        `此判断有争议，建议人工复核。`,
-      `⚠️ The Day Master has almost no root and ${fam(followingCandidate).en} ` +
-        `overwhelms the chart, so a "following" (从格) reading is possible. That ` +
-        `reading inverts the favourable element entirely. It is contested — worth ` +
-        `a human check.`,
-    ));
-  }
+  if (following) reasoning.push(...following.reasoning);
 
   if (!chart.hourKnown) {
     reasoning.push(t(
@@ -407,7 +396,7 @@ export function analyzeStrength(chart: Chart): StrengthAnalysis {
     siLing,
     hasDaySeat,
     hasAllies,
-    followingCandidate,
+    following,
     relationAdjustments: [...adjustments.values()],
     supportPercentBeforeRelations,
     confidence: chart.hourKnown ? 'normal' : 'reduced-no-hour',

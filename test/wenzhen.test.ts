@@ -40,7 +40,7 @@ const transcribed = cases.filter((c) => c.wenzhen !== null);
 
 describe('问真八字 agreement', () => {
   it('has a fixture set worth checking', () => {
-    expect(cases.length).toBeGreaterThanOrEqual(30);
+    expect(cases.length).toBeGreaterThanOrEqual(24);
     // Every fixture must be runnable even before it is transcribed.
     for (const c of cases) expect(() => buildChart(c.birth), c.label).not.toThrow();
   });

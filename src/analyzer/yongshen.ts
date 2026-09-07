@@ -72,6 +72,37 @@ export function analyzeYongShen(
   const el = (e: Element) => ELEMENT[e]!.en;
   const fam = (f: TenGodFamily) => TEN_GOD_FAMILY[f]!.en;
 
+  // 从格 is not a modifier on 扶抑 — it replaces it. A chart that has given up
+  // its own side is read by feeding the dominant force, so returning early here
+  // is the point rather than a shortcut.
+  if (strength.following) {
+    const f = strength.following;
+    const favourable = f.favourable.map((fam2) => familyElement(dm, fam2));
+    const unfavourable = f.unfavourable.map((fam2) => familyElement(dm, fam2));
+    return {
+      school: t(
+        `从格（${f.kind}），不以扶抑论`,
+        `Following structure (${f.kind}) — not read by the ordinary strength method`,
+      ),
+      primary: favourable[0]!,
+      secondary: favourable[1] ?? null,
+      favourable,
+      unfavourable,
+      primaryFamily: f.favourable[0]!,
+      climateNeed: null,
+      climateConflict: false,
+      reasoning: [
+        ...f.reasoning,
+        t(
+          `故用神 ${favourable.map((e) => ELEMENT[e]!.zh).join('、')}，` +
+            `忌神 ${unfavourable.map((e) => ELEMENT[e]!.zh).join('、')}。`,
+          `So the chart wants ${favourable.map(el).join(' and ')}, and works against ` +
+            `${unfavourable.map(el).join(', ')}.`,
+        ),
+      ],
+    };
+  }
+
   let primaryFamily: TenGodFamily;
   let secondaryFamily: TenGodFamily | null;
 
@@ -187,17 +218,6 @@ export function analyzeYongShen(
           `different answer here.`,
       ));
     }
-  }
-
-  if (strength.followingCandidate) {
-    reasoning.push(t(
-      `⚠️ 旺衰分析提示可能成从格。若作从格论，用神与上述完全相反` +
-        `（从${strength.followingCandidate}则以${strength.followingCandidate}为用）。` +
-        `本盘按正格扶抑取用。`,
-      `⚠️ The strength analysis flagged a possible "following" (从格) chart. Read ` +
-        `that way, the favourable element inverts completely — ${fam(strength.followingCandidate)} ` +
-        `would become what the chart wants. This reading treats it as an ordinary chart.`,
-    ));
   }
 
   reasoning.push(t(

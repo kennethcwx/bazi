@@ -24,8 +24,9 @@ import { applicable, type Finding, type Topic } from './findings';
  * not match their evidence is the one failure this product cannot absorb.
  *
  * v2: 旺衰 counts 刑冲合会; 格局 taken by 月令人元透干; 阴干 no longer 羊刃格.
+ * v3: 从格 determined rather than flagged, and 用神 inverts when it is.
  */
-export const ANALYZER_VERSION = 'v2';
+export const ANALYZER_VERSION = 'v3';
 
 export interface Analysis {
   readonly chart: Chart;
