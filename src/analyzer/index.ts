@@ -27,8 +27,10 @@ import { applicable, type Finding, type Topic } from './findings';
  * v3: 从格 determined rather than flagged, and 用神 inverts when it is.
  * v4: 大运 decades scored on 合冲 with the natal chart, not element match alone.
  * v5: 神煞 expanded — 天乙贵人, 文昌, 禄神, 金舆, 羊刃, 华盖, 魁罡.
+ * v6: 建禄/羊刃/月劫 named from the 月令 directly (禄刃 are month-command
+ *     patterns), so a 透 财官 no longer mislabels a 建禄 chart.
  */
-export const ANALYZER_VERSION = 'v5';
+export const ANALYZER_VERSION = 'v6';
 
 export interface Analysis {
   readonly chart: Chart;

@@ -118,9 +118,33 @@ export interface CareerAnalysis {
  * 庚→酉, 壬→子) and most schools hold 阴干无刃, so a 阴干 day master with 劫财
  * in the month is 月劫格, not 羊刃格.
  */
-function determineStructure(chart: Chart): { name: string; exposed: boolean; tenGod: TenGod } {
+function determineStructure(chart: Chart): {
+  name: string; exposed: boolean; tenGod: TenGod; luRen: boolean;
+} {
   const hidden = chart.pillars.month.hiddenStems;
   const monthMain = hidden.find((h) => h.role === 'main');
+
+  // 禄刃格 — a month-COMMAND pattern, taken before the 透干 logic. When the month
+  // branch is the Day Master's 临官 (禄) or 帝旺 (刃), its 本气 is the Day Master
+  // itself (比肩 → 建禄) or the Day Master's 劫财 (帝旺 → 阳刃 / 月劫). The pattern
+  // is named from the 月令 directly and does NOT require 透干 — 比劫 cannot
+  // themselves be a 用神, so the useful star is then sought among the transparent
+  // 财官食伤, but the 格 is still 建禄/羊刃/月劫 (子平真诠：月令建禄，即以日主临官
+  // 之地为格). This MUST come first: the 本气 here is the Day Master (禄) or its
+  // 劫 (刃), and the Day Master is excluded from the 透干 count below — so without
+  // this branch a transparent 财/官 mislabels the pattern (e.g. 丙日巳月, 巳 is
+  // 丙's 禄, but a 透 偏财 庚 would name it 偏财格 instead of 建禄格).
+  if (monthMain?.tenGod === '比肩') {
+    return { name: '建禄格', exposed: false, tenGod: '比肩', luRen: true };
+  }
+  if (monthMain?.tenGod === '劫财') {
+    return {
+      name: chart.dayMasterYinYang === '阳' ? '羊刃格' : '月劫格',
+      exposed: false,
+      tenGod: '劫财',
+      luRen: true,
+    };
+  }
 
   // 日干 excluded on purpose — see above.
   const visibleStems = [
@@ -160,7 +184,7 @@ function determineStructure(chart: Chart): { name: string; exposed: boolean; ten
   // back to the 本气 — which is what this flag was always reaching for.
   const exposed = revealed.length > 0;
 
-  return { name, exposed, tenGod };
+  return { name, exposed, tenGod, luRen: false };
 }
 
 function determineLean(strength: StrengthAnalysis): { lean: CareerLean; why: LocalizedText } {
@@ -421,22 +445,34 @@ export function analyzeCareer(
   f.push(finding({
     id: 'career.structure',
     topic: 'career',
-    claim: t(
-      `月令取${structure.name}${structure.exposed ? '，且格神透干，格局清晰' : '，格神未透，方向需自己摸索'}。`,
-      `The month gives you a ${structureEn}` +
-        (structure.exposed
-          ? `, and its governing stem shows openly — the structure is clean and the direction is legible.`
-          : `, but its governing stem stays hidden. The shape is there; you will have to find the direction yourself.`),
-    ),
+    claim: structure.luRen
+      // 禄刃 is a month-command pattern: the 格神 is the Day Master's own root,
+      // so the ordinary "is it 透干" reading does not apply — the useful star is
+      // sought elsewhere instead.
+      ? t(
+          `月令即日主之根（${structure.name}），比劫本身不为用，用神当向财、官、食伤中求。`,
+          `The month command is the Day Master's own root (${structureEn}). ` +
+            `Peers themselves are not the useful element, so it is drawn from the ` +
+            `wealth, officer or output stars instead.`,
+        )
+      : t(
+          `月令取${structure.name}${structure.exposed ? '，且格神透干，格局清晰' : '，格神未透，方向需自己摸索'}。`,
+          `The month gives you a ${structureEn}` +
+            (structure.exposed
+              ? `, and its governing stem shows openly — the structure is clean and the direction is legible.`
+              : `, but its governing stem stays hidden. The shape is there; you will have to find the direction yourself.`),
+        ),
     evidence: [
       t(
         `月支 ${chart.pillars.month.branch} 本气 ${monthMainStem}（${structure.tenGod}）`,
         `Month branch ${chart.pillars.month.branch}, primary hidden stem ` +
           `${monthMainStem} (${TEN_GOD[structure.tenGod]!.en})`,
       ),
-      structure.exposed
-        ? t('格神于天干得见', 'The governing stem is visible above')
-        : t('格神仅藏于地支', 'The governing stem is hidden in the branches only'),
+      structure.luRen
+        ? t('月令即日主之禄刃，自坐强根', 'The month command is the Day Master’s own 禄/刃 — a strong self-root')
+        : structure.exposed
+          ? t('格神于天干得见', 'The governing stem is visible above')
+          : t('格神仅藏于地支', 'The governing stem is hidden in the branches only'),
     ],
     confidence: 'medium',
     requiresHour: false,

@@ -152,6 +152,54 @@ describe('格局 by 月令人元透干', () => {
     expect(checked).toBeGreaterThan(0);
   });
 
+  it('names 禄刃 from the 月令, even when a 财官 is transparent (建禄 precedence)', () => {
+    // The bug this guards: 禄刃 are month-COMMAND patterns. When the 月令本气 is
+    // the Day Master's 禄 (比肩) or 刃 (劫财), the pattern is 建禄/羊刃/月劫 — and
+    // the Day Master is excluded from the 透干 count, so a transparent 中气 财官
+    // used to win and mislabel the chart (丙日巳月 → 偏财格 instead of 建禄格).
+    let lu = 0, luWithTransparentOther = 0, blade = 0;
+    for (const a of ANALYSES) {
+      const chart = a.chart;
+      const main = chart.pillars.month.hiddenStems.find((h) => h.role === 'main')!;
+      const visible = [
+        chart.pillars.year.stem, chart.pillars.month.stem,
+        ...(chart.pillars.hour ? [chart.pillars.hour.stem] : []),
+      ];
+      const transparentOther = chart.pillars.month.hiddenStems.some(
+        (h) => h.role !== 'main' && visible.includes(h.stem)
+          && h.tenGod !== '比肩' && h.tenGod !== '劫财',
+      );
+      if (main.tenGod === '比肩') {
+        expect(a.career.structure).toBe('建禄格');
+        lu++;
+        if (transparentOther) luWithTransparentOther++;
+      }
+      if (main.tenGod === '劫财') {
+        expect(a.career.structure).toBe(chart.dayMasterYinYang === '阳' ? '羊刃格' : '月劫格');
+        blade++;
+      }
+    }
+    expect(lu, '建禄 never occurred').toBeGreaterThan(0);
+    expect(blade, '羊刃/月劫 never occurred').toBeGreaterThan(0);
+    // The precedence case must actually be exercised or the guard proves nothing.
+    expect(luWithTransparentOther,
+      '建禄 with a transparent 财官 never occurred — precedence untested').toBeGreaterThan(0);
+  });
+
+  it('丙日巳月 with a transparent 偏财 is 建禄格 (regression, a real birth)', () => {
+    // 1994-05-10 04:47 Singapore, true solar → 甲戌 己巳 丙申 庚寅. 巳 本气 丙 is
+    // 丙's 禄; the 中气 庚 (偏财) is transparent in the hour stem. Before v6 this
+    // was mislabelled 偏财格. Cross-checked 4/4 against an independent engine.
+    const c = buildChart({
+      year: 1994, month: 5, day: 10, hour: 4, minute: 47,
+      timeZone: 'Asia/Singapore', longitude: 103.82, gender: 'male', useTrueSolarTime: true,
+    });
+    const pillars = [c.pillars.year, c.pillars.month, c.pillars.day, c.pillars.hour]
+      .map((p) => p!.ganZhi).join(' ');
+    expect(pillars).toBe('甲戌 己巳 丙申 庚寅'); // guard the fixture itself
+    expect(analyzeChart(c).career.structure).toBe('建禄格');
+  });
+
   it('never counts the 日干 as an exposure', () => {
     // The day stem is the subject. If it counted, a chart whose 月令 hides the
     // day master's own stem would name a 格 off the thing being measured.
