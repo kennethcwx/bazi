@@ -26,8 +26,9 @@ import { applicable, type Finding, type Topic } from './findings';
  * v2: 旺衰 counts 刑冲合会; 格局 taken by 月令人元透干; 阴干 no longer 羊刃格.
  * v3: 从格 determined rather than flagged, and 用神 inverts when it is.
  * v4: 大运 decades scored on 合冲 with the natal chart, not element match alone.
+ * v5: 神煞 expanded — 天乙贵人, 文昌, 禄神, 金舆, 羊刃, 华盖, 魁罡.
  */
-export const ANALYZER_VERSION = 'v4';
+export const ANALYZER_VERSION = 'v5';
 
 export interface Analysis {
   readonly chart: Chart;

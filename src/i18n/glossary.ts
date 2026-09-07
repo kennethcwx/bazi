@@ -103,6 +103,13 @@ export const SHENSHA: Record<string, LocalizedText> = {
   阴差阳错: t('阴差阳错', 'Mismatched Pillar'),
   将星: t('将星', 'General Star'),
   驿马: t('驿马', 'Travelling Horse'),
+  天乙贵人: t('天乙贵人', 'Heavenly Nobleman'),
+  文昌: t('文昌', 'Scholar Star'),
+  禄神: t('禄神', 'Prosperity Star'),
+  金舆: t('金舆', 'Golden Carriage'),
+  羊刃: t('羊刃', 'Yang Blade'),
+  华盖: t('华盖', 'Canopy Star'),
+  魁罡: t('魁罡', 'Kui Gang'),
 };
 
 // ---------------------------------------------------------------------------

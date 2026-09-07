@@ -80,6 +80,52 @@ const TRAVEL: Record<string, string> = {
   巳: '亥', 酉: '亥', 丑: '亥',
 };
 
+/** 天乙贵人 — from the 日干, the single most auspicious help star. Two branches
+ *  each (甲戊庚牛羊, 乙己鼠猴乡, 丙丁猪鸡位, 壬癸兔蛇藏, 六辛逢马虎). */
+const NOBLE: Record<string, readonly string[]> = {
+  甲: ['丑', '未'], 戊: ['丑', '未'], 庚: ['丑', '未'],
+  乙: ['子', '申'], 己: ['子', '申'],
+  丙: ['亥', '酉'], 丁: ['亥', '酉'],
+  壬: ['卯', '巳'], 癸: ['卯', '巳'],
+  辛: ['午', '寅'],
+};
+
+/** 文昌 — from the 日干. Academic aptitude, writing, examinations. */
+const WEN_CHANG: Record<string, string> = {
+  甲: '巳', 乙: '午', 丙: '申', 戊: '申', 丁: '酉',
+  己: '酉', 庚: '亥', 辛: '子', 壬: '寅', 癸: '卯',
+};
+
+/** 华盖 — the 墓库 of the 三合 group, read from 年支 or 日支. Solitary, and drawn
+ *  to art, research and the metaphysical. */
+const CANOPY: Record<string, string> = {
+  寅: '戌', 午: '戌', 戌: '戌',
+  申: '辰', 子: '辰', 辰: '辰',
+  巳: '丑', 酉: '丑', 丑: '丑',
+  亥: '未', 卯: '未', 未: '未',
+};
+
+/** 金舆 — from the 日干, 禄前二辰. Comfort, and a supportive marriage. */
+const GOLDEN_CARRIAGE: Record<string, string> = {
+  甲: '辰', 乙: '巳', 丙: '未', 丁: '申', 戊: '未',
+  己: '申', 庚: '戌', 辛: '亥', 壬: '丑', 癸: '寅',
+};
+
+/** 禄神 — the day master's 临官 branch. Earned security, salary, office. */
+const PROSPERITY: Record<string, string> = {
+  甲: '寅', 乙: '卯', 丙: '巳', 戊: '巳', 丁: '午',
+  己: '午', 庚: '申', 辛: '酉', 壬: '亥', 癸: '子',
+};
+
+/** 羊刃 — the day master's 帝旺 branch, 阳干 only (阴干无刃, as with 羊刃格).
+ *  Drive and a cutting edge; effective and volatile. */
+const BLADE: Record<string, string> = {
+  甲: '卯', 丙: '午', 戊: '午', 庚: '酉', 壬: '子',
+};
+
+/** 魁罡 — whole 日柱 combinations. Decisive, commanding, sharp-minded. */
+const KUI_GANG = new Set(['庚辰', '庚戌', '壬辰', '戊戌']);
+
 const POSITION_LABEL: Record<string, string> = {
   year: '年支', month: '月支', day: '日支', hour: '时支',
 };
@@ -132,6 +178,49 @@ export function findShenSha(chart: Chart): ShenShaHit[] {
   add('驿马', TRAVEL[yearBranch], '年支', t('奔波、外出、变动', 'travel, relocation, and movement'), 'career');
   if (TRAVEL[dayBranch] !== TRAVEL[yearBranch]) {
     add('驿马', TRAVEL[dayBranch], '日支', t('奔波、外出、变动', 'travel, relocation, and movement'), 'career');
+  }
+
+  // 天乙贵人 — read from the 日干, and it lands on two branches. Both present is
+  // 双贵; the dedup below leaves them as two hits since they sit on different
+  // branches, which is the correct reading.
+  for (const b of NOBLE[dayStem] ?? []) {
+    add('天乙贵人', b, '日干',
+      t('逢凶化吉、贵人相助之首星', 'the foremost help star — patrons, mentors, and trouble turning aside'),
+      'career');
+  }
+  add('文昌', WEN_CHANG[dayStem], '日干',
+    t('聪慧、文采、利考试进修', 'intelligence, a way with words, and a gift for study and exams'),
+    'career');
+  add('禄神', PROSPERITY[dayStem], '日干',
+    t('食禄、俸给、自力得财', 'earned security — salary, office, and provision made by your own effort'),
+    'career');
+  add('金舆', GOLDEN_CARRIAGE[dayStem], '日干',
+    t('安逸、得配偶之助', 'comfort, and real support from the person you marry'),
+    'relationship');
+  add('羊刃', BLADE[dayStem], '日干',
+    t('刚锐、魄力、宜技术竞争之途，然性烈易冲动', 'drive and a cutting edge — suited to technical or competitive work, but hot-tempered'),
+    'career');
+
+  // 华盖 — from 年支 or 日支, the 三合 group's storehouse.
+  add('华盖', CANOPY[yearBranch], '年支',
+    t('孤高、艺术、玄思之星', 'aloof and gifted — a pull toward art, research, and the metaphysical'),
+    'career');
+  if (CANOPY[dayBranch] !== CANOPY[yearBranch]) {
+    add('华盖', CANOPY[dayBranch], '日支',
+      t('孤高、艺术、玄思之星', 'aloof and gifted — a pull toward art, research, and the metaphysical'),
+      'career');
+  }
+
+  if (KUI_GANG.has(chart.pillars.day.ganZhi)) {
+    hits.push({
+      name: '魁罡',
+      position: '日柱',
+      branch: chart.pillars.day.ganZhi,
+      reference: '日柱',
+      meaning: t('聪明果断、有威权，然性刚、女命婚姻多波折',
+        'sharp-minded, decisive, and commanding — though strong-willed, and for a woman it can unsettle the marriage'),
+      topic: 'career',
+    });
   }
 
   if (YIN_CHA_YANG_CUO.has(chart.pillars.day.ganZhi)) {
