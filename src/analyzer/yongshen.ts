@@ -72,6 +72,43 @@ export function analyzeYongShen(
   const el = (e: Element) => ELEMENT[e]!.en;
   const fam = (f: TenGodFamily) => TEN_GOD_FAMILY[f]!.en;
 
+  // 化气格 and 专旺格 replace 扶抑 outright, exactly as 从格 does below, and are
+  // taken first because 旺衰 already settled the precedence between the three.
+  // A transformed chart is judged as the element it BECAME, so its 用神 is
+  // stated in elements rather than derived from families the Day Master no
+  // longer stands behind; a 专旺 chart is judged by going with the one element
+  // that took the whole chart, which is the exact opposite of what 扶抑 would
+  // prescribe for a Day Master this strong.
+  if (strength.special) {
+    const s = strength.special;
+    return {
+      school: t(
+        `${s.category}格（${s.kind}），不以扶抑论`,
+        `${s.category === '化气' ? 'Transformation' : 'Dominant-element'} structure ` +
+          `(${s.kind}) — not read by the ordinary strength method`,
+      ),
+      primary: s.favourable[0]!,
+      secondary: s.favourable[1] ?? null,
+      favourable: s.favourable,
+      unfavourable: s.unfavourable,
+      primaryFamily: tenGodFamily(dm, s.favourable[0]!),
+      // 调候 tempers a Day Master against its season. Neither of these charts is
+      // read from the Day Master's own position any more, so there is nothing
+      // for the climate rule to temper.
+      climateNeed: null,
+      climateConflict: false,
+      reasoning: [
+        ...s.reasoning,
+        t(
+          `故用神 ${s.favourable.map((e) => ELEMENT[e]!.zh).join('、')}，` +
+            `忌神 ${s.unfavourable.map((e) => ELEMENT[e]!.zh).join('、')}。`,
+          `So the chart wants ${s.favourable.map(el).join(' and ')}, and works against ` +
+            `${s.unfavourable.map(el).join(', ')}.`,
+        ),
+      ],
+    };
+  }
+
   // 从格 is not a modifier on 扶抑 — it replaces it. A chart that has given up
   // its own side is read by feeding the dominant force, so returning early here
   // is the point rather than a shortcut.

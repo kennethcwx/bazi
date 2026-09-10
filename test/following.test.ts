@@ -183,7 +183,11 @@ describe('用神 inverts under 从格', () => {
 
   // NEGATIVE CONTROL: ordinary charts must be untouched by any of this.
   it('leaves every ordinary chart on 扶抑', () => {
-    const ordinary = ANALYSES.filter((a) => a.strength.following === null);
+    // 化气 and 专旺 also replace 扶抑, so "not 从格" is no longer the same thing
+    // as "ordinary" — see test/special.test.ts.
+    const ordinary = ANALYSES.filter(
+      (a) => a.strength.following === null && a.strength.special === null,
+    );
     expect(ordinary.length).toBeGreaterThan(FOLLOWING.length * 10);
     for (const a of ordinary) {
       expect(a.yongShen.school.zh).toContain('扶抑');

@@ -33,6 +33,7 @@ import {
   type RelationKind,
 } from './relations';
 import { analyzeFollowing, type FollowingAnalysis } from './following';
+import { analyzeSpecial, type SpecialStructure } from './special';
 
 /** Weight of each stem position. The day stem is the subject, not evidence. */
 const STEM_WEIGHT = { year: 10, month: 12, day: 0, hour: 10 } as const;
@@ -68,6 +69,9 @@ export interface StrengthAnalysis {
   /** 从格 when the chart genuinely follows, null for every ordinary chart.
    *  Determined rather than flagged — see ./following for the conditions. */
   readonly following: FollowingAnalysis | null;
+  /** 化气格 or 专旺格, null for every ordinary chart. Like 从格 it replaces 扶抑
+   *  outright rather than modifying it — see ./special. */
+  readonly special: SpecialStructure | null;
   /** Every branch whose weight was moved by 刑冲合会, and by how much. Shown,
    *  not hidden — an unexplained discount reads as a bug. */
   readonly relationAdjustments: readonly RelationAdjustment[];
@@ -277,10 +281,18 @@ export function analyzeStrength(chart: Chart): StrengthAnalysis {
     : supportPercent <= WEAK_PCT ? '身弱'
     : '中和';
 
+  // 化气 and 专旺 are settled first, and 从格 only if neither fired. All three
+  // replace 扶抑, so at most one may hold — and 化气 outranks 从格 on the charts
+  // where both conditions happen to be met, because a named stem combination is
+  // a harder fact than a weighting near a threshold. 专旺 cannot collide with
+  // 从格 at all: one needs the month to feed the Day Master and the other needs
+  // it not to.
+  const special = analyzeSpecial(chart, elementPercent);
+
   // 从格 is decided here, not merely suspected. The conditions live in
   // ./following because they are a different judgement from 扶抑, not a
   // variation on it — see that module for why each one is required.
-  const following = analyzeFollowing(
+  const following = special ? null : analyzeFollowing(
     chart,
     familyPercent,
     hasMonthCommand,
@@ -377,6 +389,7 @@ export function analyzeStrength(chart: Chart): StrengthAnalysis {
     ));
   }
 
+  if (special) reasoning.push(...special.reasoning);
   if (following) reasoning.push(...following.reasoning);
 
   if (!chart.hourKnown) {
@@ -397,6 +410,7 @@ export function analyzeStrength(chart: Chart): StrengthAnalysis {
     hasDaySeat,
     hasAllies,
     following,
+    special,
     relationAdjustments: [...adjustments.values()],
     supportPercentBeforeRelations,
     confidence: chart.hourKnown ? 'normal' : 'reduced-no-hour',
