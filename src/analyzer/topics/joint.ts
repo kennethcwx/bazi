@@ -24,11 +24,13 @@ import { transitPillars } from '../../engine/chart';
 import type { Chart, Element } from '../../engine/types';
 import { t, type LocalizedText } from '../../i18n/text';
 import { ELEMENT, RELATION } from '../../i18n/glossary';
-import { elementOfBranch } from '../elements';
+import { controls, elementOfBranch, elementOfStem, generates } from '../elements';
 import { findRelations, isBranchRelation, type PositionedPillar } from '../relations';
+import { HOUR_MIDPOINTS, HOUR_RANGES, RELATION_WEIGHT, favourOf } from './forecast';
 import {
-  HOUR_MIDPOINTS, HOUR_RANGES, RELATION_WEIGHT, natalPillars, type Band,
-} from './forecast';
+  bandOf, dayTenGod, isSpouseStar, MODE_LABEL, readPersonDay, topMode,
+  type Band, type Favour, type Form, type Mode, type TransitDay,
+} from './dayread';
 import { SolarTime } from 'tyme4ts';
 
 export type Tone = 'easy' | 'friction' | null;
@@ -36,6 +38,9 @@ export type Tone = 'easy' | 'friction' | null;
 export interface SideDay {
   readonly band: Band;
   readonly tone: Tone;
+  readonly mode: Mode;
+  /** Steady or low on the day's elements; null for the pair reading. */
+  readonly form: Form;
   readonly score: number;
   readonly notes: readonly LocalizedText[];
 }
@@ -78,50 +83,16 @@ export interface JointForecast {
 const iso = (d: Date) =>
   `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 
-const bandOf = (score: number): Band =>
-  score >= 4 ? 'notable' : score >= 2 ? 'mild' : 'quiet';
-
-/** How an incoming pillar sits against one person's 日柱. */
-function scoreSide(
-  natal: readonly PositionedPillar[],
-  incoming: PositionedPillar,
-  who: LocalizedText,
-): SideDay {
-  const notes: LocalizedText[] = [];
-  let score = 0;
-  let easy = 0;
-  let rough = 0;
-
-  for (const r of findRelations([...natal, incoming])) {
-    if (!r.positions.includes(incoming.position)) continue;
-    if (!r.positions.includes('日柱')) continue;
-    if (!isBranchRelation(r)) continue;
-
-    const weight = RELATION_WEIGHT[r.kind];
-    if (weight === 0) continue;
-    const rel = RELATION[r.kind]!;
-    score += weight;
-
-    if (r.polarity === 'harmonising') {
-      easy++;
-      notes.push(t(
-        `${who.zh}：${r.label}，动夫妻宫，较易开口`,
-        `${who.en}: ${rel.en} on the Spouse Palace (${r.values.join('–')}), easier to speak`,
-      ));
-    } else {
-      rough++;
-      notes.push(t(
-        `${who.zh}：${r.label}，冲扰夫妻宫，容易上火`,
-        `${who.en}: ${rel.en} against the Spouse Palace (${r.values.join('–')}), quicker to bristle`,
-      ));
-    }
-  }
-
+/** How the day sits for one person, through the relationship lens. */
+function scoreSide(chart: Chart, favour: Favour, day: TransitDay): SideDay {
+  const r = readPersonDay(chart, favour, day);
   return {
-    band: bandOf(score),
-    tone: easy > rough ? 'easy' : rough > easy ? 'friction' : null,
-    score,
-    notes,
+    band: r.band,
+    tone: r.balance > 0 ? 'easy' : r.balance < 0 ? 'friction' : null,
+    mode: r.mode,
+    form: r.form,
+    score: r.score,
+    notes: r.notes,
   };
 }
 
@@ -130,10 +101,17 @@ function scoreSide(
  *
  * Read from the two 日支 rather than from either chart alone: a day that
  * combines with both is a day the pair sits well on, and one that clashes both
- * is a day to leave alone.
+ * is a day to leave alone. Three further things only a pair can show:
+ *
+ *   - the day completing a 三合/三会 with BOTH 日支 — the two of you and the
+ *     day forming one current; the strongest pair day there is
+ *   - 通关: when your two 日主 control each other, a day carrying the element
+ *     that stands between them eases that structural tension
+ *   - the day's stem carrying both of your spouse stars at once
  */
 function scoreBetween(self: Chart, partner: Chart, day: PositionedPillar): SideDay {
   const notes: LocalizedText[] = [];
+  const votes: Record<Mode, number> = { close: 0, stirred: 0, friction: 0, apart: 0, quiet: 0 };
   let score = 0;
   let easy = 0;
   let rough = 0;
@@ -148,32 +126,48 @@ function scoreBetween(self: Chart, partner: Chart, day: PositionedPillar): SideD
 
   const touchesYou = hits.some((r) => r.positions.includes('你日柱'));
   const touchesThem = hits.some((r) => r.positions.includes('对方日柱'));
+  const oneCurrent = hits.find((r) =>
+    (r.kind === '三合' || r.kind === '三会')
+      && r.positions.includes('你日柱') && r.positions.includes('对方日柱'));
 
+  // A hit on one side alone already belongs to that person's own reading;
+  // here it only scores when the day reaches both of you.
   for (const r of hits) {
     const weight = RELATION_WEIGHT[r.kind];
     if (weight === 0) continue;
-    score += weight;
-    if (r.polarity === 'harmonising') easy++; else rough++;
+    if (touchesYou && touchesThem) score += weight;
+    if (r.polarity === 'harmonising') { easy++; votes.close += weight; }
+    else { rough++; votes.friction += weight; }
   }
 
-  if (touchesYou && touchesThem) {
+  if (oneCurrent) {
+    score += 3;
+    votes.close += 3;
+    notes.push(t(
+      `流日与两人日支合成${oneCurrent.kind}（${oneCurrent.values.join('')}），把两人拉进同一股气里——这几天里最像“一起”的一天`,
+      `The day completes a ${RELATION[oneCurrent.kind]!.en} with both of your day branches (${oneCurrent.values.join('')}), pulling you into one current — the day in this window that most feels like "together"`,
+    ));
+  } else if (touchesYou && touchesThem) {
     // The day engages both marriage palaces at once, which is the case worth
     // flagging — it is doing something to the pair, not to one of you.
     score += 2;
-    notes.push(
-      rough === 0
-        ? t(
-            '流日同时合动两人日支，是这几天里最适合谈事情的一天。',
-            'The day combines with both of your day branches at once — the best ' +
-              'day here for a conversation that needs to land.',
-          )
-        : t(
-            '流日同时牵动两人日支，气氛较满，谈得开也吵得起来。',
-            'The day pulls on both of your day branches. Charged either way: ' +
-              'things surface, and that cuts both ways.',
-          ),
-    );
+    if (rough === 0) {
+      votes.close += 2;
+      notes.push(t(
+        '流日同时合动两人日支，是这几天里最适合谈事情的一天。',
+        'The day combines with both of your day branches at once — the best ' +
+          'day here for a conversation that needs to land.',
+      ));
+    } else {
+      votes.stirred += 2;
+      notes.push(t(
+        '流日同时牵动两人日支，气氛较满，谈得开也吵得起来。',
+        'The day pulls on both of your day branches. Charged either way: ' +
+          'things surface, and that cuts both ways.',
+      ));
+    }
   } else if (touchesYou !== touchesThem) {
+    votes.apart += 1;
     notes.push(t(
       `流日只动${touchesYou ? '你' : '对方'}一边，一个人有话说，另一个未必在状态。`,
       `The day engages only ${touchesYou ? 'your' : 'their'} side. One of you has ` +
@@ -181,16 +175,43 @@ function scoreBetween(self: Chart, partner: Chart, day: PositionedPillar): SideD
     ));
   }
 
+  // 通关: a mediator day between two day masters that control each other.
+  const a = self.dayMasterElement;
+  const b = partner.dayMasterElement;
+  const dayEl = elementOfStem(day.stem);
+  const controller = controls(a) === b ? a : controls(b) === a ? b : null;
+  if (controller && dayEl === generates(controller)) {
+    const controlled = controller === a ? b : a;
+    score += 2;
+    votes.close += 2;
+    notes.push(t(
+      `你们日主相克（${ELEMENT[controller]!.zh}克${ELEMENT[controlled]!.zh}），流日${ELEMENT[dayEl]!.zh}通关——两种性子之间的张力今天松一些`,
+      `Your day masters control each other (${ELEMENT[controller]!.en} over ${ELEMENT[controlled]!.en}); today's ${ELEMENT[dayEl]!.en} mediates between them — the tension between your two natures eases`,
+    ));
+  }
+
+  // Both spouse stars arriving on the same stem.
+  if (isSpouseStar(self, dayTenGod(self, day.stem)) && isSpouseStar(partner, dayTenGod(partner, day.stem))) {
+    score += 1;
+    votes.stirred += 1;
+    notes.push(t(
+      '流日同时透出两人的配偶星——彼此都把对方放在心上',
+      'The day carries both of your spouse stars at once — each of you has the other in mind',
+    ));
+  }
+
+  const band = bandOf(score);
+  const mode = topMode(votes);
+
   return {
-    band: bandOf(score),
+    band,
     tone: easy > rough ? 'easy' : rough > easy ? 'friction' : null,
+    mode: band === 'quiet' ? 'quiet' : mode,
+    form: null,
     score,
     notes,
   };
 }
-
-const YOU = t('你', 'You');
-const THEM = t('对方', 'Them');
 
 export function forecastJoint(
   self: Chart,
@@ -199,8 +220,8 @@ export function forecastJoint(
   days = 7,
 ): JointForecast {
   const span = Math.max(1, Math.min(31, days));
-  const selfNatal = natalPillars(self);
-  const partnerNatal = natalPillars(partner);
+  const selfFavour = favourOf(self);
+  const partnerFavour = favourOf(partner);
 
   const start = Date.UTC(
     fromDate.getUTCFullYear(), fromDate.getUTCMonth(), fromDate.getUTCDate(),
@@ -218,8 +239,8 @@ export function forecastJoint(
       branch: cycle.getEarthBranch().getName(),
     };
 
-    const yours = scoreSide(selfNatal, incoming, YOU);
-    const theirs = scoreSide(partnerNatal, incoming, THEM);
+    const yours = scoreSide(self, selfFavour, incoming);
+    const theirs = scoreSide(partner, partnerFavour, incoming);
     const between = scoreBetween(self, partner, incoming);
 
     out.push({
@@ -241,13 +262,19 @@ export function forecastJoint(
     days: out,
     headline: anyBetween
       ? t(
-          `这${span}天里，${best!.date}（${best!.ganZhi}）最同时牵动两人，` +
-            `若有话要谈，这天阻力最小。`,
-          `Across these ${span} days, ${best!.date} (${best!.ganZhi}) engages both ` +
-            `of you most. If something needs saying, that day puts least in the way.`,
+          `这${span}天里，${best!.date}（${best!.ganZhi}）最牵动两人之间——` +
+            `${MODE_LABEL[best!.between.mode].zh}。` +
+            (best!.between.mode === 'friction'
+              ? '要紧的事避开这天。'
+              : '若有话要谈、有事要一起做，这天阻力最小。'),
+          `Across these ${span} days, ${best!.date} (${best!.ganZhi}) does the most ` +
+            `between the two of you — ${MODE_LABEL[best!.between.mode].en}. ` +
+            (best!.between.mode === 'friction'
+              ? 'Keep anything that matters off that day.'
+              : 'If something needs saying or doing together, that day puts least in the way.'),
         )
       : t(
-          `这${span}天没有同时合动两人日支的日子。多数日子本就如此，` +
+          `这${span}天没有同时牵动两人日支的日子。多数日子本就如此，` +
             `不必等某一天才开口。`,
           `No day in these ${span} engages both of your day branches. That is the ` +
             `normal state of things, and not a reason to wait for one.`,

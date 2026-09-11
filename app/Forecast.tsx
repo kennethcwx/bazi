@@ -3,14 +3,20 @@
 /**
  * The short-range outlook.
  *
+ * Each day that registers says what it does — close, stirred, friction, apart
+ * — rather than good or bad, and each person carries a form for the day:
+ * steady or running low on its elements. A quiet day still shows the form,
+ * because "you're low today" is worth knowing on exactly the days nothing
+ * else is happening.
+ *
  * With a partner saved, each day is read three ways and shown three ways:
  * how it sits for you, how it sits for them, and how it sits between you. They
- * are never averaged. A day can be easy for one of you and abrasive for the
+ * are never averaged. A day can be close for one of you and friction for the
  * other, and that is the most useful thing the reading has to say.
  *
- * Tapping a day opens its twelve 时辰. That is a scheduling aid — which hours
- * carry least structural friction if a conversation has to happen — not an
- * auspicious-hour table, and the caveat under it says so.
+ * Tapping a day opens its notes and its twelve 时辰. The hours are a
+ * scheduling aid — which carry least structural friction if a conversation has
+ * to happen — not an auspicious-hour table, and the caveat under it says so.
  */
 
 import { useState, useEffect } from 'react';
@@ -20,10 +26,13 @@ import { loadPartner } from '../src/storage';
 import { PLACES } from '../src/places';
 
 type Band = 'notable' | 'mild' | 'quiet';
-type Tone = 'easy' | 'friction' | null;
+type Mode = 'close' | 'stirred' | 'friction' | 'apart' | 'quiet';
+type Form = 'steady' | 'low' | null;
 
-interface Side { band: Band; tone: Tone; notes: string[] }
-interface SoloDay { date: string; ganZhi: string; band: Band; tone: Tone; notes: string[] }
+interface Side { band: Band; mode: Mode; form: Form; notes: string[] }
+interface SoloDay {
+  date: string; ganZhi: string; band: Band; mode: Mode; form: Form; notes: string[];
+}
 interface JointDay { date: string; ganZhi: string; yours: Side; theirs: Side; between: Side }
 interface Hour {
   index: number; branch: string; ganZhi: string; range: string;
@@ -53,16 +62,46 @@ function weekday(isoDate: string, locale: Locale): string {
 }
 const dayLabel = (isoDate: string) => isoDate.slice(5).replace('-', '/');
 
-/** One coloured dot per track, so all three read at a glance. */
-function Dots({ day }: { day: SoloDay | JointDay }) {
-  const tracks: { band: Band; tone: Tone }[] = isJoint(day)
-    ? [day.yours, day.theirs, day.between]
-    : [{ band: day.band, tone: day.tone }];
+const todayIso = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+const MODE_UI: Record<Exclude<Mode, 'quiet'>, keyof typeof UI> = {
+  close: 'modeClose', stirred: 'modeStirred', friction: 'modeFriction', apart: 'modeApart',
+};
+const modeWord = (m: Mode, locale: Locale) => (m === 'quiet' ? '' : UI[MODE_UI[m]][locale]);
+const formWord = (f: Form, locale: Locale, long = false) =>
+  f === 'steady' ? UI[long ? 'formSteadyLong' : 'formSteady'][locale]
+    : f === 'low' ? UI[long ? 'formLowLong' : 'formLow'][locale]
+      : '';
+
+/** One coloured dot per track — you, them, between — so all three read at a glance. */
+function Dots({ day }: { day: JointDay }) {
   return (
     <span className="dot-row">
-      {tracks.map((tk, i) => (
-        <span key={i} className={`d-dot b-${tk.band}${tk.tone ? ` t-${tk.tone}` : ''}`} />
+      {[day.yours, day.theirs, day.between].map((tk, i) => (
+        <span key={i} className={`d-dot m-${tk.mode}`} />
       ))}
+    </span>
+  );
+}
+
+/** The one word a day gets in its cell: its mode, or on a quiet day its form. */
+function DayWord({ day, locale }: { day: SoloDay | JointDay; locale: Locale }) {
+  if (isJoint(day)) return <Dots day={day} />;
+  if (day.mode !== 'quiet') {
+    return <span className={`day-word m-${day.mode}`}>{modeWord(day.mode, locale)}</span>;
+  }
+  return <span className={`day-word f-${day.form ?? 'none'}`}>{formWord(day.form, locale)}</span>;
+}
+
+/** Mode and form, as small chips at the head of a reading. */
+function Chips({ mode, form, locale }: { mode: Mode; form: Form; locale: Locale }) {
+  return (
+    <span className="chips">
+      {mode !== 'quiet' && <span className={`chip m-${mode}`}>{modeWord(mode, locale)}</span>}
+      {form && <span className={`chip f-${form}`}>{formWord(form, locale, true)}</span>}
     </span>
   );
 }
@@ -127,6 +166,8 @@ export function Forecast({ birth, locale }: {
   }
 
   const detail = data?.days.find((d) => d.date === openDay);
+  const today = todayIso();
+  const modes = ['close', 'stirred', 'friction', 'apart'] as const;
 
   return (
     <section>
@@ -151,13 +192,14 @@ export function Forecast({ birth, locale }: {
           <div className="card">
             <p className="headline">{data.headline}</p>
             {data.monthContext?.map((m, i) => <p className="month-ctx" key={i}>{m}</p>)}
-            {data.mode === 'joint' && (
-              <div className="legend">
-                <span><i className="d-dot b-notable" />{UI.trackYours[locale]}</span>
-                <span><i className="d-dot b-notable" />{UI.trackTheirs[locale]}</span>
-                <span><i className="d-dot b-notable" />{UI.trackBetween[locale]}</span>
-              </div>
-            )}
+            <div className="legend">
+              {modes.map((m) => (
+                <span key={m}><i className={`d-dot m-${m}`} />{modeWord(m, locale)}</span>
+              ))}
+              <span><i className="d-dot f-steady" />{formWord('steady', locale)}</span>
+              <span><i className="d-dot f-low" />{formWord('low', locale)}</span>
+            </div>
+            {data.mode === 'joint' && <p className="note legend-note">{UI.dotOrder[locale]}</p>}
             {data.mode === 'solo' && hasPartner && (
               <p className="note">{UI.jointHint[locale]}</p>
             )}
@@ -166,13 +208,14 @@ export function Forecast({ birth, locale }: {
           <div className="days">
             {data.days.map((d) => (
               <button key={d.date}
-                className={`day${openDay === d.date ? ' open' : ''}`}
+                className={`day${openDay === d.date ? ' open' : ''}${d.date === today ? ' today' : ''}`}
                 aria-expanded={openDay === d.date}
+                aria-current={d.date === today ? 'date' : undefined}
                 onClick={() => openDetail(d.date)}>
-                <span className="day-date">{dayLabel(d.date)}</span>
+                <span className="day-date">{d.date === today ? UI.today[locale] : dayLabel(d.date)}</span>
                 <span className="day-wd">{weekday(d.date, locale)}</span>
                 <span className="day-gz">{d.ganZhi}</span>
-                <Dots day={d} />
+                <DayWord day={d} locale={locale} />
               </button>
             ))}
           </div>
@@ -192,8 +235,9 @@ export function Forecast({ birth, locale }: {
                   ] as const).map(([label, side]) => (
                     <div className="track" key={label}>
                       <div className="track-head">
-                        <span className={`d-dot b-${side.band}${side.tone ? ` t-${side.tone}` : ''}`} />
+                        <span className={`d-dot m-${side.mode}`} />
                         {label}
+                        <Chips mode={side.mode} form={side.form} locale={locale} />
                       </div>
                       {side.notes.length > 0
                         ? <ul className="reasoning">{side.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>
@@ -202,9 +246,12 @@ export function Forecast({ birth, locale }: {
                   ))}
                 </div>
               ) : (
-                detail.notes.length > 0
-                  ? <ul className="reasoning">{detail.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>
-                  : <p className="note">{UI.nothingInPlay[locale]}</p>
+                <>
+                  <Chips mode={detail.mode} form={detail.form} locale={locale} />
+                  {detail.notes.length > 0
+                    ? <ul className="reasoning">{detail.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>
+                    : <p className="note">{UI.nothingInPlay[locale]}</p>}
+                </>
               )}
 
               {data.hours && (

@@ -509,13 +509,21 @@ details.why[open] > summary::after { transform: rotate(-135deg) translateY(-1px)
 .day-date { font-size: 11px; color: var(--text-faint); }
 .day-wd { font-size: 10px; color: var(--text-faint); }
 .day-gz { font-family: var(--serif); font-size: 15px; color: var(--text); margin-top: 2px; }
-.day-dot { width: 6px; height: 6px; border-radius: 50%; background: transparent; margin-top: 4px; }
-.day-mild .day-dot { background: var(--text-faint); }
-.day-notable .day-dot { background: var(--gold); }
-.day-notable { border-color: rgba(201, 162, 39, 0.4); }
-.tone-friction.day-notable { border-color: rgba(207, 95, 87, 0.4); }
-.tone-friction.day-notable .day-dot { background: var(--fire); }
+.day.today { border-color: var(--text-faint); }
+.day.today .day-date { color: var(--gold); font-weight: 600; }
 .day.open { background: var(--surface-2); border-color: var(--gold); }
+
+/* The one word a day cell gets: its mode when it registers, else its form. */
+.day-word {
+  font-size: 10px; line-height: 1; margin-top: 5px; min-height: 10px;
+  letter-spacing: 0.02em; color: var(--text-faint);
+}
+.day-word.m-close { color: var(--m-close); }
+.day-word.m-stirred { color: var(--m-stirred); }
+.day-word.m-friction { color: var(--m-friction); }
+.day-word.m-apart { color: var(--m-apart); }
+.day-word.f-steady { color: var(--text-dim); }
+.day-word.f-low { color: var(--text-faint); opacity: 0.8; }
 
 .day-detail { margin-top: 10px; }
 .day-detail-head {
@@ -665,27 +673,53 @@ details.terms { margin-top: 18px; border-top: 1px solid var(--line); padding-top
 .terms-list dd { margin: 0; color: var(--text-dim); }
 
 /* ---------- forecast tracks ---------- */
-.dot-row { display: flex; gap: 3px; margin-top: 4px; }
+/* Modes: what a day does. Colours stay off the 五行 palette so a mode never
+   reads as an element. Steady/low are neutral — a background, not a verdict. */
+:root {
+  --m-close: var(--gold);
+  --m-stirred: #d68fa6;
+  --m-friction: var(--fire);
+  --m-apart: #7f96b3;
+}
+
+.dot-row { display: flex; gap: 3px; margin-top: 5px; }
 .d-dot {
   width: 6px; height: 6px; border-radius: 50%;
   background: var(--line); flex: none; display: inline-block;
 }
-.b-mild { background: var(--text-faint); }
-.b-notable { background: var(--gold); }
-.b-notable.t-friction { background: var(--fire); }
+.d-dot.m-close { background: var(--m-close); }
+.d-dot.m-stirred { background: var(--m-stirred); }
+.d-dot.m-friction { background: var(--m-friction); }
+.d-dot.m-apart { background: var(--m-apart); }
+.d-dot.f-steady { background: var(--text-dim); }
+.d-dot.f-low { background: var(--line); border: 1px solid var(--text-faint); box-sizing: border-box; }
 
 .legend {
-  display: flex; flex-wrap: wrap; gap: 14px;
+  display: flex; flex-wrap: wrap; gap: 12px 14px;
   margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line-soft);
   font-size: 12px; color: var(--text-faint);
 }
 .legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend-note { margin-top: 6px; }
+
+.chips { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  font-size: 11px; line-height: 1; padding: 4px 7px; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--text-dim); background: var(--surface-2);
+}
+.chip.m-close { color: var(--m-close); border-color: rgba(201, 162, 39, 0.45); }
+.chip.m-stirred { color: var(--m-stirred); border-color: rgba(214, 143, 166, 0.45); }
+.chip.m-friction { color: var(--m-friction); border-color: rgba(207, 95, 87, 0.45); }
+.chip.m-apart { color: var(--m-apart); border-color: rgba(127, 150, 179, 0.45); }
+.chip.f-low { color: var(--text-faint); }
+.day-detail > .chips { margin-bottom: 10px; }
 
 .tracks { display: flex; flex-direction: column; gap: 14px; }
 .track-head {
-  display: flex; align-items: center; gap: 7px;
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
   font-size: 13px; color: var(--text); margin-bottom: 2px;
 }
+.track-head .chips { margin-left: auto; }
 
 /* ---------- 时辰 ---------- */
 .hours { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }

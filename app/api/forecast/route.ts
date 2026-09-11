@@ -11,7 +11,7 @@ import { buildChart } from '../../../src/engine/chart';
 import { analyzeStrength } from '../../../src/analyzer/strength';
 import { analyzeYongShen } from '../../../src/analyzer/yongshen';
 import { forecastRelationship, FORECAST_CAVEAT } from '../../../src/analyzer/topics/forecast';
-import { forecastJoint, hourBreakdown } from '../../../src/analyzer/topics/joint';
+import { forecastJoint, hourBreakdown, type SideDay } from '../../../src/analyzer/topics/joint';
 import { isLocale, type Locale } from '../../../src/i18n/text';
 import type { BirthInput } from '../../../src/engine/types';
 
@@ -73,6 +73,10 @@ export async function POST(req: Request) {
 
     if (partner) {
       const f = forecastJoint(self, partner, from, days);
+      const side = (x: SideDay) => ({
+        band: x.band, tone: x.tone, mode: x.mode, form: x.form,
+        notes: x.notes.map((n) => n[locale]),
+      });
       return NextResponse.json({
         locale, mode: 'joint',
         from: f.from, to: f.to,
@@ -81,9 +85,9 @@ export async function POST(req: Request) {
         hours,
         days: f.days.map((d) => ({
           date: d.date, ganZhi: d.ganZhi, score: d.score,
-          yours: { band: d.yours.band, tone: d.yours.tone, notes: d.yours.notes.map((n) => n[locale]) },
-          theirs: { band: d.theirs.band, tone: d.theirs.tone, notes: d.theirs.notes.map((n) => n[locale]) },
-          between: { band: d.between.band, tone: d.between.tone, notes: d.between.notes.map((n) => n[locale]) },
+          yours: side(d.yours),
+          theirs: side(d.theirs),
+          between: side(d.between),
         })),
       });
     }
@@ -100,6 +104,7 @@ export async function POST(req: Request) {
       hours,
       days: f.days.map((d) => ({
         date: d.date, ganZhi: d.ganZhi, band: d.band, tone: d.tone,
+        mode: d.mode, form: d.form,
         score: d.score, notes: d.notes.map((n) => n[locale]),
       })),
     });
