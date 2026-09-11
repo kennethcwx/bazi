@@ -51,7 +51,9 @@ interface Data {
   hours: Hour[] | null;
 }
 
-const SPANS = [7, 14, 30] as const;
+/** One window. Seven and fourteen days were offered once and never told
+ *  the reader anything the month did not. */
+const SPAN = 30;
 const isJoint = (d: SoloDay | JointDay): d is JointDay => 'yours' in d;
 
 function weekday(isoDate: string, locale: Locale): string {
@@ -110,7 +112,6 @@ export function Forecast({ birth, locale }: {
   birth: Record<string, unknown> | null;
   locale: Locale;
 }) {
-  const [span, setSpan] = useState<number>(7);
   const [data, setData] = useState<Data | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,9 +135,8 @@ export function Forecast({ birth, locale }: {
     };
   }
 
-  async function load(days: number, hoursFor?: string) {
+  async function load(hoursFor?: string) {
     if (!birth) return;
-    setSpan(days);
     setBusy(true);
     setError(null);
     try {
@@ -144,7 +144,7 @@ export function Forecast({ birth, locale }: {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...birth, days, locale,
+          ...birth, days: SPAN, locale,
           ...(partnerBirth() ? { partner: partnerBirth() } : {}),
           ...(hoursFor ? { hoursFor } : {}),
         }),
@@ -162,7 +162,7 @@ export function Forecast({ birth, locale }: {
   function openDetail(date: string) {
     if (openDay === date) { setOpenDay(null); return; }
     setOpenDay(date);
-    void load(span, date);
+    void load(date);
   }
 
   const detail = data?.days.find((d) => d.date === openDay);
@@ -174,14 +174,12 @@ export function Forecast({ birth, locale }: {
       <h2>{UI.forecast[locale]}</h2>
 
       <div className="span-row">
-        {SPANS.map((s) => (
-          <button key={s} className="span-btn"
-            aria-pressed={data !== null && span === s}
-            disabled={busy || !birth}
-            onClick={() => { setOpenDay(null); void load(s); }}>
-            {locale === 'zh' ? `${s} 天` : `${s} days`}
-          </button>
-        ))}
+        <button className="span-btn"
+          aria-pressed={data !== null}
+          disabled={busy || !birth}
+          onClick={() => { setOpenDay(null); void load(); }}>
+          {locale === 'zh' ? `${SPAN} 天` : `${SPAN} days`}
+        </button>
       </div>
 
       {error && <p className="err">{error}</p>}
