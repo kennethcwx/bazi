@@ -26,6 +26,10 @@ export interface Template {
    * what to lead with, it does not restrict what it may cite.
    */
   readonly leadWith: readonly string[];
+  /** How many findings beyond `leadWith` the composer may add as background.
+   *  Unset means the default (up to two, more when the lead is thin); 0 means
+   *  the lead findings are the whole answer. */
+  readonly background?: number;
   /** What this answer is for. Goes into the prompt verbatim. */
   readonly focus: LocalizedText;
   /** Rough length target: Chinese characters, or English words. */

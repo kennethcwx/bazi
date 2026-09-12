@@ -14,7 +14,8 @@
 import { buildChart } from '../../../src/engine/chart';
 import { analyzeChart } from '../../../src/analyzer/index';
 import { narrate, providerStatus } from '../../../src/narrator/narrate';
-import { routeQuestion, templateById } from '../../../src/narrator/templates';
+import { templateById } from '../../../src/narrator/templates';
+import { routeFreeform } from '../../../src/narrator/freeform';
 import { isLocale, type Locale } from '../../../src/i18n/text';
 import type { BirthInput } from '../../../src/engine/types';
 
@@ -58,15 +59,18 @@ export async function POST(req: Request) {
     );
   }
 
-  // An explicit template wins; free text is routed; anything unroutable is
-  // declined rather than answered.
+  // An explicit template wins. Free text is answered from the findings that
+  // speak to it — a synthetic template headed by the question — or declined
+  // when out of scope or when nothing computed touches it.
   let template = body.templateId ? templateById(body.templateId) : undefined;
+  let basedOn: string[] | null = null;
   if (!template && body.question) {
-    const routed = routeQuestion(body.question);
+    const routed = routeFreeform(analysis, body.question, locale);
     if (routed.kind === 'declined') {
       return Response.json({ error: routed.reason[locale], code: 'declined' }, { status: 400 });
     }
     template = routed.template;
+    basedOn = routed.selection.findings.map((f) => f.id);
   }
   if (!template) {
     return Response.json(
@@ -92,6 +96,7 @@ export async function POST(req: Request) {
         templateId: chosen.id,
         question: chosen.question[locale],
         topic: chosen.topic,
+        basedOn,
         // Say which narrator is writing, rather than letting composed prose
         // pass as a model's.
         source: providerStatus().id,

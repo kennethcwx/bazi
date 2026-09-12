@@ -65,8 +65,14 @@ function buildSections(
     sections.push({ heading: { zh: '背景', en: 'Background' }, findings: solid(context) });
   }
   if (contested.length > 0) {
+    // When everything that answers is contested, the answer is still headed
+    // by the question — hedged in the heading rather than hidden under a
+    // generic one.
+    const onlyContested = sections.length === 0;
     sections.push({
-      heading: { zh: '仅供参考', en: 'Held lightly' },
+      heading: onlyContested
+        ? { zh: `${template.hint.zh}（仅供参考）`, en: `${template.hint.en} (held lightly)` }
+        : { zh: '仅供参考', en: 'Held lightly' },
       findings: contested,
       hedged: true,
     });
@@ -142,15 +148,17 @@ export function composeReading(
   // shape". The lead findings are the answer; at most two more, by salience,
   // are background — and a timing finding is not background to a
   // non-timing question.
+  // Lead findings are looked up across every topic: a free question about
+  // "a good year" is answered by both the marriage and the career timing.
   const lead = template.leadWith
-    .map((id) => topicFindings.find((f) => f.id === id))
+    .map((id) => analysis.findings.find((f) => f.id === id))
     .filter((f): f is Finding => f !== undefined);
   const leadIds = new Set(lead.map((f) => f.id));
   const wantsTiming = template.leadWith.some((id) => id.includes('.timing'));
   const context = topicFindings
     .filter((f) => !leadIds.has(f.id) && (wantsTiming || !f.id.includes('.timing')))
     .sort((a, b) => (b.salience ?? 0) - (a.salience ?? 0))
-    .slice(0, Math.max(1, 3 - lead.length));
+    .slice(0, template.background ?? Math.max(1, 3 - lead.length));
 
   const sections = buildSections(lead, context, template);
   if (sections.length === 0) {

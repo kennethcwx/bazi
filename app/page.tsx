@@ -467,14 +467,16 @@ export default function Page() {
 
           if (event === 'meta') {
             setReadingSource(String(data['source'] ?? ''));
-            const routedId = String(data['templateId'] ?? '');
-            if (!templateId && routedId) {
-              // A free-text question was routed; show which question it
-              // became, and light that button, so the routing is visible.
-              setActiveTemplate(routedId);
-              setAnsweredAs(String(data['question'] ?? ''));
-              const tpl = TEMPLATES.find((t) => t.id === routedId);
-              if (tpl && tpl.topic !== tab) setTab(tpl.topic as Topic);
+            if (!templateId) {
+              // A free question is answered from the findings that match it,
+              // under its own heading. Show the topic it landed on so the
+              // computed findings below line up with the answer.
+              const basedOn = data['basedOn'];
+              const topic = String(data['topic'] ?? '');
+              setAnsweredAs(Array.isArray(basedOn)
+                ? `${UI.answeredFrom[locale]} ${basedOn.length} ${UI.answeredFindings[locale]}`
+                : null);
+              if ((topic === 'relationship' || topic === 'career') && topic !== tab) setTab(topic);
             }
           } else if (event === 'delta') {
             acc += String(data['text'] ?? '');
@@ -873,9 +875,9 @@ export default function Page() {
               ))}
             </div>
 
-            {/* Free text: routed server-side to the nearest of the questions
-                above (or declined when out of scope). It is a way in, not a
-                seventh answer — the composer writes the same six. */}
+            {/* Free text: answered from the computed findings that speak to
+                it, under its own heading — declined when out of scope or when
+                nothing computed touches it. */}
             <form
               className="ask"
               onSubmit={(e) => {
@@ -901,7 +903,7 @@ export default function Page() {
             {(reading || readingBusy) && (
               <div className="card">
                 {answeredAs && (
-                  <p className="answered-as">{UI.answering[L]}: {answeredAs}</p>
+                  <p className="answered-as">{answeredAs}</p>
                 )}
                 <Reading text={reading} streaming={readingBusy} locale={L} />
                 {!readingBusy && reading && <TermsUsed text={reading} locale={L} />}
