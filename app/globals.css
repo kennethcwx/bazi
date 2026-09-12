@@ -287,6 +287,22 @@ button:active:not(:disabled) { background: #b08e1f; }
   border: 1px solid var(--line); border-radius: 3px; padding: 0 4px;
 }
 .pillar.unknown { border-style: dashed; opacity: 0.5; }
+.meta-k { color: var(--text-faint); letter-spacing: 0.04em; }
+/* 神煞 landing on this pillar. */
+.pillar .stars { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; margin-top: 6px; }
+.pillar .star {
+  font-size: 0.6471rem; line-height: 1.3; color: var(--gold);
+  border: 1px solid var(--gold-dim); border-radius: 999px; padding: 1px 6px;
+  /* English names are two words; let them wrap inside a four-across column
+     rather than run past the card's edge. */
+  max-width: 100%; text-align: center; overflow-wrap: break-word; word-break: keep-all;
+}
+/* 胎元 · 命宫 · 身宫 under the four pillars. */
+.palaces {
+  display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 10px 0 0;
+  font-size: 0.7941rem; color: var(--text-dim);
+}
+
 
 .el-木 { color: var(--wood); }
 .el-火 { color: var(--fire-text); }

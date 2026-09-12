@@ -25,7 +25,7 @@ import type { RenderedFinding } from '../src/analyzer/findings';
 import { formatNote, formatLuckStart, isCaveat } from '../src/i18n/notes';
 import { UI } from '../src/i18n/ui';
 import {
-  ELEMENT, TEN_GOD, TEN_GOD_GLOSS, TERRAIN, DECADE_VERDICT, term,
+  ELEMENT, TEN_GOD, TEN_GOD_GLOSS, TERRAIN, DECADE_VERDICT, SHENSHA, term,
 } from '../src/i18n/glossary';
 import { htmlLang, isLocale, type Locale } from '../src/i18n/text';
 import { findingLabel } from '../src/i18n/finding-labels';
@@ -54,11 +54,14 @@ interface MonthView {
   starts: string; score: number; verdict: string; notes: string[]; current: boolean;
 }
 
+interface StarHit { name: string; position: string; meaning: string }
+
 interface Result {
   locale: Locale;
   chart: Chart;
   annual: AnnualView[];
   monthly: MonthView[];
+  shensha: StarHit[];
   strength: {
     elementPercent: Record<Element, number>;
     supportPercent: number;
@@ -87,8 +90,13 @@ const PILLAR_KEY = {
   year: 'yearPillar', month: 'monthPillar', day: 'dayPillar', hour: 'hourPillar',
 } as const;
 
-function PillarCard({ p, position, locale }: {
-  p: Pillar | null; position: keyof typeof PILLAR_KEY; locale: Locale;
+/** The 神煞 branch label each pillar position carries in a hit. */
+const STAR_POSITION: Record<keyof typeof PILLAR_KEY, string> = {
+  year: '年支', month: '月支', day: '日支', hour: '时支',
+};
+
+function PillarCard({ p, position, locale, stars = [] }: {
+  p: Pillar | null; position: keyof typeof PILLAR_KEY; locale: Locale; stars?: StarHit[];
 }) {
   const label = UI[PILLAR_KEY[position]][locale];
   if (!p) {
@@ -123,7 +131,21 @@ function PillarCard({ p, position, locale }: {
       </div>
       <div className="meta">
         <div>{p.naYin}</div>
-        <div>{TERRAIN[p.terrain]?.[locale] ?? p.terrain}</div>
+        {/* On the day pillar the 长生 phase is the 日主 on its own branch —
+            自坐 — and is labelled as such, the way a full 排盘 reads it. */}
+        <div>
+          {position === 'day' && <span className="meta-k">{UI.selfSeat[locale]} </span>}
+          {TERRAIN[p.terrain]?.[locale] ?? p.terrain}
+        </div>
+        {stars.length > 0 && (
+          <div className="stars">
+            {stars.map((s, i) => (
+              <span key={s.name + i} className="star" title={s.meaning}>
+                {SHENSHA[s.name]?.[locale] ?? s.name}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -549,11 +571,27 @@ export default function Page() {
           <section>
             <h2>{UI.pillars[L]}</h2>
             <div className="pillars">
-              <PillarCard p={result.chart.pillars.year} position="year" locale={L} />
-              <PillarCard p={result.chart.pillars.month} position="month" locale={L} />
-              <PillarCard p={result.chart.pillars.day} position="day" locale={L} />
-              <PillarCard p={result.chart.pillars.hour} position="hour" locale={L} />
+              {(['year', 'month', 'day', 'hour'] as const).map((pos) => (
+                <PillarCard
+                  key={pos}
+                  p={result.chart.pillars[pos]}
+                  position={pos}
+                  locale={L}
+                  stars={result.shensha.filter((s) => s.position === STAR_POSITION[pos])}
+                />
+              ))}
             </div>
+            {/* The three derived pillars a full 排盘 lists beside the four. 命宫
+                and 身宫 need the hour and are absent without it. */}
+            <p className="palaces">
+              <span><span className="meta-k">{UI.fetalOrigin[L]}</span> {result.chart.palaces.fetalOrigin}</span>
+              {result.chart.palaces.ownSign && (
+                <span><span className="meta-k">{UI.ownSign[L]}</span> {result.chart.palaces.ownSign}</span>
+              )}
+              {result.chart.palaces.bodySign && (
+                <span><span className="meta-k">{UI.bodySign[L]}</span> {result.chart.palaces.bodySign}</span>
+              )}
+            </p>
           </section>
 
           <section>

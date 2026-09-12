@@ -34,6 +34,10 @@ export const UI = {
 
   // sections
   pillars: t('四柱', 'The Four Pillars'),
+  fetalOrigin: t('胎元', 'Conception pillar'),
+  ownSign: t('命宫', 'Life Palace'),
+  bodySign: t('身宫', 'Body Palace'),
+  selfSeat: t('自坐', 'Self-seat'),
   basis: t('排盘依据', 'How this was cast'),
   balance: t('五行强弱', 'Element balance'),
   luck: t('大运', 'Luck pillars'),

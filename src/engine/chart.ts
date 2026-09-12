@@ -213,6 +213,11 @@ export function buildChart(input: BirthInput): Chart {
     luckStart,
     luckForward: childLimit.isForward(),
     decades,
+    palaces: {
+      fetalOrigin: eightChar.getFetalOrigin().getName(),
+      ownSign: hourKnown ? eightChar.getOwnSign().getName() : null,
+      bodySign: hourKnown ? eightChar.getBodySign().getName() : null,
+    },
     chartHash: hashChart([
       c.year, c.month, c.day, c.hour, c.minute,
       input.gender, hourKnown, input.timeZone,

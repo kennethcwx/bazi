@@ -198,6 +198,14 @@ export interface Chart {
   };
   readonly luckForward: boolean;
   readonly decades: readonly DecadeLuck[];
+  /** The three derived pillars a full 排盘 shows beside the four: 胎元 (the
+   *  conception pillar, from the month), 命宫 and 身宫 (from month and hour).
+   *  The two that need the hour are null when the birth time is unknown. */
+  readonly palaces: {
+    readonly fetalOrigin: string;
+    readonly ownSign: string | null;
+    readonly bodySign: string | null;
+  };
   /** Stable hash of the charted moment + gender + conventions. Cache key for
    *  generated readings, which are a pure function of the chart. */
   readonly chartHash: string;

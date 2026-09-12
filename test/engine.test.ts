@@ -339,3 +339,39 @@ describe('chart derivations', () => {
     expect(buildChart(base({ gender: 'female' })).chartHash).not.toBe(c.chartHash);
   });
 });
+
+describe('胎元 / 命宫 / 身宫', () => {
+  const birth = {
+    year: 1985, month: 6, day: 15, hour: 14, minute: 0,
+    timeZone: 'Asia/Shanghai', longitude: 121.47, gender: 'male' as const,
+    useTrueSolarTime: false,
+  };
+
+  it('胎元 is the month pillar advanced one stem and three branches', () => {
+    const c = buildChart(birth);
+    const STEMS = '甲乙丙丁戊己庚辛壬癸';
+    const BRANCHES = '子丑寅卯辰巳午未申酉戌亥';
+    const m = c.pillars.month;
+    const stem = STEMS[(STEMS.indexOf(m.stem) + 1) % 10];
+    const branch = BRANCHES[(BRANCHES.indexOf(m.branch) + 3) % 12];
+    expect(c.palaces.fetalOrigin).toBe(`${stem}${branch}`);
+  });
+
+  it('命宫 and 身宫 are present with the hour and absent without it', () => {
+    const withHour = buildChart(birth);
+    expect(withHour.palaces.ownSign).toMatch(/^[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]$/);
+    expect(withHour.palaces.bodySign).toMatch(/^[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]$/);
+    const { hour: _h, minute: _m, ...noHour } = birth;
+    const without = buildChart(noHour);
+    expect(without.palaces.fetalOrigin).toBe(withHour.palaces.fetalOrigin);
+    expect(without.palaces.ownSign).toBeNull();
+    expect(without.palaces.bodySign).toBeNull();
+  });
+
+  it('命宫 moves with the hour, 胎元 does not', () => {
+    const a = buildChart(birth);
+    const b = buildChart({ ...birth, hour: 2 });
+    expect(b.palaces.fetalOrigin).toBe(a.palaces.fetalOrigin);
+    expect(b.palaces.ownSign).not.toBe(a.palaces.ownSign);
+  });
+});

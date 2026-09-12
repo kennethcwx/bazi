@@ -15,6 +15,7 @@ import { buildChart, annualLuck, sexagenaryYearOf } from '../../../src/engine/ch
 import { scoreMonths } from '../../../src/analyzer/topics/monthly';
 import { analyzeChart } from '../../../src/analyzer/index';
 import { renderFinding } from '../../../src/analyzer/findings';
+import { findShenSha } from '../../../src/analyzer/shensha';
 import { isLocale, type Locale } from '../../../src/i18n/text';
 import type { BirthInput } from '../../../src/engine/types';
 
@@ -91,9 +92,15 @@ export async function POST(req: Request) {
         current: todayUtc >= start && todayUtc < end,
       };
     });
+    // Every 神煞 hit with the pillar it lands on, so the chart can show them
+    // where a practitioner looks for them rather than only inside a finding.
+    const shensha = findShenSha(chart).map((s) => ({
+      name: s.name, position: s.position, meaning: s.meaning[locale],
+    }));
     return NextResponse.json({
       annual,
       monthly,
+      shensha,
       locale,
       chart,
       strength: {
