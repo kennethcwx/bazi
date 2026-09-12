@@ -27,7 +27,7 @@ import { UI } from '../src/i18n/ui';
 import {
   ELEMENT, TEN_GOD, TEN_GOD_GLOSS, TERRAIN, DECADE_VERDICT, term,
 } from '../src/i18n/glossary';
-import { isLocale, type Locale } from '../src/i18n/text';
+import { htmlLang, isLocale, type Locale } from '../src/i18n/text';
 import { findingLabel } from '../src/i18n/finding-labels';
 import { TEMPLATES } from '../src/narrator/templates';
 import { Forecast } from './Forecast';
@@ -247,6 +247,10 @@ export default function Page() {
   /** The birth payload that produced the current chart, reused for readings. */
   const lastInput = useRef<Record<string, unknown> | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+
+  // The root <html lang> is server-rendered as zh-Hans; keep it honest once
+  // the interface switches, or VoiceOver reads English with a Mandarin voice.
+  useEffect(() => { document.documentElement.lang = htmlLang(locale); }, [locale]);
 
   // Remember the language choice. Wrapped because storage throws in some
   // privacy modes, and a language toggle is not worth a blank page.
@@ -498,7 +502,7 @@ export default function Page() {
         </p>
       )}
 
-      {error && <p className="err">{error}</p>}
+      {error && <p className="err" role="alert">{error}</p>}
 
       {result && (
         <div ref={resultsRef}>
@@ -705,7 +709,7 @@ export default function Page() {
               ))}
             </div>
 
-            {readingError && <p className="err">{readingError}</p>}
+            {readingError && <p className="err" role="alert">{readingError}</p>}
 
             {(reading || readingBusy) && (
               <div className="card">
@@ -727,11 +731,20 @@ export default function Page() {
             )}
           </section>
 
-          {tab === 'relationship' && (
+          {tab === 'relationship' ? (
             <>
               <Forecast birth={lastInput.current} locale={L} />
               <Compatibility selfBirth={lastInput.current} locale={L} />
             </>
+          ) : (
+            /* The two sections above are relationship-only; someone who opened
+               Career first should still learn they exist. */
+            <p className="remembered">
+              {UI.underRelationships[L]}
+              <button type="button" className="linkish" onClick={() => switchTab('relationship')}>
+                {UI.goRelationships[L]}
+              </button>
+            </p>
           )}
 
           <section>

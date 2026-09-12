@@ -10,7 +10,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { UI } from '../../src/i18n/ui';
-import { isLocale, type Locale } from '../../src/i18n/text';
+import { htmlLang, isLocale, type Locale } from '../../src/i18n/text';
 
 const PIN_LENGTH = 4;
 
@@ -30,6 +30,7 @@ export default function Unlock() {
       else if (!navigator.language.toLowerCase().startsWith('zh')) setLocale('en');
     } catch { /* storage unavailable; keep the default */ }
   }, []);
+  useEffect(() => { document.documentElement.lang = htmlLang(locale); }, [locale]);
 
   useEffect(() => {
     if (pin.length !== PIN_LENGTH || submitting.current) return;
@@ -72,13 +73,13 @@ export default function Unlock() {
         <h1>{UI.title[locale]}</h1>
         <p className="gate-sub">{UI.enterPin[locale]}</p>
 
-        <div className="dots" aria-label={`${pin.length}/${PIN_LENGTH}`}>
+        <div className="dots" role="status" aria-label={`${pin.length}/${PIN_LENGTH}`}>
           {Array.from({ length: PIN_LENGTH }, (_, i) => (
             <span key={i} className={`dot${i < pin.length ? ' filled' : ''}`} />
           ))}
         </div>
 
-        {error && <p className="gate-err">{error}</p>}
+        {error && <p className="gate-err" role="alert">{error}</p>}
 
         <div className="keypad">
           {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
@@ -96,7 +97,7 @@ export default function Unlock() {
           </button>
         </div>
 
-        {busy && <p className="gate-sub">{UI.verifying[locale]}</p>}
+        {busy && <p className="gate-sub" role="status">{UI.verifying[locale]}</p>}
       </div>
     </main>
   );

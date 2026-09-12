@@ -45,3 +45,6 @@ export function concatLocalized(...parts: readonly LocalizedText[]): LocalizedTe
 }
 
 export const isLocale = (v: unknown): v is Locale => v === 'zh' || v === 'en';
+
+/** BCP 47 tag for the document, so a screen reader picks the right voice. */
+export const htmlLang = (locale: Locale): string => (locale === 'zh' ? 'zh-Hans' : 'en');

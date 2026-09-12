@@ -102,6 +102,7 @@ export const UI = {
   jointHint: t('已记住对方生辰，重新排一次即可看两人对照。',
     "Partner details are remembered — run this again to see both of you side by side."),
   nothingInPlay: t('这一天没有牵动。', 'Nothing in play on this day.'),
+  modeQuiet: t('平静', 'quiet'),
   modeClose: t('亲近', 'close'),
   modeStirred: t('牵动', 'stirred'),
   modeFriction: t('摩擦', 'friction'),
@@ -113,12 +114,17 @@ export const UI = {
   dotOrder: t('每天三点依次为：你 · 对方 · 两人之间', 'The three dots on each day are: you · them · between you'),
   today: t('今', 'today'),
   hoursTitle: t('时辰', 'Hours of the day'),
+  hourHarmony: t('合', 'harmony'),
+  hourClash: t('冲', 'clash'),
   hoursGood: t('阻力最小', 'Least friction'),
   hoursAvoid: t('容易起冲突', 'Most abrasive'),
   hoursNone: t('这天没有特别顺的时辰', 'no hour stands out today'),
 
   // compatibility
   compatibility: t('合婚 · 两人对照', 'Compatibility'),
+  // Shown under Career, where the two relationship-only sections are absent.
+  underRelationships: t('近期运势与合婚在「姻缘 · 婚姻」下。', 'The short-range outlook and compatibility are under Relationships.'),
+  goRelationships: t('查看', 'Show them'),
   addPartner: t('加入对方的生辰', "Add your partner's birth details"),
   addPartnerHint: t('两盘对照，看彼此补益与夫妻宫相合', 'Reads both charts against each other'),
   partnerName: t('称呼（可留空）', 'Name (optional)'),
@@ -150,8 +156,8 @@ export const UI = {
 
   // errors
   errConnect: t('无法连线，请稍后再试。', 'Could not connect. Try again shortly.'),
-  errCast: t('排盘失败。', 'Could not cast the chart.'),
-  errReading: t('生成解读失败。', 'Could not generate the reading.'),
+  errCast: t('排盘失败，请检查出生日期后再试。', 'Could not cast the chart. Check the date and try again.'),
+  errReading: t('生成解读失败，请再点一次问题。', 'Could not generate the reading. Tap the question again.'),
   errStreamCut: t('连线中断，解读未完成。', 'The connection dropped; the reading is incomplete.'),
 
   // gate

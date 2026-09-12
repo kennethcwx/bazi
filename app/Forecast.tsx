@@ -79,19 +79,31 @@ const formWord = (f: Form, locale: Locale, long = false) =>
       : '';
 
 /** One coloured dot per track — you, them, between — so all three read at a glance. */
-function Dots({ day }: { day: JointDay }) {
+/* Three marks, one per track. The shape carries the mode (see .d-dot in the
+   stylesheet) and the hidden text carries it for a screen reader, which
+   otherwise hears a date and a 干支 and nothing about the day. */
+function Dots({ day, locale }: { day: JointDay; locale: Locale }) {
+  const tracks = [
+    [UI.trackYours[locale], day.yours],
+    [UI.trackTheirs[locale], day.theirs],
+    [UI.trackBetween[locale], day.between],
+  ] as const;
+  const said = tracks
+    .map(([label, side]) => `${label}: ${side.mode === 'quiet' ? UI.modeQuiet[locale] : modeWord(side.mode, locale)}`)
+    .join(', ');
   return (
     <span className="dot-row">
-      {[day.yours, day.theirs, day.between].map((tk, i) => (
-        <span key={i} className={`d-dot m-${tk.mode}`} />
+      {tracks.map(([label, side]) => (
+        <span key={label} className={`d-dot m-${side.mode}`} />
       ))}
+      <span className="sr-only">{said}</span>
     </span>
   );
 }
 
 /** The one word a day gets in its cell: its mode, or on a quiet day its form. */
 function DayWord({ day, locale }: { day: SoloDay | JointDay; locale: Locale }) {
-  if (isJoint(day)) return <Dots day={day} />;
+  if (isJoint(day)) return <Dots day={day} locale={locale} />;
   if (day.mode !== 'quiet') {
     return <span className={`day-word m-${day.mode}`}>{modeWord(day.mode, locale)}</span>;
   }
@@ -182,8 +194,8 @@ export function Forecast({ birth, locale }: {
         </button>
       </div>
 
-      {error && <p className="err">{error}</p>}
-      {busy && !data && <p className="note">{UI.casting[locale]}</p>}
+      {error && <p className="err" role="alert">{error}</p>}
+      {busy && !data && <p className="note" role="status">{UI.casting[locale]}</p>}
 
       {data && (
         <>
@@ -233,7 +245,7 @@ export function Forecast({ birth, locale }: {
                   ] as const).map(([label, side]) => (
                     <div className="track" key={label}>
                       <div className="track-head">
-                        <span className={`d-dot m-${side.mode}`} />
+                        <span className={`d-dot m-${side.mode}`} aria-hidden="true" />
                         {label}
                         <Chips mode={side.mode} form={side.form} locale={locale} />
                       </div>
@@ -264,6 +276,14 @@ export function Forecast({ birth, locale }: {
                         <span className="hour-sides">
                           <i className={`hs hs-${h.forYou ?? 'none'}`} />
                           {hasPartner && <i className={`hs hs-${h.forThem ?? 'none'}`} />}
+                          {(h.forYou || h.forThem) && (
+                            <span className="sr-only">
+                              {[
+                                h.forYou && `${UI.trackYours[locale]}: ${UI[h.forYou === 'harmony' ? 'hourHarmony' : 'hourClash'][locale]}`,
+                                h.forThem && `${UI.trackTheirs[locale]}: ${UI[h.forThem === 'harmony' ? 'hourHarmony' : 'hourClash'][locale]}`,
+                              ].filter(Boolean).join(', ')}
+                            </span>
+                          )}
                         </span>
                       </div>
                     ))}
