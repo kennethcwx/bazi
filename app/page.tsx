@@ -76,6 +76,11 @@ interface Result {
     school: string;
     reasoning: string[];
   };
+  structureLens: {
+    structure: string; structureEn: string; method: string;
+    wants: Element[]; fears: Element[];
+    agreement: 'agree' | 'partial' | 'differ'; reasoning: string[];
+  };
   relationship: { findings: RenderedFinding[]; primaryStar: string };
   career: { findings: RenderedFinding[]; decades: DecadeView[]; structure: string; lean: string };
 }
@@ -710,6 +715,42 @@ export default function Page() {
                 </ul>
               </details>
               <span className="school">{UI.methodUsed[L]}: {result.yongShen.school}</span>
+            </div>
+            {/* The other school's answer to the same question. 扶抑 stays the
+                reading everything is scored on; this says what 格局法 would
+                want and whether the two agree, so a difference of school
+                reads as one rather than as a fault. */}
+            <div className="card lens">
+              <div className="lens-head">
+                <span className="meta-k">{UI.structureLens[L]}</span>{' '}
+                {L === 'zh' ? result.structureLens.structure : result.structureLens.structureEn}
+                {' · '}{result.structureLens.method === '顺用' ? UI.lensNurtured[L] : UI.lensControlled[L]}
+              </div>
+              <div className="gods-line">
+                <span>{UI.lensWants[L]}{' '}
+                  {result.structureLens.wants.map((e, i) => (
+                    <span key={e} className={`el-${e}`}>{i > 0 ? '、' : ''}{ELEMENT[e]![L]}</span>
+                  ))}
+                </span>
+                <span>{UI.lensFears[L]}{' '}
+                  {result.structureLens.fears.map((e, i) => (
+                    <span key={e} className={`el-${e}`}>{i > 0 ? '、' : ''}{ELEMENT[e]![L]}</span>
+                  ))}
+                </span>
+                <span className={`lens-${result.structureLens.agreement}`}>
+                  {result.structureLens.agreement === 'agree' ? UI.lensAgree[L]
+                    : result.structureLens.agreement === 'partial' ? UI.lensPartial[L]
+                    : UI.lensDiffer[L]}
+                </span>
+              </div>
+              <details className="why">
+                <summary>{UI.whyThis[L]}</summary>
+                <ul className="reasoning">
+                  {result.structureLens.reasoning.map((r, i) => (
+                    <li key={i} className={r.startsWith('⚠️') ? 'warn' : undefined}>{r}</li>
+                  ))}
+                </ul>
+              </details>
             </div>
           </section>
 

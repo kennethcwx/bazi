@@ -11,6 +11,7 @@ import type { Chart } from '../engine/types';
 import { analyzeStrength, type StrengthAnalysis } from './strength';
 import { analyzeYongShen, type YongShenAnalysis } from './yongshen';
 import { analyzeRelationship, type RelationshipAnalysis } from './topics/relationship';
+import { analyzeStructureLens, type StructureLens } from './structure-lens';
 import { analyzeCareer, type CareerAnalysis } from './topics/career';
 import { applicable, type Finding, type Topic } from './findings';
 
@@ -38,6 +39,8 @@ export interface Analysis {
   readonly chart: Chart;
   readonly strength: StrengthAnalysis;
   readonly yongShen: YongShenAnalysis;
+  /** The 格局 school's answer to the same question, beside 扶抑. */
+  readonly structureLens: StructureLens;
   readonly relationship: RelationshipAnalysis;
   readonly career: CareerAnalysis;
   /** Every finding, hour-dependent ones already removed if the hour is unknown. */
@@ -47,6 +50,7 @@ export interface Analysis {
 export function analyzeChart(chart: Chart): Analysis {
   const strength = analyzeStrength(chart);
   const yongShen = analyzeYongShen(chart, strength);
+  const structureLens = analyzeStructureLens(chart, strength, yongShen);
   const relationship = analyzeRelationship(chart, strength, yongShen);
   const career = analyzeCareer(chart, strength, yongShen);
 
@@ -55,7 +59,7 @@ export function analyzeChart(chart: Chart): Analysis {
     chart.hourKnown,
   );
 
-  return { chart, strength, yongShen, relationship, career, findings };
+  return { chart, strength, yongShen, structureLens, relationship, career, findings };
 }
 
 /** Findings for one topic, most salient first — what a narrator template gets. */

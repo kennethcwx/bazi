@@ -137,7 +137,7 @@ export function buildUserPrompt(
   template: Template,
   locale: Locale = 'zh',
 ): string {
-  const { chart, strength, yongShen } = analysis;
+  const { chart, strength, yongShen, structureLens } = analysis;
   const zh = locale === 'zh';
   const topicFindings = analysis.findings.filter((f) => f.topic === template.topic);
 
@@ -184,6 +184,7 @@ ${pillarRows.join('\n')}
 旺衰 ${strengthWord}（生扶 ${strength.supportPercent}%）
 用神 ${yongShen.primary}${yongShen.secondary ? `　喜神 ${yongShen.secondary}` : ''}　忌神 ${yongShen.unfavourable[0] ?? ''}${yongShen.unfavourable[1] ? `　仇神 ${yongShen.unfavourable[1]}` : ''}${yongShen.neutral.length ? `　闲神 ${yongShen.neutral.join('、')}` : ''}
 取用流派 ${yongShen.school.zh}
+格局法参照 ${structureLens.structure}（${structureLens.method}）喜 ${structureLens.wants.join('、')}，忌 ${structureLens.fears.join('、')}；${structureLens.agreement === 'agree' ? '与扶抑一致' : structureLens.agreement === 'partial' ? '与扶抑部分一致' : '与扶抑不同（流派之别，以扶抑为准）'}
 ${chart.hourKnown ? '' : '\n⚠️ 出生时辰不详，凡涉及时柱的判断已从下列结论中剔除，不可提及时柱、子女宫或晚年运。\n'}`
     : `## The chart
 
@@ -194,6 +195,7 @@ Element balance ${elementLine}
 Day Master strength: ${strengthWord} (support ${strength.supportPercent}%)
 Favourable element ${ELEMENT[yongShen.primary]!.en}${yongShen.secondary ? `, supported by ${ELEMENT[yongShen.secondary]!.en}` : ''}. Unfavourable: ${yongShen.unfavourable.map((e) => ELEMENT[e]!.en).join(', ')}
 Method used: ${yongShen.school.en}
+Structure method, for reference: ${structureLens.structureEn} (${structureLens.method}) wants ${structureLens.wants.map((e) => ELEMENT[e]!.en).join(', ')}, fears ${structureLens.fears.map((e) => ELEMENT[e]!.en).join(', ')}; ${structureLens.agreement === 'agree' ? 'agrees with the strength method' : structureLens.agreement === 'partial' ? 'partly agrees with the strength method' : 'differs from the strength method (a difference of school; the strength reading governs)'}
 ${chart.hourKnown ? '' : '\n⚠️ The birth hour is unknown. Everything depending on the hour pillar has already been removed from the findings below — do not mention the hour pillar, the children palace, or late-life fortune.\n'}`;
 
   const findingsHeader = zh

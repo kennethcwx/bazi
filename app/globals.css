@@ -368,6 +368,12 @@ button:active:not(:disabled) { background: #b08e1f; }
   font-size: 0.7941rem; color: var(--text-dim); margin-top: 2px;
 }
 
+/* 格局法 beside 扶抑. */
+.lens-head { font-family: var(--serif); font-size: 1rem; margin-bottom: 4px; }
+.lens-agree { color: var(--wood); }
+.lens-partial { color: var(--text-dim); }
+.lens-differ { color: var(--gold); }
+
 .school {
   display: inline-block; font-size: 0.7059rem; color: var(--text-faint);
   border: 1px solid var(--line); border-radius: 999px;

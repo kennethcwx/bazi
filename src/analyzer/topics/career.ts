@@ -118,7 +118,7 @@ export interface CareerAnalysis {
  * 庚→酉, 壬→子) and most schools hold 阴干无刃, so a 阴干 day master with 劫财
  * in the month is 月劫格, not 羊刃格.
  */
-function determineStructure(chart: Chart): {
+export function determineStructure(chart: Chart): {
   name: string; exposed: boolean; tenGod: TenGod; luRen: boolean;
 } {
   const hidden = chart.pillars.month.hiddenStems;

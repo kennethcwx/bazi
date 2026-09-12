@@ -123,6 +123,15 @@ export async function POST(req: Request) {
         school: analysis.yongShen.school[locale],
         reasoning: analysis.yongShen.reasoning.map((r) => r[locale]),
       },
+      structureLens: {
+        structure: analysis.structureLens.structure,
+        structureEn: analysis.structureLens.structureEn,
+        method: analysis.structureLens.method,
+        wants: analysis.structureLens.wants,
+        fears: analysis.structureLens.fears,
+        agreement: analysis.structureLens.agreement,
+        reasoning: analysis.structureLens.reasoning.map((r) => r[locale]),
+      },
       relationship: {
         primaryStar: analysis.relationship.primaryStar,
         findings: analysis.relationship.findings
