@@ -32,7 +32,7 @@ import { applicable, type Finding, type Topic } from './findings';
  * v7: 化气格 and 专旺格 determined, and 用神 inverts when either is — the last
  *     two structures that replace 扶抑 rather than modifying it.
  */
-export const ANALYZER_VERSION = 'v7';
+export const ANALYZER_VERSION = 'v8';
 
 export interface Analysis {
   readonly chart: Chart;

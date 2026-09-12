@@ -238,10 +238,15 @@ describe('用神', () => {
     }
   });
 
-  it('never lists an element as both favourable and unfavourable', () => {
+  it('splits the five elements into 用喜 / 忌仇 / 闲 with no overlap', () => {
     const y = analyse().yongShen;
     for (const e of y.favourable) expect(y.unfavourable).not.toContain(e);
-    expect(y.favourable.length + y.unfavourable.length).toBe(5);
+    for (const e of y.favourable) expect(y.neutral).not.toContain(e);
+    for (const e of y.unfavourable) expect(y.neutral).not.toContain(e);
+    expect(y.favourable.length + y.unfavourable.length + y.neutral.length).toBe(5);
+    // 忌神 is what controls the 用神; 仇神 feeds the 忌神. Never "everything else".
+    expect(y.unfavourable.length).toBeLessThanOrEqual(2);
+    expect(y.unfavourable[0]).toBe(controlledBy(y.primary));
   });
 });
 

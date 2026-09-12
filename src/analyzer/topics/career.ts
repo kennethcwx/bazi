@@ -355,34 +355,56 @@ function scoreDecadeRelations(
   return { delta: Math.max(-RELATION_CAP, Math.min(RELATION_CAP, delta)), notes };
 }
 
+/**
+ * The element base of one luck pillar: how its stem and branch sit against
+ * the 用神 / 忌神 / 闲神 split. Shared by 大运 and 流月, which are read on the
+ * same scale and must not drift apart.
+ *
+ * Three classes, not two. The first cut scored every non-用神 element −1, and
+ * since only two of the five elements are ever favourable, three of five
+ * pillars were "unfavourable" by construction — the whole timeline leaned
+ * negative before a single 合冲 was read, and 平稳 had to be stretched down
+ * to −2 to hide it. Classically a 闲神 pillar is neither: it neither feeds
+ * the 用神 nor the imbalance. So 用 +2, 忌 −2, 闲 0 — a 忌 pillar reads as
+ * the presence of harm, a 闲 pillar as the absence of help, and a 用忌 mix
+ * cancels to 0 rather than netting +1.
+ */
+export function scoreElementBase(
+  stem: string,
+  branch: string,
+  yongShen: Pick<YongShenAnalysis, 'favourable' | 'unfavourable'>,
+  pillarZh = '运',
+): { score: number; notes: LocalizedText[] } {
+  const fav = new Set(yongShen.favourable);
+  const unfav = new Set(yongShen.unfavourable);
+  const notes: LocalizedText[] = [];
+  let score = 0;
+  const one = (label: string, labelEn: string, ch: string, el: Element) => {
+    if (fav.has(el)) {
+      score += 2;
+      notes.push(t(`${label}${ch}属${el}，为用神一路`,
+        `${labelEn} ${ch} is ${ELEMENT[el]!.en} — favourable`));
+    } else if (unfav.has(el)) {
+      score -= 2;
+      notes.push(t(`${label}${ch}属${el}，是忌神`,
+        `${labelEn} ${ch} is ${ELEMENT[el]!.en} — an element the chart works against`));
+    } else {
+      notes.push(t(`${label}${ch}属${el}，为闲神，不助不碍`,
+        `${labelEn} ${ch} is ${ELEMENT[el]!.en} — neutral: neither help nor harm`));
+    }
+  };
+  one(`${pillarZh}天干`, 'Stem', stem, elementOfStem(stem));
+  one(`${pillarZh}地支`, 'Branch', branch, elementOfBranch(branch));
+  return { score, notes };
+}
+
 function scoreDecades(chart: Chart, yongShen: YongShenAnalysis): DecadeOutlook[] {
   const fav = new Set(yongShen.favourable);
 
   return chart.decades.map((d) => {
-    const stemEl = elementOfStem(d.stem);
-    const branchEl = elementOfBranch(d.branch);
-    const notes: LocalizedText[] = [];
-    let score = 0;
-
-    if (fav.has(stemEl)) {
-      score += 2;
-      notes.push(t(`天干${d.stem}属${stemEl}，为用神一路`,
-        `Stem ${d.stem} is ${ELEMENT[stemEl]!.en} — favourable`));
-    } else {
-      score -= 1;
-      notes.push(t(`天干${d.stem}属${stemEl}，非用神`,
-        `Stem ${d.stem} is ${ELEMENT[stemEl]!.en} — not favourable`));
-    }
-
-    if (fav.has(branchEl)) {
-      score += 2;
-      notes.push(t(`地支${d.branch}属${branchEl}，为用神一路`,
-        `Branch ${d.branch} is ${ELEMENT[branchEl]!.en} — favourable`));
-    } else {
-      score -= 1;
-      notes.push(t(`地支${d.branch}属${branchEl}，非用神`,
-        `Branch ${d.branch} is ${ELEMENT[branchEl]!.en} — not favourable`));
-    }
+    const base = scoreElementBase(d.stem, d.branch, yongShen, '');
+    const notes: LocalizedText[] = [...base.notes];
+    let score = base.score;
 
     // 合冲 with the natal chart — the character layer over element favourability.
     const rel = scoreDecadeRelations(chart, d.stem, d.branch, fav);
@@ -402,15 +424,19 @@ function scoreDecades(chart: Chart, yongShen: YongShenAnalysis): DecadeOutlook[]
       endYear: d.endYear,
       ganZhi: d.ganZhi,
       score,
-      // Range is -5..+6: element base -3..+4, plus a bounded 合冲 layer of ±2.
+      // Range is -7..+6: element base -4..+4 (用 +2 / 忌 −2 / 闲 0 per
+      // character), a bounded 合冲 layer of ±2, and −1 for 旬空.
       //
-      // 不利 is reserved for a decade that is actively adverse — 忌 elements AND
-      // a real disruption on top (a core 冲 -2, a 刑, or 旬空). A decade that
-      // merely lacks the 用神 sits at the element base's -2 and reads as 平稳:
-      // absence of help is not the presence of harm, and calling an unremarkable
-      // decade "difficult" makes the whole timeline read as relentless and
-      // untrustworthy. So 平稳 runs down to -2, and 不利 begins at -3.
-      verdict: score >= 3 ? '有利' : score >= 1 ? '偏顺' : score >= -2 ? '平稳' : '不利',
+      // 不利 begins at −4: two 忌 characters are adverse on their own, and so
+      // is one 忌 with a core 冲 on top. A 忌 with a 闲 (−2) is 平稳, and a
+      // 忌闲 with only a 刑 or 旬空 (−3) stays 平稳 too — a blemish on an
+      // unhelpful decade is not yet an adverse one. Two 闲 characters sit at
+      // 0. 用忌 nets 0, not +1. The 合冲 layer is net-negative by design (a
+      // core 冲 is −2, a 合 at most +1), so the bad side is drawn at −4 where
+      // the good side is drawn at +3: across a sweep of charts that lands
+      // roughly a quarter of decades on each side and half in the middle,
+      // which is the shape a practitioner expects a life to have.
+      verdict: score >= 3 ? '有利' : score >= 1 ? '偏顺' : score >= -3 ? '平稳' : '不利',
       notes,
     } satisfies DecadeOutlook;
   });

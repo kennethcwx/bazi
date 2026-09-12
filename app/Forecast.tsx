@@ -132,6 +132,19 @@ export function Forecast({ birth, locale }: {
 
   useEffect(() => { setHasPartner(loadPartner() !== null); }, []);
 
+  // Loads itself when the birth or the language changes. The button it
+  // replaces asked for one tap to see the only thing the tab shows; after the
+  // 7/14-day spans went there was nothing left for a button to choose.
+  // Keyed on the serialised birth: the parent hands down the same object
+  // across renders, so identity alone would not refire on a recast.
+  const birthKey = birth ? JSON.stringify(birth) : null;
+  useEffect(() => {
+    if (!birthKey) return;
+    setOpenDay(null);
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [birthKey, locale]);
+
   /** The partner payload, rebuilt from what was remembered on this device. */
   function partnerBirth(): Record<string, unknown> | null {
     const p = loadPartner();
@@ -184,15 +197,6 @@ export function Forecast({ birth, locale }: {
   return (
     <section>
       <h2>{UI.forecast[locale]}</h2>
-
-      <div className="span-row">
-        <button className="span-btn"
-          aria-pressed={data !== null}
-          disabled={busy || !birth}
-          onClick={() => { setOpenDay(null); void load(); }}>
-          {locale === 'zh' ? `${SPAN} 天` : `${SPAN} days`}
-        </button>
-      </div>
 
       {error && <p className="err" role="alert">{error}</p>}
       {busy && !data && <p className="note" role="status">{UI.casting[locale]}</p>}

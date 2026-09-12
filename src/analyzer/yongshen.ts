@@ -22,6 +22,8 @@ import { t, type LocalizedText } from '../i18n/text';
 import { ELEMENT, TEN_GOD_FAMILY } from '../i18n/glossary';
 import {
   ELEMENTS,
+  controlledBy,
+  generatedBy,
   familyElement,
   tenGodFamily,
   type TenGodFamily,
@@ -50,8 +52,11 @@ export interface YongShenAnalysis {
   readonly secondary: Element | null;
   /** 用神 + 喜神. */
   readonly favourable: readonly Element[];
-  /** 忌神 — elements that worsen the imbalance. */
+  /** 忌神 + 仇神 — the element that controls the 用神, and the one that feeds
+   *  that controller. Two, not "everything else": see `fiveGods`. */
   readonly unfavourable: readonly Element[];
+  /** 闲神 — whatever is left: neither help nor harm. */
+  readonly neutral: readonly Element[];
   /** The family the 用神 belongs to, as seen from the day master. */
   readonly primaryFamily: TenGodFamily;
   /** 调候用神, when the birth month is extreme. */
@@ -60,6 +65,31 @@ export interface YongShenAnalysis {
    *  resolved — it is a real disagreement between two valid readings. */
   readonly climateConflict: boolean;
   readonly reasoning: readonly LocalizedText[];
+}
+
+/**
+ * The classical five-way split around a 用神 — 用 / 喜 / 忌 / 仇 / 闲.
+ *
+ * 克用神者为忌神, 生忌神者为仇神, and the fifth element is 闲神: it neither
+ * helps the 用神 nor feeds what attacks it. The first cut here called every
+ * non-favourable element 忌神. With two of five favourable that made three of
+ * five unfavourable, so every luck pillar, month and day leaned negative by
+ * construction, and the decade verdicts had to be re-thresholded to hide it.
+ * Naming the 闲神 is what practitioners do, and it is what lets a pillar be
+ * merely unremarkable.
+ *
+ * `favourable` wins where it collides: a 喜神 chosen by family logic (財 for
+ * a 食伤 用神, say) stays favourable even if the cycle would call it 闲.
+ */
+export function fiveGods(
+  favourable: readonly Element[],
+): { unfavourable: Element[]; neutral: Element[] } {
+  const primary = favourable[0]!;
+  const enemy = controlledBy(primary);      // 克用神者
+  const foe = generatedBy(enemy);           // 生忌神者
+  const unfavourable = [enemy, foe].filter((e) => !favourable.includes(e));
+  const neutral = ELEMENTS.filter((e) => !favourable.includes(e) && !unfavourable.includes(e));
+  return { unfavourable, neutral };
 }
 
 export function analyzeYongShen(
@@ -91,6 +121,7 @@ export function analyzeYongShen(
       secondary: s.favourable[1] ?? null,
       favourable: s.favourable,
       unfavourable: s.unfavourable,
+      neutral: ELEMENTS.filter((e) => !s.favourable.includes(e) && !s.unfavourable.includes(e)),
       primaryFamily: tenGodFamily(dm, s.favourable[0]!),
       // 调候 tempers a Day Master against its season. Neither of these charts is
       // read from the Day Master's own position any more, so there is nothing
@@ -125,6 +156,7 @@ export function analyzeYongShen(
       secondary: favourable[1] ?? null,
       favourable,
       unfavourable,
+      neutral: ELEMENTS.filter((e) => !favourable.includes(e) && !unfavourable.includes(e)),
       primaryFamily: f.favourable[0]!,
       climateNeed: null,
       climateConflict: false,
@@ -233,7 +265,7 @@ export function analyzeYongShen(
   const favourable: Element[] = [primary];
   if (secondary && secondary !== primary) favourable.push(secondary);
 
-  const unfavourable = ELEMENTS.filter((e) => !favourable.includes(e));
+  const { unfavourable, neutral } = fiveGods(favourable);
 
   let climateConflict = false;
   if (climateNeed) {
@@ -257,12 +289,18 @@ export function analyzeYongShen(
     }
   }
 
+  const [enemy, foe] = unfavourable;
   reasoning.push(t(
     `用神 ${primary}（${primaryFamily}）` +
-      `${secondary ? `，喜神 ${secondary}` : ''}，忌神 ${unfavourable.join('、')}。`,
+      `${secondary ? `，喜神 ${secondary}` : ''}` +
+      `，忌神 ${enemy}（克用神）` +
+      `${foe ? `，仇神 ${foe}（生忌神）` : ''}` +
+      `${neutral.length ? `，闲神 ${neutral.join('、')}` : ''}。`,
     `Favourable: ${el(primary)} (${fam(primaryFamily)})` +
       `${secondary ? `, supported by ${el(secondary)}` : ''}. ` +
-      `Unfavourable: ${unfavourable.map(el).join(', ')}.`,
+      `Unfavourable: ${el(enemy!)} (it controls the favourable element)` +
+      `${foe ? `, and ${el(foe)} (it feeds that controller)` : ''}.` +
+      `${neutral.length ? ` Neutral: ${neutral.map(el).join(', ')}.` : ''}`,
   ));
 
   return {
@@ -271,6 +309,7 @@ export function analyzeYongShen(
     secondary,
     favourable,
     unfavourable,
+    neutral,
     primaryFamily,
     climateNeed,
     climateConflict,

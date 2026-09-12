@@ -182,7 +182,7 @@ ${pillarRows.join('\n')}
 日主 ${chart.dayMaster}（${chart.dayMasterYinYang}${chart.dayMasterElement}）　性别 ${chart.gender === 'male' ? '男' : '女'}
 五行占比 ${elementLine}
 旺衰 ${strengthWord}（生扶 ${strength.supportPercent}%）
-用神 ${yongShen.primary}${yongShen.secondary ? `　喜神 ${yongShen.secondary}` : ''}　忌神 ${yongShen.unfavourable.join('、')}
+用神 ${yongShen.primary}${yongShen.secondary ? `　喜神 ${yongShen.secondary}` : ''}　忌神 ${yongShen.unfavourable[0] ?? ''}${yongShen.unfavourable[1] ? `　仇神 ${yongShen.unfavourable[1]}` : ''}${yongShen.neutral.length ? `　闲神 ${yongShen.neutral.join('、')}` : ''}
 取用流派 ${yongShen.school.zh}
 ${chart.hourKnown ? '' : '\n⚠️ 出生时辰不详，凡涉及时柱的判断已从下列结论中剔除，不可提及时柱、子女宫或晚年运。\n'}`
     : `## The chart

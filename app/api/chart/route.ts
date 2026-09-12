@@ -81,6 +81,7 @@ export async function POST(req: Request) {
         secondary: analysis.yongShen.secondary,
         favourable: analysis.yongShen.favourable,
         unfavourable: analysis.yongShen.unfavourable,
+        neutral: analysis.yongShen.neutral,
         primaryFamily: analysis.yongShen.primaryFamily,
         climateNeed: analysis.yongShen.climateNeed,
         climateConflict: analysis.yongShen.climateConflict,

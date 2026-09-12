@@ -71,6 +71,9 @@ export const UI = {
 
   // yongshen card
   favourable: t('用神', 'Favourable'),
+  avoidLabel: t('忌', 'Against'),
+  foeLabel: t('仇', 'Feeds it'),
+  neutralLabel: t('闲', 'Neutral'),
   supporting: t('喜神', 'Supporting'),
   methodUsed: t('取用流派', 'Method'),
   whyThis: t('看推导过程', 'Show the working'),

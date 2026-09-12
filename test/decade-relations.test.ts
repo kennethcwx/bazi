@@ -12,6 +12,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildChart } from '../src/engine/chart';
 import { analyzeChart } from '../src/analyzer/index';
+import { scoreElementBase } from '../src/analyzer/topics/career';
 import type { BirthInput } from '../src/engine/types';
 
 const at = (o: Partial<BirthInput> = {}): BirthInput => ({
@@ -20,18 +21,20 @@ const at = (o: Partial<BirthInput> = {}): BirthInput => ({
   useTrueSolarTime: false, ...o,
 });
 
-const DECADES = (() => {
+const DECADES_WITH_CHART = (() => {
   const out = [];
   for (let year = 1945; year <= 2010; year += 3) {
     for (const month of [2, 5, 8, 11]) {
       for (const gender of ['male', 'female'] as const) {
-        const a = analyzeChart(buildChart(at({ year, month, gender })));
-        for (const d of a.career.decades) out.push(d);
+        const chart = buildChart(at({ year, month, gender }));
+        const a = analyzeChart(chart);
+        for (const d of a.career.decades) out.push({ chart, yongShen: a.yongShen, decade: d });
       }
     }
   }
   return out;
 })();
+const DECADES = DECADES_WITH_CHART.map((x) => x.decade);
 
 const CLASH = /冲/;
 const COMBINE = /相合/;
@@ -52,9 +55,10 @@ describe('大运 合冲 layer', () => {
   });
 
   it('stays bounded: the score never leaves the element base ± the relation cap', () => {
-    // Element base is -3..+4 (two pillars ±, minus 旬空); the 合冲 cap is ±2.
+    // Element base is -4..+4 (用 +2 / 忌 −2 / 闲 0 per character), minus 旬空;
+    // the 合冲 cap is ±2.
     for (const d of DECADES) {
-      expect(d.score).toBeGreaterThanOrEqual(-5);
+      expect(d.score).toBeGreaterThanOrEqual(-7);
       expect(d.score).toBeLessThanOrEqual(6);
     }
   });
@@ -69,17 +73,16 @@ describe('大运 合冲 layer', () => {
   it('never scores a 冲 to the outer 年/时 branches — those are named, not scored', () => {
     // An outer clash carries the "边角有触动" wording and moves nothing; a core
     // clash carries "主动荡变迁". This is the one that could silently double-count.
-    for (const d of DECADES) {
+    for (const { chart, yongShen, decade: d } of DECADES_WITH_CHART) {
       const outer = d.notes.find((n) => /边角有触动/.test(n.zh));
       if (!outer) continue;
       // If the ONLY relation note is an outer clash, the score must equal the
-      // pure element base (a multiple that never includes a relation delta).
+      // pure element base (recomputed here) less 旬空 — no relation delta.
       const relNotes = d.notes.filter((n) => CLASH.test(n.zh) || COMBINE.test(n.zh) || /半合|相刑|相害|相破/.test(n.zh));
       if (relNotes.length === 1) {
-        // element base alone is one of {-3,-2,-1,0,1,3,4}; specifically it is
-        // never nudged by this outer clash. We assert the note exists without a
-        // score contribution by checking the score matches a base-only value.
-        expect([-3, -2, -1, 0, 1, 3, 4]).toContain(d.score);
+        const natal = chart.decades[d.index]!;
+        const base = scoreElementBase(natal.stem, natal.branch, yongShen).score;
+        expect(d.score).toBe(base - (natal.isVoid ? 1 : 0));
       }
     }
   });

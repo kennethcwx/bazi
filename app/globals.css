@@ -346,6 +346,12 @@ button:active:not(:disabled) { background: #b08e1f; }
 .card + .card { margin-top: 10px; }
 .verdict { font-family: var(--serif); font-size: 1.1765rem; margin-bottom: 6px; }
 .warn { color: var(--gold); }
+/* 忌 / 仇 / 闲 under the 用神 line. */
+.gods-line {
+  display: flex; flex-wrap: wrap; gap: 4px 14px;
+  font-size: 0.7941rem; color: var(--text-dim); margin-top: 2px;
+}
+
 .school {
   display: inline-block; font-size: 0.7059rem; color: var(--text-faint);
   border: 1px solid var(--line); border-radius: 999px;
@@ -510,12 +516,6 @@ details.why[open] > summary::after { transform: rotate(-135deg) translateY(-1px)
 .tag.low { color: var(--fire-text); border-color: rgba(207, 95, 87, 0.4); }
 
 /* ---------- forecast ---------- */
-.span-row { display: flex; gap: 8px; margin-bottom: 14px; }
-.span-btn {
-  flex: 1; background: var(--surface); color: var(--text-dim);
-  border: 1px solid var(--line); font-size: 0.8235rem; font-weight: 500;
-}
-.span-btn[aria-pressed='true'] { background: var(--gold); color: #17130a; border-color: var(--gold); }
 
 .headline { margin: 0; font-size: 0.8824rem; line-height: 1.75; }
 .month-ctx { margin: 12px 0 0; font-size: 0.7941rem; color: var(--text-dim); line-height: 1.7; }

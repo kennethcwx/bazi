@@ -61,6 +61,8 @@ interface Result {
   yongShen: {
     primary: Element;
     secondary: Element | null;
+    unfavourable: Element[];
+    neutral: Element[];
     school: string;
     reasoning: string[];
   };
@@ -626,6 +628,32 @@ export default function Page() {
                       {ELEMENT[result.yongShen.secondary]![L]}
                     </span>
                   </>
+                )}
+              </div>
+              {/* The other three of the five: what works against the 用神, what
+                  feeds that, and what is merely neutral. Named so a 闲神 luck
+                  pillar can read as unremarkable rather than as a threat. */}
+              <div className="gods-line">
+                {result.yongShen.unfavourable[0] && (
+                  <span>{UI.avoidLabel[L]}{' '}
+                    <span className={`el-${result.yongShen.unfavourable[0]}`}>
+                      {ELEMENT[result.yongShen.unfavourable[0]]![L]}
+                    </span>
+                  </span>
+                )}
+                {result.yongShen.unfavourable[1] && (
+                  <span>{UI.foeLabel[L]}{' '}
+                    <span className={`el-${result.yongShen.unfavourable[1]}`}>
+                      {ELEMENT[result.yongShen.unfavourable[1]]![L]}
+                    </span>
+                  </span>
+                )}
+                {result.yongShen.neutral.length > 0 && (
+                  <span>{UI.neutralLabel[L]}{' '}
+                    {result.yongShen.neutral.map((e, i) => (
+                      <span key={e} className={`el-${e}`}>{i > 0 ? '、' : ''}{ELEMENT[e]![L]}</span>
+                    ))}
+                  </span>
                 )}
               </div>
               <details className="why">
