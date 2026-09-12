@@ -12,6 +12,7 @@ import { analyzeStrength } from '../../../src/analyzer/strength';
 import { analyzeYongShen } from '../../../src/analyzer/yongshen';
 import { forecastRelationship, FORECAST_CAVEAT } from '../../../src/analyzer/topics/forecast';
 import { forecastJoint, hourBreakdown, type SideDay } from '../../../src/analyzer/topics/joint';
+import type { LayerRead } from '../../../src/analyzer/topics/dayread';
 import { isLocale, type Locale } from '../../../src/i18n/text';
 import type { BirthInput } from '../../../src/engine/types';
 
@@ -71,10 +72,17 @@ export async function POST(req: Request) {
         }))
       : null;
 
+    const layer = (l: LayerRead) => ({
+      layer: l.layer, ganZhi: l.ganZhi, mode: l.mode,
+      notes: l.notes.map((n) => n[locale]),
+    });
+    const layerPair = (p: { year: LayerRead; month: LayerRead }) =>
+      ({ year: layer(p.year), month: layer(p.month) });
     if (partner) {
       const f = forecastJoint(self, partner, from, days);
       const side = (x: SideDay) => ({
         band: x.band, tone: x.tone, mode: x.mode, form: x.form,
+        stacked: x.stacked,
         notes: x.notes.map((n) => n[locale]),
       });
       return NextResponse.json({
@@ -82,6 +90,7 @@ export async function POST(req: Request) {
         from: f.from, to: f.to,
         headline: f.headline[locale],
         caveat: f.caveat[locale],
+        layers: { yours: layerPair(f.layers.yours), theirs: layerPair(f.layers.theirs) },
         hours,
         days: f.days.map((d) => ({
           date: d.date, ganZhi: d.ganZhi, score: d.score,
@@ -100,11 +109,12 @@ export async function POST(req: Request) {
       caveat: FORECAST_CAVEAT[locale],
       quietCount: f.quietCount,
       monthContext: f.monthContext.map((m) => m[locale]),
+      layers: layerPair(f.layers),
       standout: f.standout ? { date: f.standout.date, ganZhi: f.standout.ganZhi } : null,
       hours,
       days: f.days.map((d) => ({
         date: d.date, ganZhi: d.ganZhi, band: d.band, tone: d.tone,
-        mode: d.mode, form: d.form,
+        mode: d.mode, form: d.form, stacked: d.stacked,
         score: d.score, notes: d.notes.map((n) => n[locale]),
       })),
     });

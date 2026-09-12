@@ -262,16 +262,32 @@ function determineLean(strength: StrengthAnalysis): { lean: CareerLean; why: Loc
 const CORE_POSITIONS = new Set(['日柱', '月柱']);
 const RELATION_CAP = 2;
 
-function scoreDecadeRelations(
+/** The luck layers read on this scale, and how each names itself in a note. */
+export type LuckLayer = '大运' | '流年' | '流月';
+const LAYER_WORD: Record<LuckLayer, { zh: string; en: string }> = {
+  大运: { zh: '此运', en: 'This decade' },
+  流年: { zh: '此年', en: 'This year' },
+  流月: { zh: '此月', en: 'This month' },
+};
+
+/**
+ * 合冲 between one incoming pillar and the natal chart — see the decade
+ * doc above. Shared by 大运, 流年 and 流月: the same relation on the same
+ * palace means the same thing whichever layer brings it, only the span
+ * differs, and that is said by the layer word in the note.
+ */
+export function scoreLuckRelations(
   chart: Chart,
   stem: string,
   branch: string,
   fav: ReadonlySet<Element>,
+  layer: LuckLayer = '大运',
 ): { delta: number; notes: LocalizedText[] } {
-  const positioned = [...natalPillars(chart), { position: '大运', stem, branch }];
+  const positioned = [...natalPillars(chart), { position: layer, stem, branch }];
   const rels = findRelations(positioned)
     .filter(isBranchRelation)
-    .filter((r) => r.positions.includes('大运'));
+    .filter((r) => r.positions.includes(layer));
+  const w = LAYER_WORD[layer];
 
   const notes: LocalizedText[] = [];
   let delta = 0;
@@ -279,7 +295,7 @@ function scoreDecadeRelations(
   const posEn: Record<string, string> = { 年柱: 'year branch', 月柱: 'month branch (the 提纲)', 日柱: 'day branch (self / spouse palace)', 时柱: 'hour branch' };
 
   for (const r of rels) {
-    const targets = r.positions.filter((p) => p !== '大运');
+    const targets = r.positions.filter((p) => p !== layer);
     const hitsCore = targets.some((p) => CORE_POSITIONS.has(p));
     const targetZh = targets.map((p) => posZh[p] ?? p).join('、');
     const targetEn = targets.map((p) => posEn[p] ?? p).join(', ');
@@ -291,13 +307,13 @@ function scoreDecadeRelations(
       if (hitsCore) {
         delta -= 2;
         notes.push(t(
-          `此运${branch}冲${targetZh}，主动荡变迁`,
-          `This decade's ${branch} clashes the ${targetEn} — an unsettled, shifting stretch`,
+          `${w.zh}${branch}冲${targetZh}，主动荡变迁`,
+          `${w.en}'s ${branch} clashes the ${targetEn} — an unsettled, shifting stretch`,
         ));
       } else {
         notes.push(t(
-          `此运${branch}冲${targetZh}，边角有触动`,
-          `This decade's ${branch} clashes the ${targetEn} — stirs the edges of the chart`,
+          `${w.zh}${branch}冲${targetZh}，边角有触动`,
+          `${w.en}'s ${branch} clashes the ${targetEn} — stirs the edges of the chart`,
         ));
       }
     } else if (r.kind === '三合' || r.kind === '三会' || r.kind === '六合') {
@@ -308,45 +324,45 @@ function scoreDecadeRelations(
       if (r.resultElement && fav.has(r.resultElement)) {
         delta += 1;
         notes.push(t(
-          `此运${targetZh}相合化${r.resultElement}，正是用神，主稳中有成`,
-          `This decade combines with the ${targetEn} into ${ELEMENT[r.resultElement]!.en}, ` +
+          `${w.zh}${targetZh}相合化${r.resultElement}，正是用神，主稳中有成`,
+          `${w.en} combines with the ${targetEn} into ${ELEMENT[r.resultElement]!.en}, ` +
             `the favourable element — steadying, and things come together`,
         ));
       } else if (r.resultElement && !fav.has(r.resultElement)) {
         delta -= 1;
         notes.push(t(
-          `此运${targetZh}相合化${r.resultElement}，反为忌神，牵绊多`,
-          `This decade combines with the ${targetEn} into ${ELEMENT[r.resultElement]!.en}, ` +
+          `${w.zh}${targetZh}相合化${r.resultElement}，反为忌神，牵绊多`,
+          `${w.en} combines with the ${targetEn} into ${ELEMENT[r.resultElement]!.en}, ` +
             `which the chart does not want — binding, and progress drags`,
         ));
       } else if (hitsCore) {
         delta += 1;
         notes.push(t(
-          `此运${targetZh}相合，主安定、多助力`,
-          `This decade combines with the ${targetEn} — a settling stretch, with support around you`,
+          `${w.zh}${targetZh}相合，主安定、多助力`,
+          `${w.en} combines with the ${targetEn} — a settling stretch, with support around you`,
         ));
       } else {
         notes.push(t(
-          `此运${targetZh}相合，气机牵引`,
-          `This decade combines with the ${targetEn} — a pull at the edges of the chart`,
+          `${w.zh}${targetZh}相合，气机牵引`,
+          `${w.en} combines with the ${targetEn} — a pull at the edges of the chart`,
         ));
       }
     } else if (r.kind === '半合') {
       notes.push(t(
-        `此运${targetZh}半合，牵引较轻`,
-        `This decade half-combines with the ${targetEn} — a lighter pull`,
+        `${w.zh}${targetZh}半合，牵引较轻`,
+        `${w.en} half-combines with the ${targetEn} — a lighter pull`,
       ));
     } else if (r.kind === '相刑' || r.kind === '自刑') {
       delta -= 1;
       notes.push(t(
-        `此运${targetZh}相刑，主内耗、口舌或健康之扰`,
-        `This decade punishes the ${targetEn} — friction, disputes, or a drain on health`,
+        `${w.zh}${targetZh}相刑，主内耗、口舌或健康之扰`,
+        `${w.en} punishes the ${targetEn} — friction, disputes, or a drain on health`,
       ));
     } else {
       // 相害 / 相破 — real blemishes, but not enough to move the verdict.
       notes.push(t(
-        `此运与${targetZh}${r.kind === '相害' ? '相害' : '相破'}，小有嫌隙`,
-        `This decade ${r.kind === '相害' ? 'harms' : 'breaks'} the ${targetEn} — a minor snag`,
+        `${w.zh}与${targetZh}${r.kind === '相害' ? '相害' : '相破'}，小有嫌隙`,
+        `${w.en} ${r.kind === '相害' ? 'harms' : 'breaks'} the ${targetEn} — a minor snag`,
       ));
     }
   }
@@ -398,6 +414,11 @@ export function scoreElementBase(
   return { score, notes };
 }
 
+/** One scale for every luck layer; the thresholds are explained where the
+ *  decade score is assembled below. */
+export const verdictOf = (score: number): DecadeVerdict =>
+  score >= 3 ? '有利' : score >= 1 ? '偏顺' : score >= -3 ? '平稳' : '不利';
+
 function scoreDecades(chart: Chart, yongShen: YongShenAnalysis): DecadeOutlook[] {
   const fav = new Set(yongShen.favourable);
 
@@ -407,7 +428,7 @@ function scoreDecades(chart: Chart, yongShen: YongShenAnalysis): DecadeOutlook[]
     let score = base.score;
 
     // 合冲 with the natal chart — the character layer over element favourability.
-    const rel = scoreDecadeRelations(chart, d.stem, d.branch, fav);
+    const rel = scoreLuckRelations(chart, d.stem, d.branch, fav, '大运');
     score += rel.delta;
     notes.push(...rel.notes);
 
@@ -436,7 +457,7 @@ function scoreDecades(chart: Chart, yongShen: YongShenAnalysis): DecadeOutlook[]
       // the good side is drawn at +3: across a sweep of charts that lands
       // roughly a quarter of decades on each side and half in the middle,
       // which is the shape a practitioner expects a life to have.
-      verdict: score >= 3 ? '有利' : score >= 1 ? '偏顺' : score >= -3 ? '平稳' : '不利',
+      verdict: verdictOf(score),
       notes,
     } satisfies DecadeOutlook;
   });

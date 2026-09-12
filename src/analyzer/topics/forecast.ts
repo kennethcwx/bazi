@@ -24,7 +24,10 @@ import { RELATION } from '../../i18n/glossary';
 import { findRelations, isBranchRelation, natalPillars, RELATION_WEIGHT } from '../relations';
 import { analyzeStrength } from '../strength';
 import { analyzeYongShen } from '../yongshen';
-import { MODE_LABEL, readPersonDay, type Band, type Favour, type Form, type Mode } from './dayread';
+import {
+  MODE_LABEL, readPalaceLayer, readPersonDay, stackNote, stackedOn,
+  type Band, type Favour, type Form, type Layer, type LayerRead, type Mode,
+} from './dayread';
 
 // 旺衰 grades on the same table now, so it lives in relations.ts. Re-exported
 // here because joint.ts and the tests already import them from this module.
@@ -55,6 +58,8 @@ export interface DayOutlook {
   /** Harmonising days read as ease; disturbing ones as friction. Null when
    *  the relation hits balance out or none reach the palace. */
   readonly tone: 'easy' | 'friction' | null;
+  /** The 流年 / 流月 whose mode this day shares — empty for a quiet day. */
+  readonly stacked: readonly Layer[];
 }
 
 export interface ForecastSummary {
@@ -66,6 +71,8 @@ export interface ForecastSummary {
   readonly quietCount: number;
   /** The 流月 context, which applies across the whole window. */
   readonly monthContext: readonly LocalizedText[];
+  /** The 流年 and 流月 the window sits in, read against the palace. */
+  readonly layers: { readonly year: LayerRead; readonly month: LayerRead };
   readonly headline: LocalizedText;
 }
 
@@ -78,8 +85,26 @@ export function favourOf(chart: Chart): Favour {
   return { favourable: y.favourable, unfavourable: y.unfavourable };
 }
 
-/** Score one day against the natal chart, through the relationship lens. */
-export function scoreDay(chart: Chart, date: Date, favour: Favour): DayOutlook {
+/** The 流年 and 流月 a date sits in, read against the palace. */
+export function layersOf(chart: Chart, date: Date): { year: LayerRead; month: LayerRead } {
+  const p = transitPillars(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
+  const td = (c: { getHeavenStem(): { getName(): string }; getEarthBranch(): { getName(): string } }) =>
+    ({ stem: c.getHeavenStem().getName(), branch: c.getEarthBranch().getName() });
+  return {
+    year: readPalaceLayer(chart, td(p.year), '流年'),
+    month: readPalaceLayer(chart, td(p.month), '流月'),
+  };
+}
+
+/**
+ * Score one day against the natal chart, through the relationship lens.
+ * With `layers`, a registering day that shares a layer's mode is marked as
+ * stacked on it and says so in its notes; its score and band do not move.
+ */
+export function scoreDay(
+  chart: Chart, date: Date, favour: Favour,
+  layers?: { year: LayerRead; month: LayerRead },
+): DayOutlook {
   const dayCycle = transitPillars(
     date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate(),
   ).day;
@@ -87,6 +112,7 @@ export function scoreDay(chart: Chart, date: Date, favour: Favour): DayOutlook {
     stem: dayCycle.getHeavenStem().getName(),
     branch: dayCycle.getEarthBranch().getName(),
   });
+  const stacked = layers ? stackedOn(read.mode, [layers.year, layers.month]) : [];
   return {
     date: iso(date),
     ganZhi: dayCycle.getName(),
@@ -94,8 +120,9 @@ export function scoreDay(chart: Chart, date: Date, favour: Favour): DayOutlook {
     band: read.band,
     mode: read.mode,
     form: read.form,
-    notes: read.notes,
+    notes: stacked.length ? [...read.notes, stackNote(read.mode, stacked)] : read.notes,
     tone: read.balance > 0 ? 'easy' : read.balance < 0 ? 'friction' : null,
+    stacked,
   };
 }
 
@@ -118,12 +145,16 @@ export function forecastRelationship(
   const start = Date.UTC(
     fromDate.getUTCFullYear(), fromDate.getUTCMonth(), fromDate.getUTCDate(),
   );
+  // 流年 and 流月 apply across the window rather than to any one day. Read
+  // at the midpoint; a 30-day window can straddle a 节 or 立春, and the
+  // midpoint is the least wrong single answer.
+  const mid = new Date(start + Math.floor(span / 2) * 86_400_000);
+  const layers = layersOf(chart, mid);
+
   for (let i = 0; i < span; i++) {
-    out.push(scoreDay(chart, new Date(start + i * 86_400_000), favour));
+    out.push(scoreDay(chart, new Date(start + i * 86_400_000), favour, layers));
   }
 
-  // 流月 applies across the window rather than to any one day.
-  const mid = new Date(start + Math.floor(span / 2) * 86_400_000);
   const monthPillar = transitPillars(
     mid.getUTCFullYear(), mid.getUTCMonth() + 1, mid.getUTCDate(),
   ).month;
@@ -177,6 +208,7 @@ export function forecastRelationship(
     standout,
     quietCount,
     monthContext,
+    layers,
     headline,
   };
 }

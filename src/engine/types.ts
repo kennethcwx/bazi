@@ -152,6 +152,21 @@ export interface AnnualLuck {
   readonly branchMainTenGod: TenGod;
 }
 
+/** One 流月 — a month of the sexagenary year, opened by its 节. */
+export interface MonthlyLuck {
+  /** The 流年 (立春-based) this month belongs to. */
+  readonly year: number;
+  /** 0 = 寅月 (opens at 立春) … 11 = 丑月. */
+  readonly index: number;
+  readonly ganZhi: string;
+  readonly stem: string;
+  readonly branch: string;
+  readonly stemTenGod: TenGod;
+  readonly branchMainTenGod: TenGod;
+  /** Civil date the month opens on — the day of its 节. */
+  readonly starts: { readonly year: number; readonly month: number; readonly day: number };
+}
+
 export interface Chart {
   readonly input: BirthInput;
   readonly moment: ResolvedMoment;

@@ -26,10 +26,10 @@ import { t, type LocalizedText } from '../../i18n/text';
 import { ELEMENT, RELATION } from '../../i18n/glossary';
 import { controls, elementOfBranch, elementOfStem, generates } from '../elements';
 import { findRelations, isBranchRelation, type PositionedPillar } from '../relations';
-import { HOUR_MIDPOINTS, HOUR_RANGES, RELATION_WEIGHT, favourOf } from './forecast';
+import { HOUR_MIDPOINTS, HOUR_RANGES, RELATION_WEIGHT, favourOf, layersOf } from './forecast';
 import {
-  bandOf, dayTenGod, isSpouseStar, MODE_LABEL, readPersonDay, topMode,
-  type Band, type Favour, type Form, type Mode, type TransitDay,
+  bandOf, dayTenGod, isSpouseStar, MODE_LABEL, readPersonDay, stackNote, stackedOn, topMode,
+  type Band, type Favour, type Form, type Layer, type LayerRead, type Mode, type TransitDay,
 } from './dayread';
 import { SolarTime } from 'tyme4ts';
 
@@ -43,6 +43,9 @@ export interface SideDay {
   readonly form: Form;
   readonly score: number;
   readonly notes: readonly LocalizedText[];
+  /** The 流年 / 流月 this side's day shares a mode with; empty when quiet or
+   *  for the pair reading, which has no single chart to read a layer from. */
+  readonly stacked: readonly Layer[];
 }
 
 export interface JointDay {
@@ -78,21 +81,31 @@ export interface JointForecast {
   readonly days: readonly JointDay[];
   readonly headline: LocalizedText;
   readonly caveat: LocalizedText;
+  /** Each person's 流年 and 流月, read against their own palace. */
+  readonly layers: {
+    readonly yours: { readonly year: LayerRead; readonly month: LayerRead };
+    readonly theirs: { readonly year: LayerRead; readonly month: LayerRead };
+  };
 }
 
 const iso = (d: Date) =>
   `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 
 /** How the day sits for one person, through the relationship lens. */
-function scoreSide(chart: Chart, favour: Favour, day: TransitDay): SideDay {
+function scoreSide(
+  chart: Chart, favour: Favour, day: TransitDay,
+  layers?: { year: LayerRead; month: LayerRead },
+): SideDay {
   const r = readPersonDay(chart, favour, day);
+  const stacked = layers ? stackedOn(r.mode, [layers.year, layers.month]) : [];
   return {
     band: r.band,
     tone: r.balance > 0 ? 'easy' : r.balance < 0 ? 'friction' : null,
     mode: r.mode,
     form: r.form,
     score: r.score,
-    notes: r.notes,
+    notes: stacked.length ? [...r.notes, stackNote(r.mode, stacked)] : r.notes,
+    stacked,
   };
 }
 
@@ -204,6 +217,7 @@ function scoreBetween(self: Chart, partner: Chart, day: PositionedPillar): SideD
   const mode = topMode(votes);
 
   return {
+    stacked: [],
     band,
     tone: easy > rough ? 'easy' : rough > easy ? 'friction' : null,
     mode: band === 'quiet' ? 'quiet' : mode,
@@ -227,6 +241,8 @@ export function forecastJoint(
     fromDate.getUTCFullYear(), fromDate.getUTCMonth(), fromDate.getUTCDate(),
   );
   const out: JointDay[] = [];
+  const mid = new Date(start + Math.floor(span / 2) * 86_400_000);
+  const layers = { yours: layersOf(self, mid), theirs: layersOf(partner, mid) };
 
   for (let i = 0; i < span; i++) {
     const date = new Date(start + i * 86_400_000);
@@ -239,8 +255,8 @@ export function forecastJoint(
       branch: cycle.getEarthBranch().getName(),
     };
 
-    const yours = scoreSide(self, selfFavour, incoming);
-    const theirs = scoreSide(partner, partnerFavour, incoming);
+    const yours = scoreSide(self, selfFavour, incoming, layers.yours);
+    const theirs = scoreSide(partner, partnerFavour, incoming, layers.theirs);
     const between = scoreBetween(self, partner, incoming);
 
     out.push({
@@ -280,6 +296,7 @@ export function forecastJoint(
             `normal state of things, and not a reason to wait for one.`,
         ),
     caveat: JOINT_CAVEAT,
+    layers,
   };
 }
 

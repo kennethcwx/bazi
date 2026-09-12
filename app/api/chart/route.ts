@@ -11,7 +11,8 @@
  */
 
 import { NextResponse } from 'next/server';
-import { buildChart, annualLuck } from '../../../src/engine/chart';
+import { buildChart, annualLuck, sexagenaryYearOf } from '../../../src/engine/chart';
+import { scoreMonths } from '../../../src/analyzer/topics/monthly';
 import { analyzeChart } from '../../../src/analyzer/index';
 import { renderFinding } from '../../../src/analyzer/findings';
 import { isLocale, type Locale } from '../../../src/i18n/text';
@@ -64,8 +65,35 @@ export async function POST(req: Request) {
       current: a.year === nowYear,
     }));
 
+    // 流月 for the 流年 in force today. Twelve cells on the decade scale, the
+    // month containing today marked; the strip sits under the 流年 band.
+    const today = new Date();
+    const cycleYear = sexagenaryYearOf(today.getFullYear(), today.getMonth() + 1, today.getDate());
+    const months = scoreMonths(chart, analysis.yongShen, cycleYear);
+    const asDate = (s: { year: number; month: number; day: number }) => Date.UTC(s.year, s.month - 1, s.day);
+    const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+    const monthly = months.map((m, i) => {
+      const next = months[i + 1];
+      const start = asDate(m.starts);
+      const end = next ? asDate(next.starts) : start + 32 * 86_400_000;
+      return {
+        year: m.year,
+        index: m.index,
+        ganZhi: m.ganZhi,
+        stem: m.stem,
+        branch: m.branch,
+        stemTenGod: m.stemTenGod,
+        branchTenGod: m.branchMainTenGod,
+        starts: `${m.starts.month}/${m.starts.day}`,
+        score: m.score,
+        verdict: m.verdict,
+        notes: m.notes.map((n) => n[locale]),
+        current: todayUtc >= start && todayUtc < end,
+      };
+    });
     return NextResponse.json({
       annual,
+      monthly,
       locale,
       chart,
       strength: {

@@ -54,6 +54,14 @@ export const UI = {
       + 'the Ten God it brings; the present year is highlighted.',
   ),
   annualNow: t('今年', 'this year'),
+  monthly: t('流月', 'Monthly pillars'),
+  monthlyNote: t(
+    '本流年十二个月，自立春起按节令换月；与大运同一把尺：用神、忌神与合冲。本月高亮。',
+    'The twelve months of the present 流年, each opening at its 节 (solar term), '
+      + 'read on the same scale as the luck pillars — favourable elements and 合冲. '
+      + 'The present month is highlighted.',
+  ),
+  monthlyNow: t('本月', 'this month'),
   reading: t('解读', 'Reading'),
   findings: t('已算出的结论', 'Computed findings'),
 
@@ -114,6 +122,10 @@ export const UI = {
   formLow: t('低', 'low'),
   formSteadyLong: t('状态稳', 'on steady ground'),
   formLowLong: t('气短', 'running on less'),
+  layerYear: t('流年', 'Year'),
+  layerMonth: t('流月', 'Month'),
+  stackedMark: t('叠', '+'),
+  stackedHint: t('“叠”：这一天与流年或流月同向，比单看当天更重。', '“+”: the day runs the same way as the year or month it sits in — heavier than the day alone.'),
   dotOrder: t('每天三点依次为：你 · 对方 · 两人之间', 'The three dots on each day are: you · them · between you'),
   today: t('今', 'today'),
   hoursTitle: t('时辰', 'Hours of the day'),

@@ -29,9 +29,13 @@ type Band = 'notable' | 'mild' | 'quiet';
 type Mode = 'close' | 'stirred' | 'friction' | 'apart' | 'quiet';
 type Form = 'steady' | 'low' | null;
 
-interface Side { band: Band; mode: Mode; form: Form; notes: string[] }
+type Layer = '流年' | '流月';
+interface LayerRead { layer: Layer; ganZhi: string; mode: Mode; notes: string[] }
+interface LayerPair { year: LayerRead; month: LayerRead }
+interface Side { band: Band; mode: Mode; form: Form; notes: string[]; stacked: Layer[] }
 interface SoloDay {
   date: string; ganZhi: string; band: Band; mode: Mode; form: Form; notes: string[];
+  stacked: Layer[];
 }
 interface JointDay { date: string; ganZhi: string; yours: Side; theirs: Side; between: Side }
 interface Hour {
@@ -47,8 +51,33 @@ interface Data {
   from: string; to: string;
   headline: string; caveat: string;
   monthContext?: string[];
+  /** Solo: one pair. Joint: a pair per person. */
+  layers?: LayerPair | { yours: LayerPair; theirs: LayerPair };
   days: (SoloDay | JointDay)[];
   hours: Hour[] | null;
+}
+
+const isPair = (l: NonNullable<Data['layers']>): l is LayerPair => 'year' in l;
+
+/** Whether any track of this day stacks on a layer. */
+const isStacked = (d: SoloDay | JointDay): boolean =>
+  isJoint(d) ? d.yours.stacked.length > 0 || d.theirs.stacked.length > 0 : d.stacked.length > 0;
+
+/** 流年 · 流月 for one person, each with what it does to the palace. */
+function LayerLine({ pair, who, locale }: { pair: LayerPair; who?: string; locale: Locale }) {
+  const one = (l: LayerRead) => (
+    <span className="layer">
+      <span className="layer-k">{l.layer === '流年' ? UI.layerYear[locale] : UI.layerMonth[locale]}</span>
+      {' '}<span className="layer-gz">{l.ganZhi}</span>
+      {' '}<span className={`layer-mode m-${l.mode}`}>{l.mode === 'quiet' ? UI.modeQuiet[locale] : modeWord(l.mode, locale)}</span>
+    </span>
+  );
+  return (
+    <p className="layers">
+      {who && <span className="layer-who">{who}</span>}
+      {one(pair.year)}{one(pair.month)}
+    </p>
+  );
 }
 
 /** One window. Seven and fourteen days were offered once and never told
@@ -205,7 +234,20 @@ export function Forecast({ birth, locale }: {
         <>
           <div className="card">
             <p className="headline">{data.headline}</p>
-            {data.monthContext?.map((m, i) => <p className="month-ctx" key={i}>{m}</p>)}
+            {/* The layers the window sits in. A day is read inside its month
+                and year; these say what those two are doing to the palace
+                across the whole span, so a stacked day has something to
+                stack on. */}
+            {data.layers && (isPair(data.layers)
+              ? <LayerLine pair={data.layers} locale={locale} />
+              : <>
+                  <LayerLine pair={data.layers.yours} who={UI.trackYours[locale]} locale={locale} />
+                  <LayerLine pair={data.layers.theirs} who={UI.trackTheirs[locale]} locale={locale} />
+                </>)}
+            {data.layers && [
+              ...(isPair(data.layers) ? [data.layers.year, data.layers.month]
+                : [data.layers.yours.year, data.layers.yours.month, data.layers.theirs.year, data.layers.theirs.month]),
+            ].flatMap((l) => l.notes).map((n, i) => <p className="month-ctx" key={i}>{n}</p>)}
             <div className="legend">
               {modes.map((m) => (
                 <span key={m}><i className={`d-dot m-${m}`} />{modeWord(m, locale)}</span>
@@ -214,6 +256,7 @@ export function Forecast({ birth, locale }: {
               <span><i className="d-dot f-low" />{formWord('low', locale)}</span>
             </div>
             {data.mode === 'joint' && <p className="note legend-note">{UI.dotOrder[locale]}</p>}
+            {data.days.some(isStacked) && <p className="note legend-note">{UI.stackedHint[locale]}</p>}
             {data.mode === 'solo' && hasPartner && (
               <p className="note">{UI.jointHint[locale]}</p>
             )}
@@ -228,7 +271,7 @@ export function Forecast({ birth, locale }: {
                 onClick={() => openDetail(d.date)}>
                 <span className="day-date">{d.date === today ? UI.today[locale] : dayLabel(d.date)}</span>
                 <span className="day-wd">{weekday(d.date, locale)}</span>
-                <span className="day-gz">{d.ganZhi}</span>
+                <span className="day-gz">{isStacked(d) && <span className="stack-mark" aria-label={UI.stackedHint[locale]}>{UI.stackedMark[locale]}</span>}{d.ganZhi}</span>
                 <DayWord day={d} locale={locale} />
               </button>
             ))}

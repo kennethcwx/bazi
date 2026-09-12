@@ -48,10 +48,17 @@ interface AnnualView {
   stemTenGod: string; branchTenGod: string; current: boolean;
 }
 
+interface MonthView {
+  year: number; index: number; ganZhi: string;
+  stemTenGod: string; branchTenGod: string;
+  starts: string; score: number; verdict: string; notes: string[]; current: boolean;
+}
+
 interface Result {
   locale: Locale;
   chart: Chart;
   annual: AnnualView[];
+  monthly: MonthView[];
   strength: {
     elementPercent: Record<Element, number>;
     supportPercent: number;
@@ -687,6 +694,28 @@ export default function Page() {
               </div>
             </div>
           </section>
+
+          {result.monthly.length > 0 && (
+            <section>
+              <h2>{UI.monthly[L]}{' · '}{result.monthly[0]!.year}</h2>
+              <p className="scale-note">{UI.monthlyNote[L]}</p>
+              <div className="luck-scroll annual-scroll">
+                <div className="annual months">
+                  {result.monthly.map((m) => (
+                    <div className={`annual-cell luck-cell v-${m.verdict}${m.current ? ' now' : ''}`} key={m.index}>
+                      <div className="age">{m.starts}</div>
+                      <div className="gz">{m.ganZhi}</div>
+                      <div className="tg">{TEN_GOD[m.stemTenGod]?.[L] ?? m.stemTenGod}</div>
+                      <div className="tg dim">{TEN_GOD[m.branchTenGod]?.[L] ?? m.branchTenGod}</div>
+                      <div className="verdict-tag">{DECADE_VERDICT[m.verdict]?.[L] ?? m.verdict}</div>
+                      <div className="bar" />
+                      {m.current && <div className="now-tag">{UI.monthlyNow[L]}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
 
           {result.annual.length > 0 && (
             <section>

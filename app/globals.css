@@ -438,6 +438,15 @@ details.why[open] > summary::after { transform: rotate(-135deg) translateY(-1px)
   line-height: 1.35; margin-top: 3px; overflow-wrap: break-word;
 }
 .annual-cell .tg.dim { color: var(--text-faint); }
+/* The 流月 strip: annual cells with the decade's verdict tag and bar. The bar
+   is pushed to the bottom so the twelve read as one row even when an English
+   十神 name wraps in one cell and stretches the grid. */
+.months { grid-auto-columns: 72px; }
+.months .annual-cell { display: flex; flex-direction: column; align-items: center; }
+.months .annual-cell .verdict-tag { margin-top: 5px; }
+.months .annual-cell .bar { width: 100%; margin-top: auto; }
+.months .annual-cell .verdict-tag + .bar { margin-top: auto; }
+.months .annual-cell .now-tag { margin-top: 5px; }
 .annual-cell.now { border-color: var(--gold); background: #1e1a16; }
 .annual-cell .now-tag {
   font-size: 0.6471rem; color: var(--gold); letter-spacing: 0.04em; margin-top: 5px;
@@ -734,6 +743,25 @@ details.terms { margin-top: 18px; border-top: 1px solid var(--line); padding-top
 }
 .legend span { display: inline-flex; align-items: center; gap: 5px; }
 .legend-note { margin-top: 6px; }
+
+/* 流年 · 流月 the window sits in — one line per person. */
+.layers {
+  display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline;
+  margin: 10px 0 0; font-size: 0.7647rem; color: var(--text-dim);
+}
+.layer-who { color: var(--text-faint); }
+.layer-k { color: var(--text-faint); letter-spacing: 0.04em; }
+.layer-gz { font-family: var(--serif); font-size: 0.9412rem; color: var(--text); }
+.layer-mode.m-close { color: var(--m-close); }
+.layer-mode.m-stirred { color: var(--m-stirred); }
+.layer-mode.m-friction { color: var(--m-friction); }
+.layer-mode.m-apart { color: var(--m-apart); }
+.layer-mode.m-quiet { color: var(--text-faint); }
+/* The mark on a day that runs the same way as its month or year. */
+.stack-mark {
+  font-family: var(--sans); font-size: 0.6471rem; color: var(--gold);
+  vertical-align: top; margin-right: 1px;
+}
 
 .chips { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 .chip {

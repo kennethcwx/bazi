@@ -354,6 +354,102 @@ export function readPersonDay(chart: Chart, favour: Favour, day: TransitDay): Pe
   return { score, band, mode, form, notes, balance: harmonising - disturbing };
 }
 
+/** A layer above the day: the 流年 or 流月 the window sits in. */
+export type Layer = '流年' | '流月';
+
+export interface LayerRead {
+  readonly layer: Layer;
+  readonly ganZhi: string;
+  /** What the layer does to the 夫妻宫 across its whole span, or quiet. */
+  readonly mode: Mode;
+  readonly score: number;
+  readonly notes: readonly LocalizedText[];
+}
+
+const LAYER_WORD: Record<Layer, { zh: string; en: string; span: { zh: string; en: string } }> = {
+  流年: { zh: '流年', en: 'The year', span: { zh: '整年', en: 'all year' } },
+  流月: { zh: '流月', en: 'The month', span: { zh: '整月', en: 'all month' } },
+};
+
+/**
+ * Read a 流年 or 流月 against the 夫妻宫 the way a day is read — relations by
+ * kind, plus 伏吟 — so the layers stack on one scale. Only relations and
+ * mirrors count, the same two things that let a day register; the ten god,
+ * the stars and the form are a day's colour and are not repeated here.
+ *
+ * What this is for: a day that 冲s the palace inside a month that already
+ * does reads as more than a mood. The stacking is said, not scored — the day
+ * keeps its own band, and the note names the layer it lands on.
+ */
+export function readPalaceLayer(chart: Chart, pillar: TransitDay, layer: Layer): LayerRead {
+  const natal = natalPillars(chart);
+  const votes: Record<Mode, number> = { close: 0, stirred: 0, friction: 0, apart: 0, quiet: 0 };
+  const notes: LocalizedText[] = [];
+  const w = LAYER_WORD[layer];
+  let score = 0;
+
+  const withLayer: PositionedPillar[] = [...natal, { position: layer, stem: pillar.stem, branch: pillar.branch }];
+  for (const r of findRelations(withLayer)) {
+    if (!r.positions.includes(layer) || !r.positions.includes('日柱') || !isBranchRelation(r)) continue;
+    const weight = RELATION_WEIGHT[r.kind];
+    const read = PALACE_RELATION[r.kind];
+    if (weight === 0 || !read) continue;
+    score += weight;
+    votes[read.mode] += weight;
+    const v = r.values.join('–');
+    notes.push(
+      r.polarity === 'harmonising'
+        ? t(
+            `${w.zh}${pillar.stem}${pillar.branch}与夫妻宫${r.label}（${v}）——${w.span.zh}底色偏${MODE_LABEL[read.mode].zh}`,
+            `${w.en} (${pillar.stem}${pillar.branch}) forms ${r.kind} with your Spouse Palace (${v}) — the background ${w.span.en} leans ${MODE_LABEL[read.mode].en}`,
+          )
+        : t(
+            `${w.zh}${pillar.stem}${pillar.branch}${r.label}夫妻宫（${v}）——${w.span.zh}底色偏${MODE_LABEL[read.mode].zh}`,
+            `${w.en} (${pillar.stem}${pillar.branch}) brings ${r.kind} to your Spouse Palace (${v}) — the background ${w.span.en} leans ${MODE_LABEL[read.mode].en}`,
+          ),
+    );
+  }
+
+  const natalDay = chart.pillars.day;
+  if (pillar.stem === natalDay.stem && pillar.branch === natalDay.branch) {
+    score += 2;
+    votes.apart += 2;
+    notes.push(t(
+      `${w.zh}${pillar.stem}${pillar.branch}与日柱伏吟——${w.span.zh}旧事重提，各自消化`,
+      `${w.en} repeats your Day Pillar (伏吟, ${pillar.stem}${pillar.branch}) — old subjects return ${w.span.en}, and each of you sits with them alone`,
+    ));
+  }
+
+  const band = bandOf(score);
+  return {
+    layer,
+    ganZhi: `${pillar.stem}${pillar.branch}`,
+    mode: band === 'quiet' ? 'quiet' : topMode(votes),
+    score,
+    notes,
+  };
+}
+
+/**
+ * The layers a registering day lands on: those whose mode it shares. A quiet
+ * day stacks on nothing — the layer is context for a day that does something,
+ * not a way of making a quiet day register.
+ */
+export function stackedOn(mode: Mode, layers: readonly LayerRead[]): Layer[] {
+  if (mode === 'quiet') return [];
+  return layers.filter((l) => l.mode === mode).map((l) => l.layer);
+}
+
+/** The note a stacked day carries, naming the layer it lands on. */
+export function stackNote(mode: Mode, layers: readonly Layer[]): LocalizedText {
+  const zh = layers.join('与');
+  const en = layers.map((l) => (l === '流年' ? 'the year' : 'the month')).join(' and ');
+  return t(
+    `${zh}本已偏${MODE_LABEL[mode].zh}，今日再叠一层——比单看这一天更重`,
+    `${en.charAt(0).toUpperCase()}${en.slice(1)} already lean${layers.length === 1 ? 's' : ''} ${MODE_LABEL[mode].en}; today adds a layer on top — heavier than the day alone`,
+  );
+}
+
 /**
  * Highest-voted mode. Ties go to the LATER entry, so colour can win one:
  * 半合 with 桃花 and 红鸾 on top is a stirred day, not a close one.

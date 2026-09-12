@@ -11,6 +11,7 @@
 
 import {
   SolarTime,
+  SixtyCycleYear,
   HeavenStem,
   EarthBranch,
   ChildLimit,
@@ -27,6 +28,7 @@ import type {
   Element,
   HiddenStem,
   HiddenStemRole,
+  MonthlyLuck,
   Pillar,
   PillarPosition,
   TenGod,
@@ -267,4 +269,40 @@ export function annualLuck(
     });
   }
   return out;
+}
+
+/**
+ * The twelve 流月 of one 流年, each opened by its 节 — 寅月 at 立春 through
+ * 丑月 at 小寒. Read against the day master like the years and decades are.
+ *
+ * `year` is the 流年, so the last month (丑) opens in January of the next
+ * civil year; `starts` carries the real civil date so a strip can label it.
+ */
+export function monthlyLuck(chart: Chart, year: number): MonthlyLuck[] {
+  const dayStem = HeavenStem.fromName(chart.dayMaster);
+  return SixtyCycleYear.fromYear(year).getMonths().map((m) => {
+    const cycle = m.getSixtyCycle();
+    const first = m.getFirstDay().getSolarDay();
+    return {
+      year,
+      index: m.getIndexInYear(),
+      ganZhi: cycle.getName(),
+      stem: cycle.getHeavenStem().getName(),
+      branch: cycle.getEarthBranch().getName(),
+      ...luckTenGods(cycle, dayStem),
+      starts: { year: first.getYear(), month: first.getMonth(), day: first.getDay() },
+    };
+  });
+}
+
+/** The 流年 (立春-based sexagenary year) a civil date falls in. */
+export function sexagenaryYearOf(year: number, month: number, day: number): number {
+  // Any solar time inside the day; noon keeps clear of the 23:00 boundary.
+  const cycleYear = SolarTime.fromYmdHms(year, month, day, 12, 0, 0)
+    .getSixtyCycleHour().getYear();
+  // The cycle repeats every 60 years; the civil year is either the same or,
+  // before 立春, one less. Resolve by name against the two candidates.
+  return SixtyCycleYear.fromYear(year).getSixtyCycle().getName() === cycleYear.getName()
+    ? year
+    : year - 1;
 }
