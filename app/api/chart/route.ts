@@ -16,6 +16,10 @@ import { scoreMonths } from '../../../src/analyzer/topics/monthly';
 import { analyzeChart } from '../../../src/analyzer/index';
 import { renderFinding } from '../../../src/analyzer/findings';
 import { findShenSha } from '../../../src/analyzer/shensha';
+import { hasModel } from '../../../src/narrator/narrate';
+import { composeReading } from '../../../src/narrator/compose';
+import { checkGrounding } from '../../../src/narrator/prompt';
+import { TEMPLATES } from '../../../src/narrator/templates';
 import { isLocale, type Locale } from '../../../src/i18n/text';
 import type { BirthInput } from '../../../src/engine/types';
 
@@ -97,10 +101,22 @@ export async function POST(req: Request) {
     const shensha = findShenSha(chart).map((s) => ({
       name: s.name, position: s.position, meaning: s.meaning[locale],
     }));
+    // With no model configured every reading is composed from the findings —
+    // a pure function of the chart, microseconds each. Ship all of them with
+    // the chart so a question opens instantly instead of paying a second
+    // round trip and a typewriter for text the server already had. When a
+    // model is configured the client streams from /api/read as before.
+    const readings = hasModel()
+      ? null
+      : Object.fromEntries(TEMPLATES.map((tpl) => {
+          const text = composeReading(analysis, tpl, locale);
+          return [tpl.id, { text, grounding: checkGrounding(text, analysis, tpl) }];
+        }));
     return NextResponse.json({
       annual,
       monthly,
       shensha,
+      readings,
       locale,
       chart,
       strength: {

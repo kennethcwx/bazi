@@ -501,6 +501,15 @@ details.why[open] > summary::after { transform: rotate(-135deg) translateY(-1px)
 .q-btn:disabled { opacity: 0.4; }
 
 /* ---------- reading ---------- */
+/* Free-text question, under the six. */
+.ask { display: flex; gap: 8px; margin-bottom: 14px; }
+.ask input { flex: 1; min-width: 0; }
+.ask button { flex: none; padding: 0 18px; }
+.answered-as {
+  margin: 0 0 12px; font-size: 0.7647rem; color: var(--text-faint);
+  padding-bottom: 10px; border-bottom: 1px solid var(--line);
+}
+
 .reading { font-size: 0.9412rem; line-height: 1.85; }
 .reading h3 {
   font-family: var(--serif); font-size: 1.0588rem; font-weight: 500;

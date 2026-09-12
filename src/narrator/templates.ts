@@ -49,7 +49,7 @@ export const TEMPLATES: readonly Template[] = [
         'this person. Close with the one thing they most need to watch.',
     ),
     targetLength: 420,
-    matches: ['感情', '姻缘', '婚姻', '爱情', 'relationship', 'love', 'marriage', 'romantic'],
+    matches: ['感情', '姻缘', '婚姻', '爱情', '桃花', '恋爱', '婚', 'relationship', 'love', 'marriage', 'romantic', 'dating'],
   },
   {
     id: 'rel.timing',
@@ -68,7 +68,7 @@ export const TEMPLATES: readonly Template[] = [
         'do not decide for them whether it means coming together or coming apart.',
     ),
     targetLength: 400,
-    matches: ['什么时候', '何时', '几岁', '结婚', '成家', 'when', 'timing', 'marry', 'married'],
+    matches: ['什么时候', '何时', '几岁', '哪一年', '哪年', '结婚', '成家', '脱单', 'when', 'timing', 'marry', 'married', 'year'],
   },
   {
     id: 'rel.partner',
@@ -88,7 +88,7 @@ export const TEMPLATES: readonly Template[] = [
         'background; the method does not support that precision.',
     ),
     targetLength: 380,
-    matches: ['另一半', '配偶', '对象', '什么样的人', 'partner', 'spouse', 'husband', 'wife'],
+    matches: ['另一半', '配偶', '对象', '什么样的人', '怎样的人', '老公', '老婆', '伴侣', 'partner', 'spouse', 'husband', 'wife', 'who'],
   },
   {
     id: 'rel.obstacles',
@@ -107,7 +107,7 @@ export const TEMPLATES: readonly Template[] = [
         'charts and is explaining, not passing sentence.',
     ),
     targetLength: 400,
-    matches: ['为什么', '不顺', '反复', '分手', '波折', 'why', 'breakup', 'problem', 'fail'],
+    matches: ['为什么', '不顺', '反复', '分手', '波折', '离婚', '吵架', '第三者', 'why', 'breakup', 'problem', 'fail', 'divorce', 'fight'],
   },
 
   {
@@ -125,7 +125,7 @@ export const TEMPLATES: readonly Template[] = [
         'make that connection explicit.',
     ),
     targetLength: 420,
-    matches: ['事业', '工作', '格局', 'career', 'work', 'professional'],
+    matches: ['事业', '工作', '格局', '前途', '发展', 'career', 'work', 'professional', 'future'],
   },
   {
     id: 'career.field',
@@ -143,7 +143,7 @@ export const TEMPLATES: readonly Template[] = [
         'the two is reasonable — this is a difference of method, not hedging.',
     ),
     targetLength: 380,
-    matches: ['行业', '职业', '做什么', '方向', 'industry', 'field', 'job', 'sector'],
+    matches: ['行业', '职业', '做什么', '方向', '哪一行', '哪行', '哪个行业', '适合做', 'industry', 'field', 'job', 'sector', 'line of work'],
   },
   {
     id: 'career.mode',

@@ -47,23 +47,22 @@ const JOINERS: Record<Locale, readonly string[]> = {
  * together, contested points belong together and last, and everything else
  * splits into the core reading and the detail behind it.
  */
-function buildSections(findings: readonly Finding[]): Section[] {
-  const timing = findings.filter((f) => f.id.includes('.timing'));
-  const contested = findings.filter((f) => !f.id.includes('.timing') && f.confidence === 'low');
-  const solid = findings.filter((f) => !f.id.includes('.timing') && f.confidence !== 'low');
-
-  const core = solid.slice(0, 2);
-  const detail = solid.slice(2);
-
+function buildSections(
+  lead: readonly Finding[],
+  context: readonly Finding[],
+  template: Template,
+): Section[] {
+  const solid = (fs: readonly Finding[]) => fs.filter((f) => f.confidence !== 'low');
+  const contested = [...lead, ...context].filter((f) => f.confidence === 'low');
   const sections: Section[] = [];
-  if (core.length > 0) {
-    sections.push({ heading: { zh: '基本格局', en: 'The shape of it' }, findings: core });
+  if (solid(lead).length > 0) {
+    // The lead section is named for the question, not for the topic: it is
+    // what makes the answer to "when" read differently from the answer to
+    // "what shape".
+    sections.push({ heading: { zh: template.hint.zh, en: template.hint.en }, findings: solid(lead) });
   }
-  if (detail.length > 0) {
-    sections.push({ heading: { zh: '细看', en: 'In more detail' }, findings: detail });
-  }
-  if (timing.length > 0) {
-    sections.push({ heading: { zh: '时机', en: 'Timing' }, findings: timing });
+  if (solid(context).length > 0) {
+    sections.push({ heading: { zh: '背景', en: 'Background' }, findings: solid(context) });
   }
   if (contested.length > 0) {
     sections.push({
@@ -136,17 +135,24 @@ export function composeReading(
 ): string {
   const topicFindings = analysis.findings.filter((f) => f.topic === template.topic);
 
-  // Order by the template's priorities first, then by salience — the same
-  // ordering the model is given, so both narrators lead with the same thing.
-  const leadIndex = new Map(template.leadWith.map((id, i) => [id, i]));
-  const ordered = [...topicFindings].sort((a, b) => {
-    const la = leadIndex.get(a.id) ?? 999;
-    const lb = leadIndex.get(b.id) ?? 999;
-    if (la !== lb) return la - lb;
-    return (b.salience ?? 0) - (a.salience ?? 0);
-  });
+  // Answer the question, not the topic. The first cut arranged EVERY finding
+  // of the topic under each question, only reordered — so the four
+  // relationship questions produced the same reading four times, and the
+  // person asking "when" got the same paragraphs as the person asking "what
+  // shape". The lead findings are the answer; at most two more, by salience,
+  // are background — and a timing finding is not background to a
+  // non-timing question.
+  const lead = template.leadWith
+    .map((id) => topicFindings.find((f) => f.id === id))
+    .filter((f): f is Finding => f !== undefined);
+  const leadIds = new Set(lead.map((f) => f.id));
+  const wantsTiming = template.leadWith.some((id) => id.includes('.timing'));
+  const context = topicFindings
+    .filter((f) => !leadIds.has(f.id) && (wantsTiming || !f.id.includes('.timing')))
+    .sort((a, b) => (b.salience ?? 0) - (a.salience ?? 0))
+    .slice(0, Math.max(1, 3 - lead.length));
 
-  const sections = buildSections(ordered);
+  const sections = buildSections(lead, context, template);
   if (sections.length === 0) {
     return locale === 'zh'
       ? '### 无可报告\n这个命局在此题目上没有算出可陈述的结论。\n'

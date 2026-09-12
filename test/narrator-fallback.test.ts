@@ -108,11 +108,35 @@ describe('composed reading', () => {
   });
 
   it('hedges contested findings rather than stating them flatly', () => {
-    const t = templateById('rel.overview')!;
-    const hasLow = analysis.findings.some((f) => f.topic === 'relationship' && f.confidence === 'low');
-    if (!hasLow) return;
-    expect(composeReading(analysis, t, 'zh')).toContain('一说');
-    expect(composeReading(analysis, t, 'en')).toContain('Less certainly');
+    // Wherever a low-confidence claim is used, the hedge must be there too.
+    let seen = 0;
+    for (const t of TEMPLATES) {
+      for (const f of analysis.findings.filter((x) => x.topic === t.topic && x.confidence === 'low')) {
+        const zh = composeReading(analysis, t, 'zh');
+        const en = composeReading(analysis, t, 'en');
+        if (zh.includes(f.claim.zh)) { seen++; expect(zh).toMatch(/一说|仅供参考/); }
+        if (en.includes(f.claim.en)) { expect(en).toMatch(/Less certainly|Held lightly/); }
+      }
+    }
+    const anyLow = analysis.findings.some((f) => f.confidence === 'low');
+    if (anyLow) expect(seen).toBeGreaterThan(0);
+  });
+
+  it('answers the question, not the topic — the four questions read differently', () => {
+    for (const topic of ['relationship', 'career'] as const) {
+      const texts = TEMPLATES.filter((t) => t.topic === topic)
+        .map((t) => composeReading(analysis, t, 'zh').split('\n### 关于取用')[0]);
+      const distinct = new Set(texts);
+      expect(distinct.size, `${topic}: ${distinct.size} distinct of ${texts.length}`).toBe(texts.length);
+    }
+  });
+
+  it('names the lead section after the question', () => {
+    for (const t of TEMPLATES) {
+      const text = composeReading(analysis, t, 'zh');
+      const present = t.leadWith.some((id) => analysis.findings.some((f) => f.id === id && f.confidence !== 'low'));
+      if (present) expect(text.split('\n')[0]).toBe(`### ${t.hint.zh}`);
+    }
   });
 
   it('always discloses the 用神 school, as the model prompt demands', () => {
