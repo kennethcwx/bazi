@@ -47,7 +47,7 @@ export default function Unlock() {
           body: JSON.stringify({ pin }),
         });
         if (res.ok) {
-          // Full reload so middleware sees the new cookie.
+          // Full reload so the proxy sees the new cookie.
           window.location.replace('/');
           return;
         }

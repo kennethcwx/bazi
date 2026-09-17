@@ -2,7 +2,7 @@
  * PIN gate.
  *
  * Everything except the unlock screen, its endpoint and static assets requires
- * a valid session cookie. Running this as middleware rather than a per-page
+ * a valid session cookie. Running this as the proxy (Next 16's name for middleware) rather than a per-page
  * check means the API routes are covered too — gating only the UI would leave
  * /api/chart and /api/read open to anyone who reads the page source.
  */
@@ -17,7 +17,7 @@ export const config = {
 
 const PUBLIC_PATHS = new Set(['/unlock', '/api/unlock']);
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   if (PUBLIC_PATHS.has(pathname)) return NextResponse.next();
 

@@ -10,7 +10,7 @@
  *  - PIN comparison is constant-time, so response timing leaks nothing.
  *  - The token carries its own expiry, checked on every request.
  *
- * Web Crypto only, so this runs unchanged in middleware on the Edge runtime.
+ * Web Crypto only, so this runs unchanged in the proxy (Node) and on the Edge runtime.
  */
 
 const encoder = new TextEncoder();
