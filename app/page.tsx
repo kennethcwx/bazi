@@ -33,6 +33,7 @@ import { TEMPLATES } from '../src/narrator/templates';
 import { Forecast } from './Forecast';
 import { Compatibility } from './Compatibility';
 import { PlacePicker } from './PlacePicker';
+import Nav from './Nav';
 import { PLACES, DEFAULT_PLACE } from '../src/places';
 import { loadSelf, saveSelf, forgetAll, hasSaved } from '../src/storage';
 
@@ -519,6 +520,7 @@ export default function Page() {
           >EN</button>
         </div>
       </div>
+      <Nav locale={L} />
 
       <form onSubmit={submit}>
         <div>

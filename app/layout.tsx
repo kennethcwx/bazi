@@ -2,8 +2,8 @@ import './globals.css';
 import type { ReactNode } from 'react';
 
 export const metadata = {
-  title: '八字排盘 · 姻缘与事业',
-  description: '可核对的八字排盘，与姻缘、事业两个主题的推断。',
+  title: '八字 · 星盘 · 塔罗',
+  description: '可核对的八字排盘与姻缘、事业推断，加上西洋星盘与塔罗。',
 };
 
 /**
