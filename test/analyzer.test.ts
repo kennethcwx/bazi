@@ -12,6 +12,7 @@ import { buildChart } from '../src/engine/chart';
 import { analyzeChart } from '../src/analyzer/index';
 import { analyzeStrength } from '../src/analyzer/strength';
 import { analyzeYongShen } from '../src/analyzer/yongshen';
+import { tiaoHouStems } from '../src/analyzer/tiaohou';
 import {
   controls, generates, generatedBy, controlledBy,
   tenGodFamily, isSupporting, familyElement,
@@ -227,15 +228,47 @@ describe('用神', () => {
     expect(summer.yongShen.reasoning.map((r) => r.en).join('')).toContain('different school');
   });
 
-  it('raises no climate need for a temperate month', () => {
-    // 辰/戌 months are neither 冬 nor 夏.
+  it('names a climate need in a temperate month but never a conflict', () => {
+    // 辰/戌 months are neither 冬 nor 夏: the table still speaks, 扶抑 governs.
     const c = buildChart(base({ month: 4, day: 20 }));
     const s = analyzeStrength(c);
     const y = analyzeYongShen(c, s);
     if (['辰', '戌'].includes(c.pillars.month.branch)) {
-      expect(y.climateNeed).toBeNull();
+      expect(y.climateNeed).not.toBeNull();
+      expect(y.climateUrgent).toBe(false);
       expect(y.climateConflict).toBe(false);
     }
+  });
+
+  it('reads 调候 from the 穷通宝鉴 table, stem-exact', () => {
+    expect(tiaoHouStems('甲', '午')).toEqual(['癸', '庚', '丁']);
+    expect(tiaoHouStems('丙', '子')).toEqual(['壬', '戊', '己']);
+    expect(tiaoHouStems('庚', '寅')).toEqual(['戊', '甲', '壬', '丙', '丁']);
+    expect(tiaoHouStems('癸', '巳')).toEqual(['辛']);
+    expect(() => tiaoHouStems('X', '午')).toThrow();
+    expect(() => tiaoHouStems('甲', 'X')).toThrow();
+  });
+
+  it('has a well-formed 10 × 12 table', () => {
+    const stems = '甲乙丙丁戊己庚辛壬癸';
+    const months = '寅卯辰巳午未申酉戌亥子丑';
+    for (const d of stems) for (const m of months) {
+      const cell = tiaoHouStems(d, m);
+      expect(cell.length).toBeGreaterThan(0);
+      expect(new Set(cell).size).toBe(cell.length);
+      for (const st of cell) expect(stems).toContain(st);
+    }
+  });
+
+  it('carries the table into the analysis and agrees with the old 冬/夏 rule', () => {
+    // The two-season heuristic said 冬→火, 夏→水; the table has more nuance
+    // (甲 in 子 wants 丁, 壬 in 午 wants 癸) but 冬 must still be urgent.
+    const winter = analyse({ month: 1, day: 10 }); // 丑 month
+    expect(winter.yongShen.climateUrgent).toBe(true);
+    expect(winter.yongShen.climateStems[0]).toBe(
+      tiaoHouStems(winter.chart.dayMaster, winter.chart.pillars.month.branch)[0],
+    );
+    expect(winter.yongShen.reasoning.map((r) => r.zh).join('')).toContain('穷通宝鉴');
   });
 
   it('splits the five elements into 用喜 / 忌仇 / 闲 with no overlap', () => {

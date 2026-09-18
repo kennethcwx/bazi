@@ -25,10 +25,12 @@ import {
   controlledBy,
   generatedBy,
   familyElement,
+  elementOfStem,
   tenGodFamily,
   type TenGodFamily,
 } from './elements';
 import type { StrengthAnalysis } from './strength';
+import { tiaoHouStems } from './tiaohou';
 
 export const SCHOOL: LocalizedText = t(
   '扶抑为主，调候为辅（子平主流）',
@@ -39,9 +41,9 @@ export const SCHOOL: LocalizedText = t(
  *  element is too weak to lean on and we fall through to the next choice. */
 const USABLE_SHARE = 10;
 
-/** 冬月 need warmth, 夏月 need cooling. The classic 调候 pairs. */
-const WINTER_BRANCHES = new Set(['亥', '子', '丑']);
-const SUMMER_BRANCHES = new Set(['巳', '午', '未']);
+/** 冬月 and 夏月 are where 调候 is urgent enough to override 扶抑; in the
+ *  other eight months 穷通宝鉴 still names a 调候用神, but it only adjusts. */
+const URGENT_BRANCHES = new Set(['亥', '子', '丑', '巳', '午', '未']);
 
 export interface YongShenAnalysis {
   /** Always present, always shown to the user. */
@@ -59,8 +61,14 @@ export interface YongShenAnalysis {
   readonly neutral: readonly Element[];
   /** The family the 用神 belongs to, as seen from the day master. */
   readonly primaryFamily: TenGodFamily;
-  /** 调候用神, when the birth month is extreme. */
+  /** 调候用神 from the 穷通宝鉴 table, as an element. Always set for an
+   *  ordinary chart; null only for 从/化/专旺 which are not read this way. */
   readonly climateNeed: Element | null;
+  /** The same as stems, 用神 first then its supporting cast — the table
+   *  distinguishes 丙 from 丁 even though both are Fire. */
+  readonly climateStems: readonly string[];
+  /** 冬/夏 birth: the climate need is urgent, not merely an adjustment. */
+  readonly climateUrgent: boolean;
   /** True when 调候 wants something 扶抑 considers unfavourable. Surfaced, not
    *  resolved — it is a real disagreement between two valid readings. */
   readonly climateConflict: boolean;
@@ -127,6 +135,8 @@ export function analyzeYongShen(
       // read from the Day Master's own position any more, so there is nothing
       // for the climate rule to temper.
       climateNeed: null,
+      climateStems: [],
+      climateUrgent: false,
       climateConflict: false,
       reasoning: [
         ...s.reasoning,
@@ -159,6 +169,8 @@ export function analyzeYongShen(
       neutral: ELEMENTS.filter((e) => !favourable.includes(e) && !unfavourable.includes(e)),
       primaryFamily: f.favourable[0]!,
       climateNeed: null,
+      climateStems: [],
+      climateUrgent: false,
       climateConflict: false,
       reasoning: [
         ...f.reasoning,
@@ -243,24 +255,22 @@ export function analyzeYongShen(
   const primary = familyElement(dm, primaryFamily);
   const secondary = secondaryFamily ? familyElement(dm, secondaryFamily) : null;
 
-  // 调候: an extreme birth month needs tempering regardless of strength.
+  // 调候: the 穷通宝鉴 table, keyed on day stem × month branch. Every month
+  // has an entry; only 冬/夏 are urgent enough to be reported as a conflict.
   const monthBranch = chart.pillars.month.branch;
-  let climateNeed: Element | null = null;
-  if (WINTER_BRANCHES.has(monthBranch)) {
-    climateNeed = '火';
-    reasoning.push(t(
-      `生于 ${monthBranch} 月，天寒，调候喜火暖局。`,
-      `Born in the ${monthBranch} month, the chart is cold. On climate grounds it ` +
-        `wants Fire to warm it.`,
-    ));
-  } else if (SUMMER_BRANCHES.has(monthBranch)) {
-    climateNeed = '水';
-    reasoning.push(t(
-      `生于 ${monthBranch} 月，火炎，调候喜水润局。`,
-      `Born in the ${monthBranch} month, the chart runs hot. On climate grounds it ` +
-        `wants Water to temper it.`,
-    ));
-  }
+  const climateStems = tiaoHouStems(chart.dayMaster, monthBranch);
+  const climateNeed: Element = elementOfStem(climateStems[0]!);
+  const climateUrgent = URGENT_BRANCHES.has(monthBranch);
+  const rest = climateStems.slice(1).join('');
+  reasoning.push(t(
+    `${chart.dayMaster}日生于 ${monthBranch} 月，穷通宝鉴调候取 ${climateStems[0]}` +
+      `${rest ? `，次取 ${rest}` : ''}` +
+      `${climateUrgent ? `，${['亥', '子', '丑'].includes(monthBranch) ? '寒' : '炎'}月调候为急` : ''}。`,
+    `A ${chart.dayMaster} Day Master born in the ${monthBranch} month: the classical ` +
+      `climate table wants ${climateStems[0]} (${el(climateNeed)})` +
+      `${rest ? `, then ${rest}` : ''}` +
+      `${climateUrgent ? ` — a ${['亥', '子', '丑'].includes(monthBranch) ? 'cold' : 'hot'} month, so this is pressing` : ''}.`,
+  ));
 
   const favourable: Element[] = [primary];
   if (secondary && secondary !== primary) favourable.push(secondary);
@@ -268,25 +278,29 @@ export function analyzeYongShen(
   const { unfavourable, neutral } = fiveGods(favourable);
 
   let climateConflict = false;
-  if (climateNeed) {
-    if (favourable.includes(climateNeed)) {
-      reasoning.push(t(
-        `调候与扶抑一致，${climateNeed} 为用甚验。`,
-        `Climate and strength agree — ${el(climateNeed)} on both counts, which makes ` +
-          `it an unusually reliable read.`,
-      ));
-    } else {
-      climateConflict = true;
-      reasoning.push(t(
-        `⚠️ 调候取 ${climateNeed}，扶抑取 ${primary}，两者不一致。` +
-          `本盘以扶抑为主，但 ${climateNeed} 运仍有暖局/润局之功，` +
-          `此处不同流派会有不同结论。`,
-        `⚠️ Climate wants ${el(climateNeed)}; strength wants ${el(primary)}. They ` +
-          `disagree. This reading follows strength, but ${el(climateNeed)} periods ` +
-          `still do real tempering work — and a different school would reach a ` +
-          `different answer here.`,
-      ));
-    }
+  if (favourable.includes(climateNeed)) {
+    reasoning.push(t(
+      `调候与扶抑一致，${climateNeed} 为用甚验。`,
+      `Climate and strength agree — ${el(climateNeed)} on both counts, which makes ` +
+        `it an unusually reliable read.`,
+    ));
+  } else if (climateUrgent) {
+    climateConflict = true;
+    reasoning.push(t(
+      `⚠️ 调候取 ${climateNeed}，扶抑取 ${primary}，两者不一致。` +
+        `本盘以扶抑为主，但 ${climateNeed} 运仍有暖局/润局之功，` +
+        `此处不同流派会有不同结论。`,
+      `⚠️ Climate wants ${el(climateNeed)}; strength wants ${el(primary)}. They ` +
+        `disagree. This reading follows strength, but ${el(climateNeed)} periods ` +
+        `still do real tempering work — and a different school would reach a ` +
+        `different answer here.`,
+    ));
+  } else {
+    reasoning.push(t(
+      `调候取 ${climateNeed} 而扶抑取 ${primary}，非寒暑之月，以扶抑为主，${climateNeed} 为辅。`,
+      `Climate would pick ${el(climateNeed)} where strength picks ${el(primary)}; in a ` +
+        `temperate month strength governs and ${el(climateNeed)} is a secondary help.`,
+    ));
   }
 
   const [enemy, foe] = unfavourable;
@@ -312,6 +326,8 @@ export function analyzeYongShen(
     neutral,
     primaryFamily,
     climateNeed,
+    climateStems,
+    climateUrgent,
     climateConflict,
     reasoning,
   };
