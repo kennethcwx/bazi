@@ -14,7 +14,7 @@ import Wheel from './Wheel';
 import { PlacePicker } from '../PlacePicker';
 import { LangSwitch, savedLocale, useLocale } from '../useLocale';
 import { DEFAULT_PLACE } from '../../src/places';
-import { loadPartner, loadSelf, saveSelf, type SavedBirth } from '../../src/storage';
+import { activeSlot, loadPartnerAt, loadSelf, saveSelf, setActiveSlot, SLOTS, type SavedBirth, type Slot } from '../../src/storage';
 import { UI } from '../../src/i18n/ui';
 import { t } from '../../src/i18n/text';
 
@@ -40,8 +40,8 @@ const S = {
   synastry: t('合盘', 'Synastry'),
   compare: t('对照伴侣的星盘', "Compare with your partner's chart"),
   comparing: t('对照中…', 'Comparing…'),
-  noPartner: t('还没有记住伴侣的生辰：在「八字」页的「合婚」里填好对方的生辰，这里就能合盘。',
-    "No partner remembered yet: add their birth under 合婚 on the BaZi page and the comparison appears here."),
+  noPartner: t('这一格还没有记住生辰：在「八字」页的「合婚」里填好对方的生辰，这里就能合盘。',
+    "Nothing remembered in this slot yet: add their birth under 合婚 on the BaZi page and the comparison appears here."),
   overallOf: t('契合度', 'Match'),
   overlays: t('宫位落点', 'House overlays'),
   allAspects: t('全部跨盘相位', 'All cross-aspects'),
@@ -75,7 +75,10 @@ export default function Horoscope() {
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [partner, setPartner] = useState<SavedBirth | null>(null);
+  /** The two partners 合婚 remembers; the active one is what the comparison is against. */
+  const [slot, setSlot] = useState<Slot>(0);
+  const [partners, setPartners] = useState<(SavedBirth | null)[]>([null, null]);
+  const partner = partners[slot] ?? null;
   const [syn, setSyn] = useState<Syn | null>(null);
   const [synBusy, setSynBusy] = useState(false);
 
@@ -97,15 +100,15 @@ export default function Horoscope() {
   /** The birth in the form, in the shape the API takes. */
   const formBirth = () => ({ date, time, timeKnown, placeIndex: place });
 
-  async function compare(locale = L) {
-    if (!partner) return;
+  async function compare(locale = L, p = partner) {
+    if (!p) return;
     setSynBusy(true);
     try {
       const res = await fetch('/api/synastry', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           a: formBirth(),
-          b: { date: partner.date, time: partner.time, timeKnown: partner.timeKnown, placeIndex: partner.placeIndex },
+          b: { date: p.date, time: p.time, timeKnown: p.timeKnown, placeIndex: p.placeIndex },
           locale,
         }),
       });
@@ -117,7 +120,8 @@ export default function Horoscope() {
   }
 
   useEffect(() => {
-    setPartner(loadPartner());
+    setPartners(SLOTS.map((i) => loadPartnerAt(i)));
+    setSlot(activeSlot());
     const mine = loadSelf();
     if (!mine) return;
     setDate(mine.date); setTime(mine.time || '12:00'); setTimeKnown(mine.timeKnown); setPlace(mine.placeIndex);
@@ -133,6 +137,16 @@ export default function Horoscope() {
       useTrueSolarTime: mine?.useTrueSolarTime ?? true,
     });
     void cast({ date, time, timeKnown, placeIndex: place });
+  }
+
+  /** Pick a partner: a remembered one compares at once, and 合婚 follows the choice. */
+  function switchSlot(next: Slot) {
+    if (next === slot) return;
+    setSlot(next);
+    setActiveSlot(next);
+    setSyn(null);
+    const p = partners[next] ?? null;
+    if (p && result) void compare(L, p);
   }
 
   function changeLocale(next: typeof L) {
@@ -241,6 +255,13 @@ export default function Horoscope() {
 
           <details className="acc" open>
             <summary><h2>{S.synastry[L]}</h2></summary>
+            <div className="tabs" role="group" aria-label={UI.partnerSlot[L]}>
+              {SLOTS.map((i) => (
+                <button key={i} type="button" aria-pressed={slot === i} onClick={() => switchSlot(i)}>
+                  {UI.partnerSlot[L]} {i + 1} · {partners[i]?.label || (partners[i] ? partners[i]!.date : UI.partnerEmptySlot[L])}
+                </button>
+              ))}
+            </div>
             <div className="card">
               {!partner ? (
                 <p className="note" style={{ marginTop: 0 }}>{S.noPartner[L]}</p>
