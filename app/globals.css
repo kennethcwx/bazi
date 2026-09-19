@@ -910,4 +910,13 @@ details.acc[open] > summary::after { transform: rotate(-135deg) translateY(1px);
 .tarot-orient { font-size: 0.7059rem; color: var(--text-dim); margin-bottom: 8px; }
 .tarot-meaning { margin: 0; font-size: 0.8529rem; line-height: 1.6; }
 .tarot-spread { display: grid; gap: 10px; }
-@media (min-width: 640px) { .tarot-spread { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 640px) {
+  .tarot-spread.n3 { grid-template-columns: repeat(3, 1fr); }
+  .tarot-spread.n5 { grid-template-columns: repeat(5, 1fr); }
+}
+.tarot-ask-label { font-size: 0.6765rem; color: var(--text-faint); letter-spacing: 0.04em; margin: 12px 0 6px; }
+.tarot-ask-label:first-child { margin-top: 0; }
+.tabs.wrap-tabs { flex-wrap: wrap; }
+.tabs.wrap-tabs button { flex: 1 1 30%; }
+.tarot-asked { font-size: 0.7647rem; color: var(--text-dim); margin: 14px 0 8px; }
+.tarot-topic { color: var(--text-faint); }

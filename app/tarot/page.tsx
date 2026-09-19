@@ -13,19 +13,26 @@ import { useEffect, useState } from 'react';
 import Nav from '../Nav';
 import { LangSwitch, useLocale } from '../useLocale';
 import { dailyCard, draw, type Draw } from '../../src/tarot/cards';
+import { readSpread, SIZES, TOPIC_NAME, TOPICS, type Size, type SpreadReading, type Topic } from '../../src/tarot/spreads';
 import { loadSelf } from '../../src/storage';
 import { t } from '../../src/i18n/text';
 
 const S = {
   title: t('塔罗', 'Tarot'),
-  tagline: t('每日一牌，与过去／现在／未来三牌阵。', 'A card for the day, and a past / present / future spread.'),
+  tagline: t('每日一牌；再带着一个问题抽一、三或五张。', 'A card for the day, then one, three or five cards for a question.'),
   daily: t('今日牌', 'Card of the day'),
-  spread: t('三牌阵', 'Three-card spread'),
-  drawBtn: t('抽三张', 'Draw three'),
+  spread: t('问牌', 'Ask the cards'),
+  topicLabel: t('问什么', 'About'),
+  sizeLabel: t('抽几张', 'How many'),
+  question: t('你的问题（可留空）', 'Your question (optional)'),
+  questionPh: t('例如：这份工作该不该接？', 'e.g. Should I take the job?'),
+  drawBtn: t('抽牌', 'Draw'),
   redraw: t('重抽', 'Draw again'),
+  youAsked: t('你问', 'You asked'),
+  overall: t('整体', 'Overall'),
+  cardWord: t('张', ''),
   reversed: t('逆位', 'Reversed'),
   upright: t('正位', 'Upright'),
-  positions: [t('过去', 'Past'), t('现在', 'Present'), t('未来', 'Future')],
   hint: t('抽牌前先在心里定一个问题。', 'Hold one question in mind before you draw.'),
 };
 
@@ -44,14 +51,14 @@ const today = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-function CardFace({ d, L, position }: { d: Draw; L: 'zh' | 'en'; position?: string }) {
-  const meaning = d.reversed ? d.card.reversed : d.card.upright;
+function CardFace({ d, L, position, meaning: m }: { d: Draw; L: 'zh' | 'en'; position?: string; meaning?: string }) {
+  const meaning = m ?? (d.reversed ? d.card.reversed : d.card.upright)[L];
   return (
     <div className={`tarot-card${d.reversed ? ' is-reversed' : ''}`}>
       {position && <div className="tarot-pos">{position}</div>}
       <div className="tarot-name">{d.card.name[L]}</div>
       <div className="tarot-orient">{d.reversed ? S.reversed[L] : S.upright[L]}{d.card.suit && ` · ${d.card.suit[L]}`}</div>
-      <p className="tarot-meaning">{meaning[L]}</p>
+      <p className="tarot-meaning">{meaning}</p>
     </div>
   );
 }
@@ -59,7 +66,16 @@ function CardFace({ d, L, position }: { d: Draw; L: 'zh' | 'en'; position?: stri
 export default function Tarot() {
   const [L, setLocale] = useLocale();
   const [daily, setDaily] = useState<Draw | null>(null);
-  const [spread, setSpread] = useState<Draw[] | null>(null);
+  const [topic, setTopic] = useState<Topic>('general');
+  const [size, setSize] = useState<Size>(3);
+  const [question, setQuestion] = useState('');
+  const [asked, setAsked] = useState<{ topic: Topic; question: string } | null>(null);
+  const [spread, setSpread] = useState<SpreadReading | null>(null);
+
+  function pull() {
+    setAsked({ topic, question: question.trim() });
+    setSpread(readSpread(draw(size), topic));
+  }
 
   // Client-only: the seed and the local date both come from the device.
   useEffect(() => { setDaily(dailyCard(personKey(), today())); }, []);
@@ -82,12 +98,48 @@ export default function Tarot() {
 
       <section>
         <h2>{S.spread[L]}</h2>
-        {spread
-          ? <div className="tarot-spread">{spread.map((d, i) => <CardFace key={i} d={d} L={L} position={S.positions[i]![L]} />)}</div>
-          : <p className="note" style={{ marginTop: 0 }}>{S.hint[L]}</p>}
-        <button type="button" style={{ width: '100%', marginTop: 12 }} onClick={() => setSpread(draw(3))}>
-          {spread ? S.redraw[L] : S.drawBtn[L]}
-        </button>
+        <div className="card">
+          <div className="tarot-ask-label">{S.topicLabel[L]}</div>
+          <div className="tabs wrap-tabs" role="group" aria-label={S.topicLabel[L]}>
+            {TOPICS.map((k) => (
+              <button key={k} type="button" aria-pressed={topic === k} onClick={() => setTopic(k)}>{TOPIC_NAME[k][L]}</button>
+            ))}
+          </div>
+          <div className="tarot-ask-label">{S.sizeLabel[L]}</div>
+          <div className="tabs" role="group" aria-label={S.sizeLabel[L]}>
+            {SIZES.map((n) => (
+              <button key={n} type="button" aria-pressed={size === n} onClick={() => setSize(n)}>{n}{S.cardWord[L]}</button>
+            ))}
+          </div>
+          <div className="field-wide">
+            <label htmlFor="tq">{S.question[L]}</label>
+            <input id="tq" type="text" value={question} onChange={(e) => setQuestion(e.target.value)}
+              placeholder={S.questionPh[L]} enterKeyHint="go"
+              onKeyDown={(e) => { if (e.key === 'Enter') pull(); }} />
+          </div>
+          <p className="note" style={{ marginTop: 8 }}>{S.hint[L]}</p>
+          <button type="button" style={{ width: '100%', marginTop: 12 }} onClick={pull}>
+            {spread ? S.redraw[L] : S.drawBtn[L]}
+          </button>
+        </div>
+
+        {spread && asked && (
+          <>
+            <p className="tarot-asked">
+              {S.youAsked[L]}：{asked.question || TOPIC_NAME[asked.topic][L]}
+              {asked.question && <span className="tarot-topic"> · {TOPIC_NAME[asked.topic][L]}</span>}
+            </p>
+            <div className={`tarot-spread n${spread.cards.length}`}>
+              {spread.cards.map((c, i) => (
+                <CardFace key={i} d={c.draw} L={L} position={c.position[L]} meaning={c.meaning[L]} />
+              ))}
+            </div>
+            <div className="card" style={{ marginTop: 10 }}>
+              <div className="tarot-ask-label">{S.overall[L]}</div>
+              {spread.summary.map((line, i) => <p key={i} className="tarot-meaning" style={{ marginTop: i ? 6 : 0 }}>{line[L]}</p>)}
+            </div>
+          </>
+        )}
       </section>
     </main>
   );

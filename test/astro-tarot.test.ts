@@ -11,6 +11,7 @@ import { readNatal } from '../src/astro/readings';
 import { point, screenAngle, spreadAngles } from '../src/astro/wheel';
 import { computeTransits, readBetween, readDaily } from '../src/astro/transits';
 import { computeSynastry, overlayText } from '../src/astro/synastry';
+import { meaning, positions, readSpread, TOPICS } from '../src/tarot/spreads';
 import { DECK, dailyCard, draw } from '../src/tarot/cards';
 
 const J2000 = Date.UTC(2000, 0, 1, 12);
@@ -222,5 +223,39 @@ describe('合盘', () => {
     expect(overlayText(s.overlays[0]!).zh).toMatch(/落在.*第\d+宫/);
     const u = computeNatal({ instantMs: J2000, lat: 51.5, lon: 0, timeKnown: false });
     expect(computeSynastry(u, u).overlays).toHaveLength(0);
+  });
+});
+
+describe('塔罗 spreads', () => {
+  it('has a topic line for every major arcana, and reads minors through their suit', () => {
+    for (const card of DECK) {
+      for (const topic of TOPICS) {
+        for (const reversed of [false, true]) {
+          const m = meaning({ card, reversed }, topic);
+          expect(m.zh.length).toBeGreaterThan(2); expect(m.en.length).toBeGreaterThan(2);
+        }
+      }
+    }
+    const fool = DECK[0]!;
+    expect(meaning({ card: fool, reversed: false }, 'love').zh).not.toBe(meaning({ card: fool, reversed: false }, 'money').zh);
+    expect(meaning({ card: DECK[36]!, reversed: false }, 'work').zh).toMatch(/^与人的关系：/);
+  });
+
+  it('labels 1, 3 and 5 positions, with love and decision layouts of their own', () => {
+    expect(positions(1, 'general')).toHaveLength(1);
+    expect(positions(3, 'general').map((p) => p.en)).toEqual(['Past', 'Present', 'Future']);
+    expect(positions(3, 'love').map((p) => p.en)).toEqual(['You', 'Them', 'Between you']);
+    expect(positions(3, 'decision')).toHaveLength(3);
+    expect(positions(5, 'work')).toHaveLength(5);
+  });
+
+  it('summarises what is on the table', () => {
+    const majors = readSpread([0, 1, 2].map((i) => ({ card: DECK[i]!, reversed: true })), 'general');
+    expect(majors.summary[0]!.zh).toMatch(/^大阿卡纳/);
+    expect(majors.summary.some((l) => /逆位/.test(l.zh))).toBe(true);
+    const cups = readSpread([36, 37, 38, 39, 5].map((i) => ({ card: DECK[i]!, reversed: false })), 'love');
+    expect(cups.summary.some((l) => /以圣杯为主/.test(l.zh))).toBe(true);
+    expect(cups.summary.some((l) => /^走向落在/.test(l.zh))).toBe(true);
+    expect(readSpread([{ card: DECK[19]!, reversed: false }], 'work').summary[0]!.zh).toMatch(/^单张正位/);
   });
 });
