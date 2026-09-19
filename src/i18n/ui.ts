@@ -67,10 +67,6 @@ export const UI = {
   ),
   monthlyNow: t('本月', 'this month'),
   reading: t('解读', 'Reading'),
-  askPlaceholder: t('或者用自己的话问……', 'Or ask in your own words…'),
-  askButton: t('问', 'Ask'),
-  answeredFrom: t('依据', 'Answered from'),
-  answeredFindings: t('条已算出的结论', 'computed findings'),
   findings: t('已算出的结论', 'Computed findings'),
 
   // pillar labels

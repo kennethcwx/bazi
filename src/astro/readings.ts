@@ -68,7 +68,7 @@ const PLANET_DOES: Record<Exclude<PlanetKey, 'Sun' | 'Moon'>, LocalizedText> = {
   Pluto: t('深层转化', 'deep transformation'),
 };
 
-const HOUSE: readonly LocalizedText[] = [
+export const HOUSE: readonly LocalizedText[] = [
   t('自我与外在形象', 'the self and how you come across'),
   t('金钱与自我价值', 'money and self-worth'),
   t('沟通、学习与手足', 'communication, learning and siblings'),

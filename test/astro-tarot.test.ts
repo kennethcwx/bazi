@@ -10,6 +10,7 @@ import { computeNatal, SIGNS } from '../src/astro/natal';
 import { readNatal } from '../src/astro/readings';
 import { point, screenAngle, spreadAngles } from '../src/astro/wheel';
 import { computeTransits, readDaily } from '../src/astro/transits';
+import { computeSynastry, overlayText } from '../src/astro/synastry';
 import { DECK, dailyCard, draw } from '../src/tarot/cards';
 
 const J2000 = Date.UTC(2000, 0, 1, 12);
@@ -152,5 +153,48 @@ describe('今日运势', () => {
   it('falls back to a quiet line when nothing is in orb', () => {
     const r = readDaily({ moonSign: 0, transits: [] });
     expect(r.lenses.every((l) => l.source === null && l.stars === 3)).toBe(true);
+  });
+});
+
+describe('合盘', () => {
+  const a = computeNatal({ instantMs: J2000, lat: 51.5, lon: 0, timeKnown: true });
+  const b = computeNatal({ instantMs: Date.UTC(1992, 2, 2, 0, 10), lat: 1.35, lon: 103.82, timeKnown: true });
+
+  it('reads a chart against itself as every planet conjunct its twin', () => {
+    const s = computeSynastry(a, a);
+    for (const k of ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars'] as const) {
+      const twin = s.aspects.find((x) => x.a === k && x.b === k);
+      expect(twin?.kind).toBe('conjunction');
+      expect(twin!.orb).toBeLessThan(1e-6);
+    }
+    expect(s.overall).toBeGreaterThan(50);
+  });
+
+  it('is symmetric: swapping the two people mirrors the aspects and keeps the scores', () => {
+    const ab = computeSynastry(a, b); const ba = computeSynastry(b, a);
+    expect(ab.aspects.map((x) => `${x.b}-${x.a}-${x.kind}`).sort())
+      .toEqual(ba.aspects.map((x) => `${x.a}-${x.b}-${x.kind}`).sort());
+    expect(ab.factors.map((f) => f.score)).toEqual(ba.factors.map((f) => f.score));
+    expect(ab.overall).toBe(ba.overall);
+  });
+
+  it('gives five factors, scored 0–100, with a line each in both languages', () => {
+    const s = computeSynastry(a, b);
+    expect(s.factors.map((f) => f.factor)).toEqual(['personality', 'communication', 'love', 'sexual', 'emotional']);
+    for (const f of s.factors) {
+      expect(f.score).toBeGreaterThanOrEqual(0); expect(f.score).toBeLessThanOrEqual(100);
+      expect(f.text.zh.length).toBeGreaterThan(5); expect(f.text.en.length).toBeGreaterThan(5);
+    }
+    for (const x of s.aspects) expect(x.tightness).toBeLessThanOrEqual(1);
+  });
+
+  it('places the four personal planets in each other\'s houses, and none without a time', () => {
+    const s = computeSynastry(a, b);
+    expect(s.overlays.filter((o) => o.of === 'a')).toHaveLength(4);
+    expect(s.overlays.filter((o) => o.of === 'b')).toHaveLength(4);
+    for (const o of s.overlays) { expect(o.house).toBeGreaterThanOrEqual(1); expect(o.house).toBeLessThanOrEqual(12); }
+    expect(overlayText(s.overlays[0]!).zh).toMatch(/落在.*第\d+宫/);
+    const u = computeNatal({ instantMs: J2000, lat: 51.5, lon: 0, timeKnown: false });
+    expect(computeSynastry(u, u).overlays).toHaveLength(0);
   });
 });

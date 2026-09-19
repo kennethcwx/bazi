@@ -4,11 +4,10 @@
  */
 
 import { NextResponse } from 'next/server';
-import { computeNatal, PLANETS, SIGNS, SIGN_GLYPHS } from '../../../src/astro/natal';
+import { PLANETS, SIGNS, SIGN_GLYPHS } from '../../../src/astro/natal';
+import { castBirth } from '../../../src/astro/cast';
 import { readNatal } from '../../../src/astro/readings';
 import { computeTransits, readDaily, LENS_NAME } from '../../../src/astro/transits';
-import { wallClockToInstant } from '../../../src/engine/moment';
-import { PLACES } from '../../../src/places';
 import { isLocale, type Locale } from '../../../src/i18n/text';
 
 export async function POST(req: Request) {
@@ -22,24 +21,14 @@ export async function POST(req: Request) {
   }
   const locale: Locale = isLocale(body.locale) ? body.locale : 'zh';
 
-  const m = typeof body.date === 'string' ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(body.date) : null;
-  const place = typeof body.placeIndex === 'number' ? PLACES[body.placeIndex] : undefined;
-  if (!m || !place) {
+  const cast = castBirth(body);
+  if (!cast) {
     return NextResponse.json(
       { error: locale === 'zh' ? '缺少出生日期或地点。' : 'Missing birth date or place.' },
       { status: 400 },
     );
   }
-  const timeKnown = body.timeKnown !== false && typeof body.time === 'string' && /^\d{2}:\d{2}$/.test(body.time);
-  // Without a time, noon: the Moon moves ~13° a day, so this keeps it within
-  // about a sign's fifth of the truth, and everything else barely moves.
-  const [hour, minute] = timeKnown ? (body.time as string).split(':').map(Number) : [12, 0];
-
-  const { instantMs } = wallClockToInstant(
-    { year: +m[1]!, month: +m[2]!, day: +m[3]!, hour: hour!, minute: minute! },
-    place.tz,
-  );
-  const chart = computeNatal({ instantMs, lat: place.lat, lon: place.lon, timeKnown });
+  const { chart, timeKnown } = cast;
   const reading = readNatal(chart);
   // The client's clock, so "today" is the reader's day, not the server's.
   const nowMs = typeof body.now === 'number' && Number.isFinite(body.now) ? body.now : Date.now();

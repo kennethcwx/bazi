@@ -300,9 +300,6 @@ export default function Page() {
   const [readingBusy, setReadingBusy] = useState(false);
   const [readingError, setReadingError] = useState<string | null>(null);
   const [readingSource, setReadingSource] = useState<string | null>(null);
-  const [question, setQuestion] = useState('');
-  /** The template a free-text question was routed to, to say so above the answer. */
-  const [answeredAs, setAnsweredAs] = useState<string | null>(null);
   const [grounding, setGrounding] = useState<Grounding | null>(null);
 
   /** The birth payload that produced the current chart, reused for readings. */
@@ -408,7 +405,6 @@ export default function Page() {
     setGrounding(null);
     setReadingError(null);
     setReadingSource(null);
-    setAnsweredAs(null);
   }
 
   function switchTab(next: Topic) {
@@ -449,16 +445,15 @@ export default function Page() {
   }
 
   /** Stream a reading for one template. */
-  async function ask(templateId: string | null, freeText?: string) {
+  async function ask(templateId: string) {
     if (!lastInput.current || readingBusy) return;
     setActiveTemplate(templateId);
-    setAnsweredAs(null);
     setReading('');
     setGrounding(null);
     setReadingError(null);
 
     // Composed readings arrived with the chart: open instantly, no round trip.
-    const ready = templateId && result?.readings?.[templateId];
+    const ready = result?.readings?.[templateId];
     if (ready) {
       setReadingSource('composed');
       setReading(ready.text);
@@ -471,10 +466,7 @@ export default function Page() {
       const res = await fetch('/api/read', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...lastInput.current, locale,
-          ...(templateId ? { templateId } : { question: freeText }),
-        }),
+        body: JSON.stringify({ ...lastInput.current, locale, templateId }),
       });
 
       if (!res.ok || !res.body) {
@@ -509,17 +501,6 @@ export default function Page() {
 
           if (event === 'meta') {
             setReadingSource(String(data['source'] ?? ''));
-            if (!templateId) {
-              // A free question is answered from the findings that match it,
-              // under its own heading. Show the topic it landed on so the
-              // computed findings below line up with the answer.
-              const basedOn = data['basedOn'];
-              const topic = String(data['topic'] ?? '');
-              setAnsweredAs(Array.isArray(basedOn)
-                ? `${UI.answeredFrom[locale]} ${basedOn.length} ${UI.answeredFindings[locale]}`
-                : null);
-              if ((topic === 'relationship' || topic === 'career') && topic !== tab) setTab(topic);
-            }
           } else if (event === 'delta') {
             acc += String(data['text'] ?? '');
             setReading(acc);
@@ -927,36 +908,10 @@ export default function Page() {
               ))}
             </div>
 
-            {/* Free text: answered from the computed findings that speak to
-                it, under its own heading — declined when out of scope or when
-                nothing computed touches it. */}
-            <form
-              className="ask"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const q = question.trim();
-                if (q) void ask(null, q);
-              }}
-            >
-              <input
-                type="text"
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                placeholder={UI.askPlaceholder[L]}
-                aria-label={UI.askPlaceholder[L]}
-                disabled={readingBusy}
-                enterKeyHint="send"
-              />
-              <button type="submit" disabled={readingBusy || !question.trim()}>{UI.askButton[L]}</button>
-            </form>
-
             {readingError && <p className="err" role="alert">{readingError}</p>}
 
             {(reading || readingBusy) && (
               <div className="card">
-                {answeredAs && (
-                  <p className="answered-as">{answeredAs}</p>
-                )}
                 <Reading text={reading} streaming={readingBusy} locale={L} />
                 {!readingBusy && reading && <TermsUsed text={reading} locale={L} />}
                 {readingSource === 'composed' && !readingBusy && (

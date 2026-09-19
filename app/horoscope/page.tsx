@@ -14,7 +14,7 @@ import Wheel from './Wheel';
 import { PlacePicker } from '../PlacePicker';
 import { LangSwitch, savedLocale, useLocale } from '../useLocale';
 import { DEFAULT_PLACE } from '../../src/places';
-import { loadSelf, saveSelf } from '../../src/storage';
+import { load, loadSelf, saveSelf, type SavedBirth } from '../../src/storage';
 import { UI } from '../../src/i18n/ui';
 import { t } from '../../src/i18n/text';
 
@@ -37,6 +37,16 @@ const S = {
   noTime: t('未填出生时间：以正午计算。上升与宫位无法判定，月亮可能偏差半个星座。',
     'No birth time: cast for noon. The Ascendant and houses cannot be found, and the Moon may be off by half a sign.'),
   noAspects: t('没有主要相位在容许度内。', 'No major aspects within orb.'),
+  synastry: t('合盘', 'Synastry'),
+  compare: t('对照伴侣的星盘', "Compare with your partner's chart"),
+  comparing: t('对照中…', 'Comparing…'),
+  noPartner: t('还没有记住伴侣的生辰：在「八字」页切到「伴侣」填好并排盘，这里就能合盘。',
+    'No partner remembered yet: on the BaZi page switch to Partner, cast their chart, and the comparison appears here.'),
+  overallOf: t('契合度', 'Match'),
+  overlays: t('宫位落点', 'House overlays'),
+  allAspects: t('全部跨盘相位', 'All cross-aspects'),
+  noOverlays: t('有一方未填出生时间，无法判断宫位落点。', 'One birth time is unknown, so house overlays cannot be placed.'),
+  partnerDefault: t('伴侣', 'Partner'),
 };
 
 interface Placed { key: string; name: string; glyph: string; lon: number; sign: string; signGlyph: string; degree: number; retrograde: boolean; house: number | null }
@@ -49,6 +59,12 @@ interface Result {
   reading: { sun: string; moon: string; ascendant: string | null; placements: string[]; aspects: string[] };
   daily: { moon: string; lenses: { lens: string; name: string; stars: number; source: string | null; text: string }[] };
 }
+interface Syn {
+  overall: number;
+  factors: { factor: string; name: string; score: number; source: string | null; text: string }[];
+  overlays: { of: 'a' | 'b'; text: string }[];
+  aspects: { text: string; orb: number }[];
+}
 
 export default function Horoscope() {
   const [L, setLocale] = useLocale();
@@ -59,6 +75,9 @@ export default function Horoscope() {
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [partner, setPartner] = useState<SavedBirth | null>(null);
+  const [syn, setSyn] = useState<Syn | null>(null);
+  const [synBusy, setSynBusy] = useState(false);
 
   async function cast(p: { date: string; time: string; timeKnown: boolean; placeIndex: number }, locale = L) {
     setBusy(true); setError(null);
@@ -70,11 +89,35 @@ export default function Horoscope() {
       const json = await res.json();
       if (!res.ok) { setError(json.error ?? UI.errCast[locale]); setResult(null); }
       else setResult(json as Result);
+      setSyn(null);
     } catch { setError(UI.errConnect[locale]); }
     finally { setBusy(false); }
   }
 
+  /** The birth in the form, in the shape the API takes. */
+  const formBirth = () => ({ date, time, timeKnown, placeIndex: place });
+
+  async function compare(locale = L) {
+    if (!partner) return;
+    setSynBusy(true);
+    try {
+      const res = await fetch('/api/synastry', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          a: formBirth(),
+          b: { date: partner.date, time: partner.time, timeKnown: partner.timeKnown, placeIndex: partner.placeIndex },
+          locale,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) setError(json.error ?? UI.errCast[locale]);
+      else setSyn(json as Syn);
+    } catch { setError(UI.errConnect[locale]); }
+    finally { setSynBusy(false); }
+  }
+
   useEffect(() => {
+    setPartner(load('partner'));
     const mine = loadSelf();
     if (!mine) return;
     setDate(mine.date); setTime(mine.time || '12:00'); setTimeKnown(mine.timeKnown); setPlace(mine.placeIndex);
@@ -94,7 +137,7 @@ export default function Horoscope() {
 
   function changeLocale(next: typeof L) {
     setLocale(next);
-    if (result) void cast({ date, time, timeKnown, placeIndex: place }, next);
+    if (result) void cast({ date, time, timeKnown, placeIndex: place }, next).then(() => { if (syn) void compare(next); });
   }
 
   const angle = (a: NonNullable<Result['ascendant']>) => `${a.signGlyph} ${a.sign} ${a.degree.toFixed(1)}°`;
@@ -193,6 +236,47 @@ export default function Horoscope() {
               <ul className="reasoning">
                 {result.reading.placements.map((r, i) => <li key={i}>{r}</li>)}
               </ul>
+            </div>
+          </details>
+
+          <details className="acc" open>
+            <summary><h2>{S.synastry[L]}</h2></summary>
+            <div className="card">
+              {!partner ? (
+                <p className="note" style={{ marginTop: 0 }}>{S.noPartner[L]}</p>
+              ) : !syn ? (
+                <button type="button" className="q-btn" style={{ width: '100%' }} disabled={synBusy} onClick={() => compare()}>
+                  {synBusy ? S.comparing[L] : `${S.compare[L]} · ${partner.label || S.partnerDefault[L]}`}
+                </button>
+              ) : (
+                <>
+                  <div className="syn-overall">
+                    <span className="syn-score">{syn.overall}</span>
+                    <span className="syn-of">/100 · {S.overallOf[L]} · {partner.label || S.partnerDefault[L]}</span>
+                  </div>
+                  {syn.factors.map((f) => (
+                    <div className="lens" key={f.factor}>
+                      <div className="lens-head">
+                        <span className="lens-name">{f.name}</span>
+                        <span className="syn-num">{f.score}</span>
+                      </div>
+                      <div className="syn-bar" aria-hidden="true"><i style={{ width: `${f.score}%` }} /></div>
+                      <p className="lens-text">{f.text}</p>
+                      {f.source && <p className="lens-src">{S.dailySource[L]}：{f.source}</p>}
+                    </div>
+                  ))}
+                  <div className="lens">
+                    <span className="lens-name">{S.overlays[L]}</span>
+                    {syn.overlays.length === 0
+                      ? <p className="lens-src">{S.noOverlays[L]}</p>
+                      : <ul className="reasoning">{syn.overlays.map((o, i) => <li key={i}>{o.text}</li>)}</ul>}
+                  </div>
+                  <details className="why">
+                    <summary>{S.allAspects[L]}（{syn.aspects.length}）</summary>
+                    <ul className="reasoning">{syn.aspects.map((x, i) => <li key={i}>{x.text}（{x.orb}°）</li>)}</ul>
+                  </details>
+                </>
+              )}
             </div>
           </details>
 
