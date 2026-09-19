@@ -5,16 +5,16 @@
 
 import { NextResponse } from 'next/server';
 import { PLANETS, SIGNS, SIGN_GLYPHS } from '../../../src/astro/natal';
-import type { DailyReading } from '../../../src/astro/transits';
-import { castBirth } from '../../../src/astro/cast';
+import type { DailyReading, Between } from '../../../src/astro/transits';
+import { castBirth, type BirthInput } from '../../../src/astro/cast';
 import { readNatal } from '../../../src/astro/readings';
-import { computeTransits, readDaily, LENS_NAME, WORD } from '../../../src/astro/transits';
+import { computeTransits, readBetween, readDaily, LENS_NAME, WORD } from '../../../src/astro/transits';
 import { isLocale, type Locale } from '../../../src/i18n/text';
 
 export async function POST(req: Request) {
   let body: {
     date?: unknown; time?: unknown; timeKnown?: unknown; placeIndex?: unknown; locale?: unknown; now?: unknown;
-    days?: unknown;
+    days?: unknown; partner?: unknown;
   };
   try {
     body = await req.json();
@@ -34,7 +34,6 @@ export async function POST(req: Request) {
   const reading = readNatal(chart);
   // The client's clock, so "today" is the reader's day, not the server's.
   const nowMs = typeof body.now === 'number' && Number.isFinite(body.now) ? body.now : Date.now();
-  const daily = readDaily(computeTransits(chart, nowMs));
   // The calendar: the client names each day and its local-noon instant, so
   // the labels are the reader's dates and the sky is read at the same hour
   // every day. Capped so a stray request cannot ask for a year of ephemeris.
@@ -44,6 +43,15 @@ export async function POST(req: Request) {
       && /^\d{4}-\d{2}-\d{2}$/.test((d as { date: string }).date)
       && typeof (d as { at?: unknown }).at === 'number' && Number.isFinite((d as { at: number }).at))
     .slice(0, 62);
+  // A partner turns each day into three readings: mine, theirs, and between.
+  const partner = body.partner && typeof body.partner === 'object' ? castBirth(body.partner as BirthInput) : null;
+  const flatBetween = (b: Between) => ({ mode: b.mode, text: b.text[locale], sources: b.sources.map((x) => x[locale]) });
+  const dayAt = (at: number) => {
+    const mine = computeTransits(chart, at);
+    if (!partner) return flat(readDaily(mine));
+    const theirs = computeTransits(partner.chart, at);
+    return { ...flat(readDaily(mine)), theirs: flat(readDaily(theirs)), between: flatBetween(readBetween(mine, theirs)) };
+  };
   const flat = (r: DailyReading) => ({
     moon: r.moon[locale],
     moonGlyph: SIGN_GLYPHS[r.moonSign]!,
@@ -82,7 +90,7 @@ export async function POST(req: Request) {
       placements: reading.placements.map((r) => r[locale]),
       aspects: reading.aspects.map((r) => r[locale]),
     },
-    daily: flat(daily),
-    calendar: days.map((d) => ({ date: d.date, ...flat(readDaily(computeTransits(chart, d.at))) })),
+    daily: dayAt(nowMs),
+    calendar: days.map((d) => ({ date: d.date, ...dayAt(d.at) })),
   });
 }

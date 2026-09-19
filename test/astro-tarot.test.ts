@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest';
 import { computeNatal, SIGNS } from '../src/astro/natal';
 import { readNatal } from '../src/astro/readings';
 import { point, screenAngle, spreadAngles } from '../src/astro/wheel';
-import { computeTransits, readDaily } from '../src/astro/transits';
+import { computeTransits, readBetween, readDaily } from '../src/astro/transits';
 import { computeSynastry, overlayText } from '../src/astro/synastry';
 import { DECK, dailyCard, draw } from '../src/tarot/cards';
 
@@ -154,6 +154,20 @@ describe('今日运势', () => {
     const r = readDaily({ moonSign: 0, transits: [] });
     expect(r.lenses.every((l) => l.source === null && l.stars === 3)).toBe(true);
     expect(r.word).toBe('quiet');
+  });
+
+  it('reads the day between two people from both sides, never averaged', () => {
+    const other = computeNatal({ instantMs: Date.UTC(1992, 2, 2, 0, 10), lat: 1.35, lon: 103.82, timeKnown: true });
+    const quiet = { moonSign: 0, transits: [] };
+    expect(readBetween(quiet, quiet).mode).toBe('quiet');
+    const eased = { moonSign: 0, transits: [{ t: 'Venus' as const, n: 'Moon' as const, kind: 'trine' as const, orb: 1, tightness: 0.3 }] };
+    const strained = { moonSign: 0, transits: [{ t: 'Mars' as const, n: 'Venus' as const, kind: 'square' as const, orb: 1, tightness: 0.3 }] };
+    expect(readBetween(eased, eased).mode).toBe('close');
+    expect(readBetween(eased, quiet).mode).toBe('stirred');
+    expect(readBetween(eased, strained).mode).toBe('friction'); // one bad side is not cancelled by a good one
+    const real = readBetween(computeTransits(natal, Date.UTC(2026, 8, 19, 4)), computeTransits(other, Date.UTC(2026, 8, 19, 4)));
+    expect(['close', 'stirred', 'friction', 'quiet']).toContain(real.mode);
+    expect(real.text.zh.length).toBeGreaterThan(3);
   });
 
   it('gives a month of days a word each, and the Moon changes sign about every 2–3 days', () => {

@@ -206,3 +206,49 @@ export function readDaily(sky: DailySky): DailyReading {
 export const LENS_NAME: Record<Lens, LocalizedText> = {
   general: t('综合', 'General'), love: t('爱情', 'Love'), work: t('事业', 'Work'),
 };
+
+/* ---------- between two people ---------- */
+
+export type BetweenMode = 'close' | 'stirred' | 'friction' | 'quiet';
+
+export interface Between {
+  readonly mode: BetweenMode;
+  readonly text: LocalizedText;
+  /** The transit that moved each side, e.g. "月亮拱你的金星". */
+  readonly sources: readonly LocalizedText[];
+}
+
+/** The planets a day touches when it touches a relationship. */
+const BOND_NATAL = new Set<PlanetKey>(['Moon', 'Venus', 'Mars']);
+const BOND_TRANSIT = new Set<PlanetKey>(['Moon', 'Sun', 'Venus', 'Mars']);
+
+const bondSum = (sky: DailySky) =>
+  sky.transits
+    .filter((x) => BOND_NATAL.has(x.n) && BOND_TRANSIT.has(x.t))
+    .reduce((acc, x) => acc + (TONE[x.kind] === 'strain' ? -1 : 1), 0);
+
+const bondTop = (sky: DailySky) =>
+  sky.transits.find((x) => BOND_NATAL.has(x.n) && BOND_TRANSIT.has(x.t));
+
+const BETWEEN_TEXT: Record<BetweenMode, LocalizedText> = {
+  close: t('同一片天空对两人都温和，适合见面。', 'The same sky is kind to you both: a day to be together.'),
+  stirred: t('一方有动静，另一方平静；有动静的那位先开口。', 'One of you is stirred, the other still; let the stirred one speak first.'),
+  friction: t('至少一方的感情点被触动得不顺，别挑这天谈难题。', 'At least one of you has a relationship point under strain; not the day for the hard conversation.'),
+  quiet: t('两人之间没有明显天象。', 'Nothing notable between you.'),
+};
+
+/**
+ * How a day sits between two charts: the same sky read against each
+ * person's Moon, Venus and Mars. Both eased → close; either strained →
+ * friction; one moved, one not → stirred. Two sums, never averaged.
+ */
+export function readBetween(mine: DailySky, theirs: DailySky): Between {
+  const a = bondSum(mine); const b = bondSum(theirs);
+  const mode: BetweenMode =
+    a < 0 || b < 0 ? 'friction' : a > 0 && b > 0 ? 'close' : a > 0 || b > 0 ? 'stirred' : 'quiet';
+  const sources: LocalizedText[] = [];
+  const ta = bondTop(mine); const tb = bondTop(theirs);
+  if (ta) sources.push(t(`${pname(ta.t).zh}${ASPECT_NAME[ta.kind].zh}你的${pname(ta.n).zh}`, `${pname(ta.t).en} ${ASPECT_NAME[ta.kind].en} your ${pname(ta.n).en}`));
+  if (tb) sources.push(t(`${pname(tb.t).zh}${ASPECT_NAME[tb.kind].zh}对方的${pname(tb.n).zh}`, `${pname(tb.t).en} ${ASPECT_NAME[tb.kind].en} their ${pname(tb.n).en}`));
+  return { mode, text: BETWEEN_TEXT[mode], sources };
+}

@@ -61,9 +61,15 @@ interface Result {
   daily: Day;
   calendar: (Day & { date: string })[];
 }
-interface Day {
-  moon: string; moonGlyph: string; word: 'flow' | 'strain' | 'fuse' | 'quiet'; wordText: string;
+type Word = 'flow' | 'strain' | 'fuse' | 'quiet';
+interface Solo {
+  moon: string; moonGlyph: string; word: Word; wordText: string;
   lenses: { lens: string; name: string; stars: number; source: string | null; text: string }[];
+}
+/** With a partner remembered, each day also carries their reading and the one between. */
+interface Day extends Solo {
+  theirs?: Solo;
+  between?: { mode: 'close' | 'stirred' | 'friction' | 'quiet'; text: string; sources: string[] };
 }
 interface Syn {
   overall: number;
@@ -91,6 +97,26 @@ function weekday(isoDate: string, L: 'zh' | 'en'): string {
   return (L === 'zh' ? zh : en)[d.getUTCDay()] ?? '';
 }
 const WORD_CLASS = { flow: 'm-close', strain: 'm-friction', fuse: 'm-stirred', quiet: 'f-steady' } as const;
+const MODE_CLASS = { close: 'm-close', stirred: 'm-stirred', friction: 'm-friction', quiet: 'f-steady' } as const;
+const MODE_WORD = { close: UI.modeClose, stirred: UI.modeStirred, friction: UI.modeFriction, quiet: UI.modeQuiet } as const;
+const asBirth = (b: SavedBirth) => ({ date: b.date, time: b.time, timeKnown: b.timeKnown, placeIndex: b.placeIndex });
+
+function Lenses({ lenses, L }: { lenses: Solo['lenses']; L: 'zh' | 'en' }) {
+  return (
+    <>
+      {lenses.map((l) => (
+        <div className="lens" key={l.lens}>
+          <div className="lens-head">
+            <span className="lens-name">{l.name}</span>
+            <span className="lens-stars" aria-label={`${l.stars}/5`}>{'★'.repeat(l.stars)}<span className="lens-stars-off">{'★'.repeat(5 - l.stars)}</span></span>
+          </div>
+          <p className="lens-text">{l.text}</p>
+          {l.source && <p className="lens-src">{S.dailySource[L]}：{l.source}</p>}
+        </div>
+      ))}
+    </>
+  );
+}
 
 export default function Horoscope() {
   const [L, setLocale] = useLocale();
@@ -109,12 +135,15 @@ export default function Horoscope() {
   const [syn, setSyn] = useState<Syn | null>(null);
   const [synBusy, setSynBusy] = useState(false);
 
-  async function cast(p: { date: string; time: string; timeKnown: boolean; placeIndex: number }, locale = L) {
+  async function cast(p: { date: string; time: string; timeKnown: boolean; placeIndex: number }, locale = L, with_ = partner) {
     setBusy(true); setError(null);
     try {
       const res = await fetch('/api/natal', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...p, locale, now: Date.now(), days: calendarDays() }),
+        body: JSON.stringify({
+          ...p, locale, now: Date.now(), days: calendarDays(),
+          ...(with_ ? { partner: asBirth(with_) } : {}),
+        }),
       });
       const json = await res.json();
       if (!res.ok) { setError(json.error ?? UI.errCast[locale]); setResult(null); }
@@ -135,7 +164,7 @@ export default function Horoscope() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           a: formBirth(),
-          b: { date: p.date, time: p.time, timeKnown: p.timeKnown, placeIndex: p.placeIndex },
+          b: asBirth(p),
           locale,
         }),
       });
@@ -147,12 +176,13 @@ export default function Horoscope() {
   }
 
   useEffect(() => {
-    setPartners(SLOTS.map((i) => loadPartnerAt(i)));
-    setSlot(activeSlot());
+    const all = SLOTS.map((i) => loadPartnerAt(i)); const active = activeSlot();
+    setPartners(all);
+    setSlot(active);
     const mine = loadSelf();
     if (!mine) return;
     setDate(mine.date); setTime(mine.time || '12:00'); setTimeKnown(mine.timeKnown); setPlace(mine.placeIndex);
-    void cast({ date: mine.date, time: mine.time, timeKnown: mine.timeKnown, placeIndex: mine.placeIndex }, savedLocale());
+    void cast({ date: mine.date, time: mine.time, timeKnown: mine.timeKnown, placeIndex: mine.placeIndex }, savedLocale(), all[active] ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -172,8 +202,10 @@ export default function Horoscope() {
     setSlot(next);
     setActiveSlot(next);
     setSyn(null);
+    setOpenDay(null);
     const p = partners[next] ?? null;
-    if (p && result) void compare(L, p);
+    // The calendar's partner layer follows the slot too, so recast with them.
+    if (result) void cast(formBirth(), L, p).then(() => { if (p) void compare(L, p); });
   }
 
   function changeLocale(next: typeof L) {
@@ -233,27 +265,43 @@ export default function Horoscope() {
                   <span className="day-date">{i === 0 ? UI.today[L] : d.date.slice(5).replace('-', '/')}</span>
                   <span className="day-wd">{weekday(d.date, L)}</span>
                   <span className="day-gz" aria-hidden="true">{d.moonGlyph}</span>
-                  <span className={`day-word ${WORD_CLASS[d.word]}`}>{d.wordText}</span>
+                  {d.between && d.theirs ? (
+                    <span className="dot-row">
+                      <span className={`d-dot ${WORD_CLASS[d.word]}`} />
+                      <span className={`d-dot ${WORD_CLASS[d.theirs.word]}`} />
+                      <span className={`d-dot ${MODE_CLASS[d.between.mode]}`} />
+                      <span className="sr-only">{UI.trackYours[L]}: {d.wordText}, {UI.trackTheirs[L]}: {d.theirs.wordText}, {UI.trackBetween[L]}: {MODE_WORD[d.between.mode][L]}</span>
+                    </span>
+                  ) : (
+                    <span className={`day-word ${WORD_CLASS[d.word]}`}>{d.wordText}</span>
+                  )}
                 </button>
               ))}
             </div>
-            <p className="note legend-note">{S.legend[L]}</p>
+            <p className="note legend-note">{result.calendar[0]?.between ? UI.dotOrder[L] : S.legend[L]}</p>
             {(() => {
               const sel = result.calendar.find((d) => d.date === openDay) ?? result.calendar[0]!;
               return (
                 <div className="card day-detail">
                   <div className="day-detail-head">{sel.date} · {weekday(sel.date, L)}</div>
                   <p className="verdict">{sel.moon}</p>
-                  {sel.lenses.map((l) => (
-                    <div className="lens" key={l.lens}>
-                      <div className="lens-head">
-                        <span className="lens-name">{l.name}</span>
-                        <span className="lens-stars" aria-label={`${l.stars}/5`}>{'★'.repeat(l.stars)}<span className="lens-stars-off">{'★'.repeat(5 - l.stars)}</span></span>
+                  {sel.between && sel.theirs ? (
+                    <div className="tracks">
+                      {([[UI.trackYours[L], sel], [UI.trackTheirs[L], sel.theirs]] as const).map(([label, side]) => (
+                        <div className="track" key={label}>
+                          <div className="track-head">{label}<span className={`chip ${WORD_CLASS[side.word]}`}>{side.wordText}</span></div>
+                          <Lenses lenses={side.lenses} L={L} />
+                        </div>
+                      ))}
+                      <div className="track">
+                        <div className="track-head">{UI.trackBetween[L]}<span className={`chip ${MODE_CLASS[sel.between.mode]}`}>{MODE_WORD[sel.between.mode][L]}</span></div>
+                        <p className="lens-text" style={{ marginTop: 0 }}>{sel.between.text}</p>
+                        {sel.between.sources.length > 0 && <p className="lens-src">{S.dailySource[L]}：{sel.between.sources.join('；')}</p>}
                       </div>
-                      <p className="lens-text">{l.text}</p>
-                      {l.source && <p className="lens-src">{S.dailySource[L]}：{l.source}</p>}
                     </div>
-                  ))}
+                  ) : (
+                    <Lenses lenses={sel.lenses} L={L} />
+                  )}
                 </div>
               );
             })()}

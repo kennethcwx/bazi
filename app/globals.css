@@ -795,6 +795,7 @@ details.terms { margin-top: 18px; border-top: 1px solid var(--line); padding-top
 .chip.m-friction { color: var(--m-friction); border-color: rgba(207, 95, 87, 0.45); }
 .chip.m-apart { color: var(--m-apart); border-color: rgba(127, 150, 179, 0.45); }
 .chip.f-low { color: var(--text-faint); }
+.chip.f-steady { color: var(--text-dim); }
 .day-detail > .chips { margin-bottom: 10px; }
 
 .tracks { display: flex; flex-direction: column; gap: 14px; }
