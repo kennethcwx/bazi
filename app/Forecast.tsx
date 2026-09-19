@@ -224,8 +224,8 @@ export function Forecast({ birth, locale }: {
   const modes = ['close', 'stirred', 'friction', 'apart'] as const;
 
   return (
-    <section>
-      <h2>{UI.forecast[locale]}</h2>
+    <details className="acc" open>
+      <summary><h2>{UI.forecast[locale]}</h2></summary>
 
       {error && <p className="err" role="alert">{error}</p>}
       {busy && !data && <p className="note" role="status">{UI.casting[locale]}</p>}
@@ -366,6 +366,6 @@ export function Forecast({ birth, locale }: {
           <p className="caveat">{data.caveat}</p>
         </>
       )}
-    </section>
+    </details>
   );
 }

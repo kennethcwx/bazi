@@ -869,6 +869,7 @@ details.acc > summary {
   list-style: none; cursor: pointer;
   display: flex; align-items: center; justify-content: space-between;
   min-height: var(--tap); border-bottom: 1px solid var(--line);
+  margin-bottom: 12px;
   -webkit-tap-highlight-color: transparent;
 }
 details.acc > summary::-webkit-details-marker { display: none; }
@@ -881,7 +882,6 @@ details.acc > summary::after {
   transition: transform 0.18s ease;
 }
 details.acc[open] > summary::after { transform: rotate(-135deg) translateY(1px); }
-details.acc > .card { margin-top: 12px; }
 
 /* ---------- today's lenses ---------- */
 .lens { border-top: 1px solid var(--line-soft); padding-top: 10px; margin-top: 10px; }

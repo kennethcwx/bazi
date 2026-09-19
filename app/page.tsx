@@ -624,8 +624,8 @@ export default function Page() {
 
       {result && (
         <div ref={resultsRef}>
-          <section>
-            <h2>{UI.headlineLabel[L]}</h2>
+          <details className="acc" open>
+            <summary><h2>{UI.headlineLabel[L]}</h2></summary>
             <div className="card glance">
               <div className="glance-row">
                 <span className="glance-k">{UI.dayMaster[L]}</span>
@@ -653,10 +653,10 @@ export default function Page() {
                 </span>
               </div>
             </div>
-          </section>
+          </details>
 
-          <section>
-            <h2>{UI.pillars[L]}</h2>
+          <details className="acc" open>
+            <summary><h2>{UI.pillars[L]}</h2></summary>
             <div className="pillars">
               {(['year', 'month', 'day', 'hour'] as const).map((pos) => (
                 <PillarCard
@@ -679,10 +679,10 @@ export default function Page() {
                 <span><span className="meta-k">{UI.bodySign[L]}</span> {result.chart.palaces.bodySign}</span>
               )}
             </p>
-          </section>
+          </details>
 
-          <section>
-            <h2>{UI.basis[L]}</h2>
+          <details className="acc">
+            <summary><h2>{UI.basis[L]}</h2></summary>
             <div className="card">
               <div className="glance-v">
                 {UI.chartedAt[L]} {result.chart.moment.charted.year}-
@@ -703,10 +703,10 @@ export default function Page() {
                 </ul>
               </details>
             </div>
-          </section>
+          </details>
 
-          <section>
-            <h2>{UI.balance[L]}</h2>
+          <details className="acc">
+            <summary><h2>{UI.balance[L]}</h2></summary>
             {/* Rows, not a stacked bar. Five segments sharing a phone's width
                 left the small ones a few pixels wide, and the label only fit
                 above 12% — so the elements you most want named, the scarce
@@ -834,10 +834,10 @@ export default function Page() {
                 </ul>
               </details>
             </div>
-          </section>
+          </details>
 
-          <section>
-            <h2>{UI.luck[L]}</h2>
+          <details className="acc" open>
+            <summary><h2>{UI.luck[L]}</h2></summary>
             <p className="scale-note">{UI.luckAgeScale[L]}</p>
             <div className="luck-scroll">
               <div className="luck">
@@ -854,11 +854,11 @@ export default function Page() {
                 ))}
               </div>
             </div>
-          </section>
+          </details>
 
           {result.monthly.length > 0 && (
-            <section>
-              <h2>{UI.monthly[L]}{' · '}{result.monthly[0]!.year}</h2>
+            <details className="acc">
+              <summary><h2>{UI.monthly[L]}{' · '}{result.monthly[0]!.year}</h2></summary>
               <p className="scale-note">{UI.monthlyNote[L]}</p>
               <div className="luck-scroll annual-scroll">
                 <div className="annual months">
@@ -875,12 +875,12 @@ export default function Page() {
                   ))}
                 </div>
               </div>
-            </section>
+            </details>
           )}
 
           {result.annual.length > 0 && (
-            <section>
-              <h2>{UI.annual[L]}</h2>
+            <details className="acc">
+              <summary><h2>{UI.annual[L]}</h2></summary>
               <p className="scale-note">{UI.annualNote[L]}</p>
               <div className="luck-scroll annual-scroll">
                 <div className="annual">
@@ -896,11 +896,11 @@ export default function Page() {
                   ))}
                 </div>
               </div>
-            </section>
+            </details>
           )}
 
-          <section>
-            <h2>{UI.reading[L]}</h2>
+          <details className="acc" open>
+            <summary><h2>{UI.reading[L]}</h2></summary>
             {/* Toggle buttons, not a role="tab" widget: the tab pattern owes a
                 screen reader arrow-key navigation and an associated tabpanel,
                 and this control has neither (it switches a whole topic, not one
@@ -973,7 +973,7 @@ export default function Page() {
                 )}
               </div>
             )}
-          </section>
+          </details>
 
           {tab === 'relationship' ? (
             /* The joint forecast and 合婚 are always me-and-partner: on the
@@ -993,12 +993,12 @@ export default function Page() {
             </p>
           )}
 
-          <section>
-            <h2>
+          <details className="acc" open>
+            <summary><h2>
               {tab === 'relationship' ? UI.relationships[L] : UI.career[L]}
               {' · '}
               {UI.findings[L]}
-            </h2>
+            </h2></summary>
             <div className="card">
               <FindingList
                 findings={tab === 'relationship'
@@ -1007,7 +1007,7 @@ export default function Page() {
                 locale={L}
               />
             </div>
-          </section>
+          </details>
         </div>
       )}
     </main>

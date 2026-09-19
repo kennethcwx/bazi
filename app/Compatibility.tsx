@@ -101,8 +101,8 @@ export function Compatibility({ selfBirth, locale }: {
   }
 
   return (
-    <section>
-      <h2>{UI.compatibility[locale]}</h2>
+    <details className="acc" open>
+      <summary><h2>{UI.compatibility[locale]}</h2></summary>
 
       {!open && !data && (
         <button className="q-btn" onClick={() => setOpen(true)} disabled={!selfBirth}>
@@ -222,6 +222,6 @@ export function Compatibility({ selfBirth, locale }: {
           </div>
         </>
       )}
-    </section>
+    </details>
   );
 }
