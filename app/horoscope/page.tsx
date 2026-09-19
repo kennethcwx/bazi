@@ -31,7 +31,8 @@ const S = {
   house: t('宫', 'H'),
   retro: t('逆', 'R'),
   reading: t('本命解读', 'Natal reading'),
-  daily: t('今日运势', 'Today'),
+  daily: t('运势', 'Outlook'),
+  legend: t('每日一字：当天最紧的行运相位的性质。', 'One word a day: the nature of that day’s tightest transit.'),
   dailySource: t('依据', 'From'),
   aspects: t('主要相位', 'Major aspects'),
   noTime: t('未填出生时间：以正午计算。上升与宫位无法判定，月亮可能偏差半个星座。',
@@ -57,7 +58,12 @@ interface Result {
   midheaven: { lon: number; sign: string; signGlyph: string; degree: number } | null;
   aspects: { a: string; b: string; kind: string; orb: number }[];
   reading: { sun: string; moon: string; ascendant: string | null; placements: string[]; aspects: string[] };
-  daily: { moon: string; lenses: { lens: string; name: string; stars: number; source: string | null; text: string }[] };
+  daily: Day;
+  calendar: (Day & { date: string })[];
+}
+interface Day {
+  moon: string; moonGlyph: string; word: 'flow' | 'strain' | 'fuse' | 'quiet'; wordText: string;
+  lenses: { lens: string; name: string; stars: number; source: string | null; text: string }[];
 }
 interface Syn {
   overall: number;
@@ -66,6 +72,26 @@ interface Syn {
   aspects: { text: string; orb: number }[];
 }
 
+const SPAN = 30;
+const isoOf = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+/** Today and the next 29 days, each at local noon, in the reader's own clock. */
+function calendarDays() {
+  const out = [];
+  for (let i = 0; i < SPAN; i++) {
+    const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + i);
+    out.push({ date: isoOf(d), at: d.getTime() });
+  }
+  return out;
+}
+function weekday(isoDate: string, L: 'zh' | 'en'): string {
+  const d = new Date(`${isoDate}T12:00:00Z`);
+  const zh = ['日', '一', '二', '三', '四', '五', '六'];
+  const en = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  return (L === 'zh' ? zh : en)[d.getUTCDay()] ?? '';
+}
+const WORD_CLASS = { flow: 'm-close', strain: 'm-friction', fuse: 'm-stirred', quiet: 'f-steady' } as const;
+
 export default function Horoscope() {
   const [L, setLocale] = useLocale();
   const [date, setDate] = useState('1990-06-15');
@@ -73,6 +99,7 @@ export default function Horoscope() {
   const [timeKnown, setTimeKnown] = useState(true);
   const [place, setPlace] = useState(DEFAULT_PLACE);
   const [result, setResult] = useState<Result | null>(null);
+  const [openDay, setOpenDay] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   /** The two partners 合婚 remembers; the active one is what the comparison is against. */
@@ -87,7 +114,7 @@ export default function Horoscope() {
     try {
       const res = await fetch('/api/natal', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...p, locale, now: Date.now() }),
+        body: JSON.stringify({ ...p, locale, now: Date.now(), days: calendarDays() }),
       });
       const json = await res.json();
       if (!res.ok) { setError(json.error ?? UI.errCast[locale]); setResult(null); }
@@ -196,19 +223,40 @@ export default function Horoscope() {
 
           <details className="acc" open>
             <summary><h2>{S.daily[L]}</h2></summary>
-            <div className="card">
-              <p className="verdict">{result.daily.moon}</p>
-              {result.daily.lenses.map((l) => (
-                <div className="lens" key={l.lens}>
-                  <div className="lens-head">
-                    <span className="lens-name">{l.name}</span>
-                    <span className="lens-stars" aria-label={`${l.stars}/5`}>{'★'.repeat(l.stars)}<span className="lens-stars-off">{'★'.repeat(5 - l.stars)}</span></span>
-                  </div>
-                  <p className="lens-text">{l.text}</p>
-                  {l.source && <p className="lens-src">{S.dailySource[L]}：{l.source}</p>}
-                </div>
+            <div className="days">
+              {result.calendar.map((d, i) => (
+                <button key={d.date} type="button"
+                  className={`day${(openDay ?? result.calendar[0]!.date) === d.date ? ' open' : ''}${i === 0 ? ' today' : ''}`}
+                  aria-expanded={(openDay ?? result.calendar[0]!.date) === d.date}
+                  aria-current={i === 0 ? 'date' : undefined}
+                  onClick={() => setOpenDay(d.date)}>
+                  <span className="day-date">{i === 0 ? UI.today[L] : d.date.slice(5).replace('-', '/')}</span>
+                  <span className="day-wd">{weekday(d.date, L)}</span>
+                  <span className="day-gz" aria-hidden="true">{d.moonGlyph}</span>
+                  <span className={`day-word ${WORD_CLASS[d.word]}`}>{d.wordText}</span>
+                </button>
               ))}
             </div>
+            <p className="note legend-note">{S.legend[L]}</p>
+            {(() => {
+              const sel = result.calendar.find((d) => d.date === openDay) ?? result.calendar[0]!;
+              return (
+                <div className="card day-detail">
+                  <div className="day-detail-head">{sel.date} · {weekday(sel.date, L)}</div>
+                  <p className="verdict">{sel.moon}</p>
+                  {sel.lenses.map((l) => (
+                    <div className="lens" key={l.lens}>
+                      <div className="lens-head">
+                        <span className="lens-name">{l.name}</span>
+                        <span className="lens-stars" aria-label={`${l.stars}/5`}>{'★'.repeat(l.stars)}<span className="lens-stars-off">{'★'.repeat(5 - l.stars)}</span></span>
+                      </div>
+                      <p className="lens-text">{l.text}</p>
+                      {l.source && <p className="lens-src">{S.dailySource[L]}：{l.source}</p>}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </details>
 
           <details className="acc" open>

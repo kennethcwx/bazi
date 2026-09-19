@@ -147,12 +147,24 @@ describe('今日运势', () => {
     }
     const sources = r.lenses.map((l) => l.source?.en).filter(Boolean);
     expect(new Set(sources).size).toBe(sources.length); // no lens repeats another's headline
-    expect(r.moon.zh).toMatch(/^今日月亮/); expect(r.moon.en).toMatch(/^Today's Moon in/);
+    expect(r.moon.zh).toMatch(/^月亮/); expect(r.moon.en).toMatch(/^Moon in/);
   });
 
   it('falls back to a quiet line when nothing is in orb', () => {
     const r = readDaily({ moonSign: 0, transits: [] });
     expect(r.lenses.every((l) => l.source === null && l.stars === 3)).toBe(true);
+    expect(r.word).toBe('quiet');
+  });
+
+  it('gives a month of days a word each, and the Moon changes sign about every 2–3 days', () => {
+    const words = new Set<string>(); let signChanges = 0; let last = -1;
+    for (let i = 0; i < 30; i++) {
+      const r = readDaily(computeTransits(natal, Date.UTC(2026, 8, 19, 4) + i * 86_400_000));
+      words.add(r.word);
+      if (r.moonSign !== last) { signChanges++; last = r.moonSign; }
+    }
+    expect(signChanges).toBeGreaterThanOrEqual(11); expect(signChanges).toBeLessThanOrEqual(15);
+    expect(words.size).toBeGreaterThanOrEqual(2);
   });
 });
 

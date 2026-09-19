@@ -72,8 +72,8 @@ export function computeTransits(natal: NatalChart, nowMs: number): DailySky {
 
 /** What a transiting planet brings with it. */
 const BRINGS: Record<PlanetKey, LocalizedText> = {
-  Sun: t('今天的焦点', "today's focus"),
-  Moon: t('今天的情绪', "today's mood"),
+  Sun: t('这天的焦点', "the day's focus"),
+  Moon: t('这天的情绪', "the day's mood"),
   Mercury: t('沟通与消息', 'talk and news'),
   Venus: t('好感与享受', 'affection and pleasure'),
   Mars: t('冲劲与摩擦', 'drive and friction'),
@@ -127,7 +127,7 @@ const PHRASE: Record<Lens, Record<Tone, (b: LocalizedText, s: LocalizedText) => 
   general: {
     flow: (b, s) => t(`${b.zh}与${s.zh}合拍，顺势去做就好。`, `${cap(b.en)} works with ${s.en} — go with it.`),
     strain: (b, s) => t(`${b.zh}与${s.zh}相冲，先缓一步再回应。`, `${cap(b.en)} pulls against ${s.en}; pause before you respond.`),
-    fuse: (b, s) => t(`${b.zh}正压在${s.zh}上，今天绕不开它。`, `${cap(b.en)} sits right on ${s.en}; it will not be ignored today.`),
+    fuse: (b, s) => t(`${b.zh}正压在${s.zh}上，绕不开它。`, `${cap(b.en)} sits right on ${s.en}; it will not be ignored.`),
   },
   love: {
     flow: (b, s) => t(`感情上，${b.zh}顺着${s.zh}走，适合表达与靠近。`, `In love, ${b.en} flows with ${s.en}: a day to say it and move closer.`),
@@ -137,14 +137,14 @@ const PHRASE: Record<Lens, Record<Tone, (b: LocalizedText, s: LocalizedText) => 
   work: {
     flow: (b, s) => t(`工作上，${b.zh}帮到${s.zh}，推进事情的好日子。`, `At work, ${b.en} backs ${s.en}: a good day to push things forward.`),
     strain: (b, s) => t(`工作上，${b.zh}卡住${s.zh}，先把要求写清楚再动。`, `At work, ${b.en} snags on ${s.en}; get the ask in writing before you move.`),
-    fuse: (b, s) => t(`工作上，${b.zh}集中在${s.zh}，今天会被推到台前。`, `At work, ${b.en} concentrates on ${s.en}; expect to be put on the spot.`),
+    fuse: (b, s) => t(`工作上，${b.zh}集中在${s.zh}，会被推到台前。`, `At work, ${b.en} concentrates on ${s.en}; expect to be put on the spot.`),
   },
 };
 
 const QUIET: Record<Lens, LocalizedText> = {
-  general: t('今天没有明显的天象触动本命盘，平稳的一天。', 'No transit touches your chart closely today — an even day.'),
-  love: t('感情上没有明显的天象，照常相处即可。', 'Nothing notable in the sky for love today; carry on as usual.'),
-  work: t('工作上没有明显的天象，适合处理日常。', 'Nothing notable for work today; a day for routine.'),
+  general: t('没有明显的天象触动本命盘，平稳的一天。', 'No transit touches your chart closely — an even day.'),
+  love: t('感情上没有明显的天象，照常相处即可。', 'Nothing notable in the sky for love; carry on as usual.'),
+  work: t('工作上没有明显的天象，适合处理日常。', 'Nothing notable for work; a day for routine.'),
 };
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -159,10 +159,19 @@ export interface LensReading {
   readonly text: LocalizedText;
 }
 
+export type DayWord = Tone | 'quiet';
+
 export interface DailyReading {
   readonly moon: LocalizedText;
+  readonly moonSign: number;
+  /** The one word a calendar cell gets: the tone of the day's tightest transit. */
+  readonly word: DayWord;
   readonly lenses: readonly LensReading[];
 }
+
+export const WORD: Record<DayWord, LocalizedText> = {
+  flow: t('顺', 'flow'), strain: t('紧', 'tense'), fuse: t('聚', 'intense'), quiet: t('平', 'even'),
+};
 
 const concerns = (x: Transit, lens: Lens) => NATAL_LENS[x.n] === lens || TRANSIT_LENS[x.t] === lens;
 
@@ -185,8 +194,11 @@ export function readDaily(sky: DailySky): DailyReading {
     });
   }
   const m = MOON[sky.moonSign]!;
+  const top = sky.transits[0];
   return {
-    moon: t(`今日${m.zh}`, `Today's ${m.en}`),
+    moon: m,
+    moonSign: sky.moonSign,
+    word: top ? TONE[top.kind] : 'quiet',
     lenses: LENSES.map((l) => byLens.get(l)!),
   };
 }

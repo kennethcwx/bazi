@@ -5,14 +5,16 @@
 
 import { NextResponse } from 'next/server';
 import { PLANETS, SIGNS, SIGN_GLYPHS } from '../../../src/astro/natal';
+import type { DailyReading } from '../../../src/astro/transits';
 import { castBirth } from '../../../src/astro/cast';
 import { readNatal } from '../../../src/astro/readings';
-import { computeTransits, readDaily, LENS_NAME } from '../../../src/astro/transits';
+import { computeTransits, readDaily, LENS_NAME, WORD } from '../../../src/astro/transits';
 import { isLocale, type Locale } from '../../../src/i18n/text';
 
 export async function POST(req: Request) {
   let body: {
     date?: unknown; time?: unknown; timeKnown?: unknown; placeIndex?: unknown; locale?: unknown; now?: unknown;
+    days?: unknown;
   };
   try {
     body = await req.json();
@@ -33,6 +35,25 @@ export async function POST(req: Request) {
   // The client's clock, so "today" is the reader's day, not the server's.
   const nowMs = typeof body.now === 'number' && Number.isFinite(body.now) ? body.now : Date.now();
   const daily = readDaily(computeTransits(chart, nowMs));
+  // The calendar: the client names each day and its local-noon instant, so
+  // the labels are the reader's dates and the sky is read at the same hour
+  // every day. Capped so a stray request cannot ask for a year of ephemeris.
+  const days = (Array.isArray(body.days) ? body.days : [])
+    .filter((d): d is { date: string; at: number } =>
+      !!d && typeof d === 'object' && typeof (d as { date?: unknown }).date === 'string'
+      && /^\d{4}-\d{2}-\d{2}$/.test((d as { date: string }).date)
+      && typeof (d as { at?: unknown }).at === 'number' && Number.isFinite((d as { at: number }).at))
+    .slice(0, 62);
+  const flat = (r: DailyReading) => ({
+    moon: r.moon[locale],
+    moonGlyph: SIGN_GLYPHS[r.moonSign]!,
+    word: r.word,
+    wordText: WORD[r.word][locale],
+    lenses: r.lenses.map((l) => ({
+      lens: l.lens, name: LENS_NAME[l.lens][locale], stars: l.stars,
+      source: l.source?.[locale] ?? null, text: l.text[locale],
+    })),
+  });
 
   // Round before splitting into sign and degree, or 29.96° prints as "30.0°"
   // of the sign it has, to one decimal, already left.
@@ -61,12 +82,7 @@ export async function POST(req: Request) {
       placements: reading.placements.map((r) => r[locale]),
       aspects: reading.aspects.map((r) => r[locale]),
     },
-    daily: {
-      moon: daily.moon[locale],
-      lenses: daily.lenses.map((l) => ({
-        lens: l.lens, name: LENS_NAME[l.lens][locale], stars: l.stars,
-        source: l.source?.[locale] ?? null, text: l.text[locale],
-      })),
-    },
+    daily: flat(daily),
+    calendar: days.map((d) => ({ date: d.date, ...flat(readDaily(computeTransits(chart, d.at))) })),
   });
 }
