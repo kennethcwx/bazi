@@ -89,7 +89,7 @@ function anthropicProvider(): Provider {
 // ---------------------------------------------------------------------------
 // Shared SSE reader for the REST providers.
 
-async function readSse(
+export async function readSse(
   res: Response,
   extract: (payload: unknown) => string,
   onDelta: (t: string) => void,
@@ -100,26 +100,31 @@ async function readSse(
   let buffer = '';
   let acc = '';
 
+  const handle = (frame: string) => {
+    for (const line of frame.split('\n')) {
+      if (!line.startsWith('data:')) continue;
+      const raw = line.slice(5).trim();
+      if (!raw || raw === '[DONE]') continue;
+      let payload: unknown;
+      try { payload = JSON.parse(raw); } catch { continue; }
+      const piece = extract(payload);
+      if (piece) { acc += piece; onDelta(piece); }
+    }
+  };
+
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-
+    // CRLF-normalised: a provider that separates events with \r\n\r\n would
+    // otherwise never match a frame boundary and the whole reply would sit
+    // in the buffer unread.
+    buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
     const frames = buffer.split('\n\n');
     buffer = frames.pop() ?? '';
-
-    for (const frame of frames) {
-      for (const line of frame.split('\n')) {
-        if (!line.startsWith('data:')) continue;
-        const raw = line.slice(5).trim();
-        if (!raw || raw === '[DONE]') continue;
-        let payload: unknown;
-        try { payload = JSON.parse(raw); } catch { continue; }
-        const piece = extract(payload);
-        if (piece) { acc += piece; onDelta(piece); }
-      }
-    }
+    for (const frame of frames) handle(frame);
   }
+  // The last event is not always followed by a blank line; flush it.
+  if (buffer.trim()) handle(buffer);
   return acc.trim();
 }
 
@@ -130,22 +135,31 @@ function geminiProvider(key: string): Provider {
   // Overridable because Google retires model ids faster than this app will be
   // redeployed; a 404 here tells the user exactly which variable to set.
   const model = env('GEMINI_MODEL') ?? 'gemini-flash-latest';
+  // The alias tracks whichever Flash is newest, and the newest is the one
+  // that spikes "high demand" 503s. The lite model is rarely busy; a reading
+  // on it beats no reading.
+  const fallback = env('GEMINI_FALLBACK_MODEL') ?? 'gemini-3.1-flash-lite';
+  const call = (m: string, system: string, user: string) => fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${m}:streamGenerateContent?alt=sse`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents: [{ role: 'user', parts: [{ text: user }] }],
+        generationConfig: { maxOutputTokens: 4096, temperature: 0.7 },
+      }),
+    },
+  );
   return {
     id: 'gemini',
     label: 'Gemini',
     model,
     async stream(system, user, onDelta) {
-      const url =
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: system }] },
-          contents: [{ role: 'user', parts: [{ text: user }] }],
-          generationConfig: { maxOutputTokens: 4096, temperature: 0.7 },
-        }),
-      });
+      let res = await call(model, system, user);
+      if ((res.status === 503 || res.status === 429) && fallback !== model) {
+        res = await call(fallback, system, user);
+      }
 
       if (!res.ok) {
         const detail = await res.text().catch(() => '');
