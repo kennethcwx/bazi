@@ -129,7 +129,7 @@ async function readSse(
 function geminiProvider(key: string): Provider {
   // Overridable because Google retires model ids faster than this app will be
   // redeployed; a 404 here tells the user exactly which variable to set.
-  const model = env('GEMINI_MODEL') ?? 'gemini-2.0-flash';
+  const model = env('GEMINI_MODEL') ?? 'gemini-flash-latest';
   return {
     id: 'gemini',
     label: 'Gemini',
