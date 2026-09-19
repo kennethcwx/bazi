@@ -75,3 +75,10 @@ export function forgetAll(): void {
 }
 
 export const hasSaved = (): boolean => loadSelf() !== null || loadPartner() !== null;
+
+/** The two people this device remembers, addressed by role. */
+export type Who = 'self' | 'partner';
+const KEY: Record<Who, string> = { self: SELF_KEY, partner: PARTNER_KEY };
+export const load = (who: Who): SavedBirth | null => read(KEY[who]);
+export const save = (who: Who, v: SavedBirth): void => write(KEY[who], v);
+export const forget = (who: Who): void => write(KEY[who], null);
