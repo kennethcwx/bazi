@@ -16,6 +16,7 @@ import { dailyCard, draw, type Draw } from '../../src/tarot/cards';
 import { readSpread, SIZES, TOPIC_NAME, TOPICS, type Size, type SpreadReading, type Topic } from '../../src/tarot/spreads';
 import { loadSelf } from '../../src/storage';
 import { t } from '../../src/i18n/text';
+import { UI } from '../../src/i18n/ui';
 
 const S = {
   title: t('塔罗', 'Tarot'),
@@ -30,6 +31,11 @@ const S = {
   redraw: t('重抽', 'Draw again'),
   youAsked: t('你问', 'You asked'),
   overall: t('整体', 'Overall'),
+  answer: t('解读', 'Reading'),
+  thinking: t('解读中…', 'Reading…'),
+  noModel: t('未配置解读模型，以上为按牌义与位置组合的解读；设置 GEMINI_API_KEY 后，会针对你的问题作答。',
+    'No reading model is configured, so the above is composed from card meanings and positions; set GEMINI_API_KEY and it will answer your question.'),
+  writtenBy: t('由模型撰写，牌义为依据；作为参考，不作定论。', 'Written by a model from the card meanings; a reference, not a verdict.'),
   cardWord: t('张', ''),
   reversed: t('逆位', 'Reversed'),
   upright: t('正位', 'Upright'),
@@ -71,10 +77,51 @@ export default function Tarot() {
   const [question, setQuestion] = useState('');
   const [asked, setAsked] = useState<{ topic: Topic; question: string } | null>(null);
   const [spread, setSpread] = useState<SpreadReading | null>(null);
+  const [answer, setAnswer] = useState('');
+  const [answerBusy, setAnswerBusy] = useState(false);
+  const [answerSource, setAnswerSource] = useState<string | null>(null);
+  const [answerError, setAnswerError] = useState<string | null>(null);
 
   function pull() {
-    setAsked({ topic, question: question.trim() });
-    setSpread(readSpread(draw(size), topic));
+    const q = question.trim();
+    const sp = readSpread(draw(size), topic);
+    setAsked({ topic, question: q });
+    setSpread(sp);
+    void narrate(q, topic, sp, L);
+  }
+
+  /** Stream the model's answer; with no model, the composed table stands and says so. */
+  async function narrate(q: string, tp: Topic, sp: SpreadReading, locale: 'zh' | 'en') {
+    setAnswer(''); setAnswerSource(null); setAnswerError(null); setAnswerBusy(true);
+    try {
+      const res = await fetch('/api/tarot', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: q, topic: tp, locale,
+          cards: sp.cards.map((c) => ({ id: c.draw.card.id, reversed: c.draw.reversed })),
+        }),
+      });
+      if (!res.ok || !res.body) { setAnswerError((await res.json().catch(() => ({}))).error ?? 'error'); return; }
+      const reader = res.body.getReader(); const dec = new TextDecoder();
+      let buf = ''; let acc = '';
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const frames = buf.split('\n\n'); buf = frames.pop() ?? '';
+        for (const f of frames) {
+          const ev = f.split('\n').find((l) => l.startsWith('event: '))?.slice(7).trim();
+          const dl = f.split('\n').find((l) => l.startsWith('data: '))?.slice(6);
+          if (!ev || !dl) continue;
+          let d: Record<string, unknown>; try { d = JSON.parse(dl); } catch { continue; }
+          if (ev === 'meta') setAnswerSource(String(d['source'] ?? ''));
+          else if (ev === 'delta') { acc += String(d['text'] ?? ''); setAnswer(acc); }
+          else if (ev === 'done') setAnswerSource(String(d['source'] ?? ''));
+          else if (ev === 'failed') setAnswerError(String(d['error'] ?? 'error'));
+        }
+      }
+    } catch { setAnswerError(UI.errConnect[locale]); }
+    finally { setAnswerBusy(false); }
   }
 
   // Client-only: the seed and the local date both come from the device.
@@ -135,6 +182,13 @@ export default function Tarot() {
               ))}
             </div>
             <div className="card" style={{ marginTop: 10 }}>
+              <div className="tarot-ask-label">{S.answer[L]}</div>
+              {answerError && <p className="err" role="alert">{answerError}</p>}
+              {answer
+                ? answer.split(/\n{2,}/).map((para, i) => <p key={i} className="tarot-answer">{para}</p>)
+                : answerBusy && <p className="note" style={{ marginTop: 0 }} role="status">{S.thinking[L]}</p>}
+              {answerSource === 'composed' && !answerBusy && <p className="note" style={{ marginTop: 0 }}>{S.noModel[L]}</p>}
+              {answer && !answerBusy && answerSource && answerSource !== 'composed' && <p className="caveat">{S.writtenBy[L]}</p>}
               <div className="tarot-ask-label">{S.overall[L]}</div>
               {spread.summary.map((line, i) => <p key={i} className="tarot-meaning" style={{ marginTop: i ? 6 : 0 }}>{line[L]}</p>)}
             </div>
