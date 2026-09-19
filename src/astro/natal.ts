@@ -23,7 +23,9 @@ export const SIGNS = [
   t('射手座', 'Sagittarius'), t('摩羯座', 'Capricorn'), t('水瓶座', 'Aquarius'), t('双鱼座', 'Pisces'),
 ] as const;
 
-export const SIGN_GLYPHS = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'] as const;
+// U+FE0E after each glyph asks for the text form: iOS and Windows otherwise
+// draw ♈–♓ as coloured emoji, which no chart wants.
+export const SIGN_GLYPHS = ['♈︎', '♉︎', '♊︎', '♋︎', '♌︎', '♍︎', '♎︎', '♏︎', '♐︎', '♑︎', '♒︎', '♓︎'] as const;
 
 export type PlanetKey =
   | 'Sun' | 'Moon' | 'Mercury' | 'Venus' | 'Mars'

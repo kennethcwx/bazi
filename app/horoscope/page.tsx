@@ -10,6 +10,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import Nav from '../Nav';
+import Wheel from './Wheel';
 import { PlacePicker } from '../PlacePicker';
 import { LangSwitch, useLocale } from '../useLocale';
 import { DEFAULT_PLACE } from '../../src/places';
@@ -36,12 +37,12 @@ const S = {
   noAspects: t('没有主要相位在容许度内。', 'No major aspects within orb.'),
 };
 
-interface Placed { key: string; name: string; glyph: string; sign: string; signGlyph: string; degree: number; retrograde: boolean; house: number | null }
+interface Placed { key: string; name: string; glyph: string; lon: number; sign: string; signGlyph: string; degree: number; retrograde: boolean; house: number | null }
 interface Result {
   timeKnown: boolean;
   planets: Placed[];
-  ascendant: { sign: string; signGlyph: string; degree: number } | null;
-  midheaven: { sign: string; signGlyph: string; degree: number } | null;
+  ascendant: { lon: number; sign: string; signGlyph: string; degree: number } | null;
+  midheaven: { lon: number; sign: string; signGlyph: string; degree: number } | null;
   aspects: { a: string; b: string; kind: string; orb: number }[];
   reading: { sun: string; moon: string; ascendant: string | null; placements: string[]; aspects: string[] };
 }
@@ -136,6 +137,12 @@ export default function Horoscope() {
           <section>
             <h2>{S.placements[L]}</h2>
             <div className="card">
+              <Wheel
+                planets={result.planets}
+                ascendant={result.ascendant?.lon ?? null}
+                midheaven={result.midheaven?.lon ?? null}
+                aspects={result.aspects}
+              />
               <table className="planets">
                 <tbody>
                   {result.planets.map((p) => (

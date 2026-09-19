@@ -860,6 +860,7 @@ details.terms { margin-top: 18px; border-top: 1px solid var(--line); padding-top
 .nav a[aria-current='page'] { background: var(--gold); color: #17130a; border-color: var(--gold); }
 
 /* ---------- 星盘 ---------- */
+.wheel { display: block; width: 100%; max-width: 340px; margin: 0 auto 14px; }
 .planets { width: 100%; border-collapse: collapse; font-size: 0.8235rem; }
 .planets td { padding: 8px 4px; border-top: 1px solid var(--line-soft); vertical-align: baseline; }
 .planets tr:first-child td { border-top: 0; padding-top: 0; }

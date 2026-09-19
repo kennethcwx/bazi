@@ -46,7 +46,7 @@ export async function POST(req: Request) {
   const signOf = (lon: number) => {
     const r = (Math.round(lon * 10) / 10) % 360;
     const s = Math.floor(r / 30);
-    return { sign: SIGNS[s]![locale], signGlyph: SIGN_GLYPHS[s]!, degree: +(r - s * 30).toFixed(1) };
+    return { lon, sign: SIGNS[s]![locale], signGlyph: SIGN_GLYPHS[s]!, degree: +(r - s * 30).toFixed(1) };
   };
   return NextResponse.json({
     timeKnown,

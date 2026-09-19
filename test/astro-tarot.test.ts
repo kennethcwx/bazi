@@ -8,6 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import { computeNatal, SIGNS } from '../src/astro/natal';
 import { readNatal } from '../src/astro/readings';
+import { point, screenAngle, spreadAngles } from '../src/astro/wheel';
 import { DECK, dailyCard, draw } from '../src/tarot/cards';
 
 const J2000 = Date.UTC(2000, 0, 1, 12);
@@ -85,5 +86,29 @@ describe('塔罗', () => {
     expect(dailyCard('1990-06-15', '2026-09-18')).toEqual(a);
     const days = Array.from({ length: 30 }, (_, i) => dailyCard('1990-06-15', `2026-10-${String(i + 1).padStart(2, '0')}`).card.id);
     expect(new Set(days).size).toBeGreaterThan(15);
+  });
+});
+
+describe('星盘 wheel geometry', () => {
+  it('puts the rising sign at 9 o\'clock and runs the zodiac counter-clockwise', () => {
+    // Scorpio rising: 0° Scorpio (210°) sits at the left, 0° Sagittarius 30° further down.
+    expect(screenAngle(210, 210)).toBe(180);
+    expect(screenAngle(240, 210)).toBe(210);
+    const [x, y] = point(0, 0, 100, 210);
+    expect(x).toBeLessThan(0); expect(y).toBeGreaterThan(0);
+  });
+
+  it('spreads a stellium apart without reordering it', () => {
+    const out = spreadAngles([100, 102, 104, 250], 9);
+    expect(out[3]).toBe(250);
+    expect(out[1]! - out[0]!).toBeGreaterThanOrEqual(9 - 1e-3);
+    expect(out[2]! - out[1]!).toBeGreaterThanOrEqual(9 - 1e-3);
+    expect(out[0]! < out[1]! && out[1]! < out[2]!).toBe(true);
+  });
+
+  it('handles the wrap at 0°/360°', () => {
+    const out = spreadAngles([358, 2], 9);
+    const gap = ((out[1]! - out[0]!) % 360 + 360) % 360;
+    expect(gap).toBeGreaterThanOrEqual(9 - 1e-3);
   });
 });
