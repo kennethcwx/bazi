@@ -501,6 +501,9 @@ details.why[open] > summary::after { transform: rotate(-135deg) translateY(-1px)
 .q-btn:disabled { opacity: 0.4; }
 
 /* ---------- reading ---------- */
+.ask { display: flex; gap: 8px; margin-bottom: 14px; }
+.ask input { flex: 1; min-width: 0; }
+.ask button { flex: none; padding: 0 18px; }
 .reading { font-size: 0.9412rem; line-height: 1.85; }
 .reading h3 {
   font-family: var(--serif); font-size: 1.0588rem; font-weight: 500;

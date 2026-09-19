@@ -139,7 +139,8 @@ export function buildUserPrompt(
 ): string {
   const { chart, strength, yongShen, structureLens } = analysis;
   const zh = locale === 'zh';
-  const topicFindings = analysis.findings.filter((f) => f.topic === template.topic);
+  const topicFindings = analysis.findings.filter((f) =>
+    template.allTopics ? f.topic !== 'base' : f.topic === template.topic);
 
   const leadSet = new Set(template.leadWith);
   const ordered = [
@@ -275,7 +276,9 @@ export function checkGrounding(
 
   const invalid = [...cited].filter((id) => !valid.has(id));
   const available = new Set(
-    analysis.findings.filter((f) => f.topic === template.topic).map((f) => f.id),
+    analysis.findings
+      .filter((f) => (template.allTopics ? f.topic !== 'base' : f.topic === template.topic))
+      .map((f) => f.id),
   );
   const uncitedLeads = template.leadWith.filter(
     (id) => available.has(id) && !cited.has(id),

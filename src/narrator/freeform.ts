@@ -161,21 +161,43 @@ export function freeformTemplate(
   };
 }
 
+const FREE_FOCUS = t(
+  '直接回答这个问题，先给结论再讲依据。只能引用下列结论；挑与问题有关的来讲，无关的不要提。'
+    + '若结论不足以回答，直说不足，并说明命局能讲到哪一步。',
+  'Answer this question directly: conclusion first, then the reasoning. Cite only the findings listed; '
+    + 'use the ones that bear on the question and leave the rest unmentioned. If they do not cover it, '
+    + 'say so plainly and say how far the chart can take it.',
+);
+
 export type FreeformRoute =
   | { readonly kind: 'answer'; readonly template: Template; readonly selection: FreeformSelection }
   | { readonly kind: 'declined'; readonly reason: LocalizedText };
 
-/** Out-of-scope questions are still declined before anything is selected. */
+/**
+ * Out-of-scope questions are still declined before anything is selected.
+ *
+ * With a model writing (`modelAvailable`), the keyword gate steps aside: the
+ * model gets every finding from both topics and judges relevance itself,
+ * which a bag of bigrams cannot — "我适合去国外发展吗" shares no token with
+ * any claim yet the career findings answer it. Keyword hits still mark the
+ * ★ leads when there are any. Composed mode keeps the gate, because the
+ * composer can only glue matching findings together.
+ */
 export function routeFreeform(
   analysis: Analysis,
   question: string,
   locale: Locale,
+  modelAvailable = false,
 ): FreeformRoute {
   const scope = routeQuestion(question);
   if (scope.kind === 'declined' && /不回答|does not answer/.test(scope.reason.zh + scope.reason.en)) {
     return scope;
   }
   const selection = selectFindings(analysis, question, locale);
+  if (modelAvailable) {
+    const sel: FreeformSelection = selection ?? { topic: 'relationship', findings: [], scores: new Map() };
+    return { kind: 'answer', template: { ...freeformTemplate(question, sel), allTopics: true, focus: FREE_FOCUS }, selection: sel };
+  }
   if (!selection) {
     return {
       kind: 'declined',

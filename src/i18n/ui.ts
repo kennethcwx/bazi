@@ -171,6 +171,9 @@ export const UI = {
   you: t('你', 'You'),
   them: t('对方', 'Them'),
 
+  askPlaceholder: t('用自己的话问，例如：我适合去国外发展吗？', 'Ask in your own words, e.g. Should I move abroad for work?'),
+  askButton: t('问', 'Ask'),
+
   // partner slots under 合婚
   partnerSlot: t('伴侣', 'Partner'),
   partnerEmptySlot: t('未填', 'empty'),

@@ -30,6 +30,8 @@ export interface Template {
    *  Unset means the default (up to two, more when the lead is thin); 0 means
    *  the lead findings are the whole answer. */
   readonly background?: number;
+  /** Supply every non-base finding, not only the topic's: a free question may straddle both. */
+  readonly allTopics?: boolean;
   /** What this answer is for. Goes into the prompt verbatim. */
   readonly focus: LocalizedText;
   /** Rough length target: Chinese characters, or English words. */

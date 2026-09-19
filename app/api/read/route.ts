@@ -65,12 +65,12 @@ export async function POST(req: Request) {
   let template = body.templateId ? templateById(body.templateId) : undefined;
   let basedOn: string[] | null = null;
   if (!template && body.question) {
-    const routed = routeFreeform(analysis, body.question, locale);
+    const routed = routeFreeform(analysis, body.question, locale, providerStatus().id !== 'composed');
     if (routed.kind === 'declined') {
       return Response.json({ error: routed.reason[locale], code: 'declined' }, { status: 400 });
     }
     template = routed.template;
-    basedOn = routed.selection.findings.map((f) => f.id);
+    basedOn = routed.selection.findings.length ? routed.selection.findings.map((f) => f.id) : null;
   }
   if (!template) {
     return Response.json(

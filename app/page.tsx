@@ -293,6 +293,7 @@ export default function Page() {
   const [tab, setTab] = useState<Topic>('relationship');
 
   const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
+  const [question, setQuestion] = useState('');
   const [reading, setReading] = useState('');
   const [readingBusy, setReadingBusy] = useState(false);
   const [readingError, setReadingError] = useState<string | null>(null);
@@ -414,7 +415,7 @@ export default function Page() {
   }
 
   /** Stream a reading for one template. */
-  async function ask(templateId: string) {
+  async function ask(templateId: string | null, freeText?: string) {
     if (!lastInput.current || readingBusy) return;
     setActiveTemplate(templateId);
     setReading('');
@@ -422,7 +423,7 @@ export default function Page() {
     setReadingError(null);
 
     // Composed readings arrived with the chart: open instantly, no round trip.
-    const ready = result?.readings?.[templateId];
+    const ready = templateId && result?.readings?.[templateId];
     if (ready) {
       setReadingSource('composed');
       setReading(ready.text);
@@ -435,7 +436,10 @@ export default function Page() {
       const res = await fetch('/api/read', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...lastInput.current, locale, templateId }),
+        body: JSON.stringify({
+          ...lastInput.current, locale,
+          ...(templateId ? { templateId } : { question: freeText }),
+        }),
       });
 
       if (!res.ok || !res.body) {
@@ -470,6 +474,12 @@ export default function Page() {
 
           if (event === 'meta') {
             setReadingSource(String(data['source'] ?? ''));
+            if (!templateId) {
+              // A free question lands on whichever side its findings fall;
+              // show that tab so the findings below line up with the answer.
+              const topic = String(data['topic'] ?? '');
+              if ((topic === 'relationship' || topic === 'career') && topic !== tab) setTab(topic);
+            }
           } else if (event === 'delta') {
             acc += String(data['text'] ?? '');
             setReading(acc);
@@ -867,6 +877,29 @@ export default function Page() {
                 </button>
               ))}
             </div>
+
+            {/* A question in the reader's own words. With a model configured it
+                is answered from every computed finding that bears on it; without
+                one, from the findings whose words it shares. */}
+            <form
+              className="ask"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const q = question.trim();
+                if (q) void ask(null, q);
+              }}
+            >
+              <input
+                type="text"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                placeholder={UI.askPlaceholder[L]}
+                aria-label={UI.askPlaceholder[L]}
+                disabled={readingBusy}
+                enterKeyHint="send"
+              />
+              <button type="submit" disabled={readingBusy || !question.trim()}>{UI.askButton[L]}</button>
+            </form>
 
             {readingError && <p className="err" role="alert">{readingError}</p>}
 
