@@ -9,6 +9,7 @@ import { describe, it, expect } from 'vitest';
 import { computeNatal, SIGNS } from '../src/astro/natal';
 import { readNatal } from '../src/astro/readings';
 import { point, screenAngle, spreadAngles } from '../src/astro/wheel';
+import { computeTransits, readDaily } from '../src/astro/transits';
 import { DECK, dailyCard, draw } from '../src/tarot/cards';
 
 const J2000 = Date.UTC(2000, 0, 1, 12);
@@ -110,5 +111,46 @@ describe('星盘 wheel geometry', () => {
     const out = spreadAngles([358, 2], 9);
     const gap = ((out[1]! - out[0]!) % 360 + 360) % 360;
     expect(gap).toBeGreaterThanOrEqual(9 - 1e-3);
+  });
+});
+
+describe('今日运势', () => {
+  const natal = computeNatal({ instantMs: J2000, lat: 51.5, lon: 0, timeKnown: true });
+
+  it('sees every planet conjunct itself when "today" is the birth instant', () => {
+    const sky = computeTransits(natal, J2000);
+    for (const k of ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn'] as const) {
+      const self = sky.transits.find((x) => x.t === k && x.n === k);
+      expect(self?.kind).toBe('conjunction');
+      expect(self!.orb).toBeLessThan(1e-6);
+    }
+    expect(sky.moonSign).toBe(natal.planets.find((p) => p.key === 'Moon')!.sign);
+  });
+
+  it('never reads outer-to-outer, and keeps orbs inside each planet\'s allowance', () => {
+    const sky = computeTransits(natal, Date.UTC(2026, 8, 19));
+    const outer = new Set(['Uranus', 'Neptune', 'Pluto']);
+    for (const x of sky.transits) {
+      expect(outer.has(x.t) && outer.has(x.n)).toBe(false);
+      expect(x.tightness).toBeLessThanOrEqual(1);
+    }
+    expect(sky.transits.map((x) => x.tightness)).toEqual([...sky.transits.map((x) => x.tightness)].sort((a, b) => a - b));
+  });
+
+  it('gives three lenses a line each, in both languages, with 1–5 stars', () => {
+    const r = readDaily(computeTransits(natal, Date.UTC(2026, 8, 19)));
+    expect(r.lenses.map((l) => l.lens)).toEqual(['general', 'love', 'work']);
+    for (const l of r.lenses) {
+      expect(l.stars).toBeGreaterThanOrEqual(1); expect(l.stars).toBeLessThanOrEqual(5);
+      expect(l.text.zh.length).toBeGreaterThan(5); expect(l.text.en.length).toBeGreaterThan(5);
+    }
+    const sources = r.lenses.map((l) => l.source?.en).filter(Boolean);
+    expect(new Set(sources).size).toBe(sources.length); // no lens repeats another's headline
+    expect(r.moon.zh).toMatch(/^今日月亮/); expect(r.moon.en).toMatch(/^Today's Moon in/);
+  });
+
+  it('falls back to a quiet line when nothing is in orb', () => {
+    const r = readDaily({ moonSign: 0, transits: [] });
+    expect(r.lenses.every((l) => l.source === null && l.stars === 3)).toBe(true);
   });
 });

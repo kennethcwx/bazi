@@ -27,7 +27,7 @@ import { UI } from '../src/i18n/ui';
 import {
   ELEMENT, TEN_GOD, TEN_GOD_GLOSS, TERRAIN, DECADE_VERDICT, SHENSHA, term,
 } from '../src/i18n/glossary';
-import { htmlLang, isLocale, type Locale } from '../src/i18n/text';
+import { htmlLang, type Locale } from '../src/i18n/text';
 import { findingLabel } from '../src/i18n/finding-labels';
 import { TEMPLATES } from '../src/narrator/templates';
 import { Forecast } from './Forecast';
@@ -35,7 +35,8 @@ import { Compatibility } from './Compatibility';
 import { PlacePicker } from './PlacePicker';
 import Nav from './Nav';
 import { PLACES, DEFAULT_PLACE } from '../src/places';
-import { loadSelf, saveSelf, forgetAll, hasSaved } from '../src/storage';
+import { loadSelf, saveSelf, forgetAll, hasSaved, type SavedBirth } from '../src/storage';
+import { savedLocale } from './useLocale';
 
 interface DecadeView {
   index: number; startAge: number; endAge: number;
@@ -260,6 +261,21 @@ function FindingList({ findings, locale }: { findings: RenderedFinding[]; locale
   );
 }
 
+/** The /api/chart payload for a birth, whether from the form or from storage. */
+function birthPayload(b: Omit<SavedBirth, 'label'>) {
+  const [y, mo, d] = b.date.split('-').map(Number);
+  const [h, mi] = b.time ? b.time.split(':').map(Number) : [undefined, undefined];
+  const p = PLACES[b.placeIndex]!;
+  return {
+    year: y, month: mo, day: d,
+    ...(b.timeKnown && h !== undefined ? { hour: h, minute: mi ?? 0 } : {}),
+    timeZone: p.tz,
+    longitude: p.lon,
+    gender: b.gender,
+    useTrueSolarTime: b.useTrueSolarTime,
+  };
+}
+
 export default function Page() {
   const [locale, setLocale] = useState<Locale>('zh');
   const [place, setPlace] = useState(DEFAULT_PLACE);
@@ -297,11 +313,7 @@ export default function Page() {
   // Remember the language choice. Wrapped because storage throws in some
   // privacy modes, and a language toggle is not worth a blank page.
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem('bazi_locale');
-      if (isLocale(saved)) setLocale(saved);
-      else if (!navigator.language.toLowerCase().startsWith('zh')) setLocale('en');
-    } catch { /* storage unavailable; keep the default */ }
+    setLocale(savedLocale());
 
     const mine = loadSelf();
     if (mine) {
@@ -312,7 +324,13 @@ export default function Page() {
       setTimeKnown(mine.timeKnown);
       setTrueSolar(mine.useTrueSolarTime);
       setRemembered(true);
+      // A remembered birth casts itself: coming back to this tab should not
+      // cost a tap to see the same chart again.
+      const payload = birthPayload(mine);
+      lastInput.current = payload;
+      void castChart(payload, savedLocale(), false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const castChart = useCallback(async (
@@ -376,19 +394,8 @@ export default function Page() {
     clearReading();
   }
 
-  function currentBirth() {
-    const [y, mo, d] = date.split('-').map(Number);
-    const [h, mi] = time ? time.split(':').map(Number) : [undefined, undefined];
-    const p = PLACES[place]!;
-    return {
-      year: y, month: mo, day: d,
-      ...(timeKnown && h !== undefined ? { hour: h, minute: mi ?? 0 } : {}),
-      timeZone: p.tz,
-      longitude: p.lon,
-      gender,
-      useTrueSolarTime: trueSolar,
-    };
-  }
+  const currentBirth = () =>
+    birthPayload({ date, time, gender, placeIndex: place, timeKnown, useTrueSolarTime: trueSolar });
 
   function forget() {
     forgetAll();

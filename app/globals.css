@@ -860,6 +860,37 @@ details.terms { margin-top: 18px; border-top: 1px solid var(--line); padding-top
 .nav a[aria-current='page'] { background: var(--gold); color: #17130a; border-color: var(--gold); }
 
 /* ---------- 星盘 ---------- */
+/* ---------- section accordions ---------- */
+/* The heading is the handle: a whole section folds away in one tap, so a
+   reader who only wants today's lines never scrolls through the aspects. */
+details.acc { margin-top: 32px; }
+details.acc > summary {
+  list-style: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between;
+  min-height: var(--tap); border-bottom: 1px solid var(--line);
+  -webkit-tap-highlight-color: transparent;
+}
+details.acc > summary::-webkit-details-marker { display: none; }
+details.acc > summary > h2 { flex: 1; margin: 0; padding-bottom: 8px; border-bottom: 0; }
+details.acc > summary::after {
+  content: '';
+  width: 7px; height: 7px; flex: none; margin: 0 6px 8px 12px;
+  border-right: 1.5px solid var(--text-faint); border-bottom: 1.5px solid var(--text-faint);
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 0.18s ease;
+}
+details.acc[open] > summary::after { transform: rotate(-135deg) translateY(1px); }
+details.acc > .card { margin-top: 12px; }
+
+/* ---------- today's lenses ---------- */
+.lens { border-top: 1px solid var(--line-soft); padding-top: 10px; margin-top: 10px; }
+.lens-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.lens-name { font-size: 0.7059rem; font-weight: 600; letter-spacing: 0.08em; color: var(--text-dim); }
+.lens-stars { color: var(--gold); font-size: 0.7647rem; letter-spacing: 0.1em; }
+.lens-stars-off { color: var(--line); }
+.lens-text { margin: 6px 0 0; font-size: 0.8529rem; line-height: 1.6; }
+.lens-src { margin: 4px 0 0; font-size: 0.6765rem; color: var(--text-faint); }
+
 .wheel { display: block; width: 100%; max-width: 340px; margin: 0 auto 14px; }
 .planets { width: 100%; border-collapse: collapse; font-size: 0.8235rem; }
 .planets td { padding: 8px 4px; border-top: 1px solid var(--line-soft); vertical-align: baseline; }

@@ -86,7 +86,7 @@ const rad = (d: number) => (d * Math.PI) / 180;
 const deg = (r: number) => (r * 180) / Math.PI;
 
 /** Geocentric true-ecliptic-of-date longitude of a body at an instant. */
-function longitude(key: PlanetKey, date: Date): number {
+export function longitude(key: PlanetKey, date: Date): number {
   if (key === 'Sun') return A.SunPosition(date).elon;
   if (key === 'Moon') return A.EclipticGeoMoon(date).lon;
   return A.Ecliptic(A.GeoVector(A.Body[key], date, true)).elon;

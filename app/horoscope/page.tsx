@@ -12,7 +12,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import Nav from '../Nav';
 import Wheel from './Wheel';
 import { PlacePicker } from '../PlacePicker';
-import { LangSwitch, useLocale } from '../useLocale';
+import { LangSwitch, savedLocale, useLocale } from '../useLocale';
 import { DEFAULT_PLACE } from '../../src/places';
 import { loadSelf, saveSelf } from '../../src/storage';
 import { UI } from '../../src/i18n/ui';
@@ -30,7 +30,9 @@ const S = {
   mc: t('天顶', 'Midheaven'),
   house: t('宫', 'H'),
   retro: t('逆', 'R'),
-  reading: t('解读', 'Reading'),
+  reading: t('本命解读', 'Natal reading'),
+  daily: t('今日运势', 'Today'),
+  dailySource: t('依据', 'From'),
   aspects: t('主要相位', 'Major aspects'),
   noTime: t('未填出生时间：以正午计算。上升与宫位无法判定，月亮可能偏差半个星座。',
     'No birth time: cast for noon. The Ascendant and houses cannot be found, and the Moon may be off by half a sign.'),
@@ -45,6 +47,7 @@ interface Result {
   midheaven: { lon: number; sign: string; signGlyph: string; degree: number } | null;
   aspects: { a: string; b: string; kind: string; orb: number }[];
   reading: { sun: string; moon: string; ascendant: string | null; placements: string[]; aspects: string[] };
+  daily: { moon: string; lenses: { lens: string; name: string; stars: number; source: string | null; text: string }[] };
 }
 
 export default function Horoscope() {
@@ -62,7 +65,7 @@ export default function Horoscope() {
     try {
       const res = await fetch('/api/natal', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...p, locale }),
+        body: JSON.stringify({ ...p, locale, now: Date.now() }),
       });
       const json = await res.json();
       if (!res.ok) { setError(json.error ?? UI.errCast[locale]); setResult(null); }
@@ -75,7 +78,7 @@ export default function Horoscope() {
     const mine = loadSelf();
     if (!mine) return;
     setDate(mine.date); setTime(mine.time || '12:00'); setTimeKnown(mine.timeKnown); setPlace(mine.placeIndex);
-    void cast({ date: mine.date, time: mine.time, timeKnown: mine.timeKnown, placeIndex: mine.placeIndex });
+    void cast({ date: mine.date, time: mine.time, timeKnown: mine.timeKnown, placeIndex: mine.placeIndex }, savedLocale());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -134,8 +137,25 @@ export default function Horoscope() {
         <>
           {!result.timeKnown && <p className="note">{S.noTime[L]}</p>}
 
-          <section>
-            <h2>{S.placements[L]}</h2>
+          <details className="acc" open>
+            <summary><h2>{S.daily[L]}</h2></summary>
+            <div className="card">
+              <p className="verdict">{result.daily.moon}</p>
+              {result.daily.lenses.map((l) => (
+                <div className="lens" key={l.lens}>
+                  <div className="lens-head">
+                    <span className="lens-name">{l.name}</span>
+                    <span className="lens-stars" aria-label={`${l.stars}/5`}>{'★'.repeat(l.stars)}<span className="lens-stars-off">{'★'.repeat(5 - l.stars)}</span></span>
+                  </div>
+                  <p className="lens-text">{l.text}</p>
+                  {l.source && <p className="lens-src">{S.dailySource[L]}：{l.source}</p>}
+                </div>
+              ))}
+            </div>
+          </details>
+
+          <details className="acc" open>
+            <summary><h2>{S.placements[L]}</h2></summary>
             <div className="card">
               <Wheel
                 planets={result.planets}
@@ -162,10 +182,10 @@ export default function Horoscope() {
                 </div>
               )}
             </div>
-          </section>
+          </details>
 
-          <section>
-            <h2>{S.reading[L]}</h2>
+          <details className="acc" open>
+            <summary><h2>{S.reading[L]}</h2></summary>
             <div className="card">
               <p className="verdict">{result.reading.sun}</p>
               <p>{result.reading.moon}</p>
@@ -174,16 +194,16 @@ export default function Horoscope() {
                 {result.reading.placements.map((r, i) => <li key={i}>{r}</li>)}
               </ul>
             </div>
-          </section>
+          </details>
 
-          <section>
-            <h2>{S.aspects[L]}</h2>
+          <details className="acc">
+            <summary><h2>{S.aspects[L]}</h2></summary>
             <div className="card">
               {result.reading.aspects.length === 0
                 ? <p className="note" style={{ marginTop: 0 }}>{S.noAspects[L]}</p>
                 : <ul className="reasoning" style={{ marginTop: 0 }}>{result.reading.aspects.map((r, i) => <li key={i}>{r}</li>)}</ul>}
             </div>
-          </section>
+          </details>
         </>
       )}
     </main>

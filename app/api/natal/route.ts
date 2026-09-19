@@ -6,13 +6,14 @@
 import { NextResponse } from 'next/server';
 import { computeNatal, PLANETS, SIGNS, SIGN_GLYPHS } from '../../../src/astro/natal';
 import { readNatal } from '../../../src/astro/readings';
+import { computeTransits, readDaily, LENS_NAME } from '../../../src/astro/transits';
 import { wallClockToInstant } from '../../../src/engine/moment';
 import { PLACES } from '../../../src/places';
 import { isLocale, type Locale } from '../../../src/i18n/text';
 
 export async function POST(req: Request) {
   let body: {
-    date?: unknown; time?: unknown; timeKnown?: unknown; placeIndex?: unknown; locale?: unknown;
+    date?: unknown; time?: unknown; timeKnown?: unknown; placeIndex?: unknown; locale?: unknown; now?: unknown;
   };
   try {
     body = await req.json();
@@ -40,6 +41,9 @@ export async function POST(req: Request) {
   );
   const chart = computeNatal({ instantMs, lat: place.lat, lon: place.lon, timeKnown });
   const reading = readNatal(chart);
+  // The client's clock, so "today" is the reader's day, not the server's.
+  const nowMs = typeof body.now === 'number' && Number.isFinite(body.now) ? body.now : Date.now();
+  const daily = readDaily(computeTransits(chart, nowMs));
 
   // Round before splitting into sign and degree, or 29.96° prints as "30.0°"
   // of the sign it has, to one decimal, already left.
@@ -67,6 +71,13 @@ export async function POST(req: Request) {
       ascendant: reading.ascendant?.[locale] ?? null,
       placements: reading.placements.map((r) => r[locale]),
       aspects: reading.aspects.map((r) => r[locale]),
+    },
+    daily: {
+      moon: daily.moon[locale],
+      lenses: daily.lenses.map((l) => ({
+        lens: l.lens, name: LENS_NAME[l.lens][locale], stars: l.stars,
+        source: l.source?.[locale] ?? null, text: l.text[locale],
+      })),
     },
   });
 }

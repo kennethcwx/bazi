@@ -26,7 +26,7 @@ const SUN: readonly LocalizedText[] = [
   t('太阳双鱼：敏感、包容，界线模糊但共情很强。', 'Sun in Pisces: sensitive and absorbing, vague on boundaries and strong on empathy.'),
 ];
 
-const MOON: readonly LocalizedText[] = [
+export const MOON: readonly LocalizedText[] = [
   t('月亮白羊：情绪来得快去得快，需要马上行动才安心。', 'Moon in Aries: feelings flare and pass; acting on them is what settles you.'),
   t('月亮金牛：情绪求稳，靠熟悉的人和物来安抚。', 'Moon in Taurus: soothed by the familiar — same people, same places.'),
   t('月亮双子：用说话来消化情绪，独处太久会闷。', 'Moon in Gemini: you process by talking; too much silence gets heavy.'),
