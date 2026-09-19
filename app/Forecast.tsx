@@ -22,7 +22,7 @@
 import { useState, useEffect } from 'react';
 import { UI } from '../src/i18n/ui';
 import type { Locale } from '../src/i18n/text';
-import { loadPartner } from '../src/storage';
+import { loadPartner, PARTNER_EVENT } from '../src/storage';
 import { PLACES } from '../src/places';
 
 type Band = 'notable' | 'mild' | 'quiet';
@@ -159,7 +159,14 @@ export function Forecast({ birth, locale }: {
   const [openDay, setOpenDay] = useState<string | null>(null);
   const [hasPartner, setHasPartner] = useState(false);
 
-  useEffect(() => { setHasPartner(loadPartner() !== null); }, []);
+  // Bumped when 合婚 switches or saves a partner, so the joint forecast follows.
+  const [partnerKey, setPartnerKey] = useState(0);
+  useEffect(() => {
+    const sync = () => { setHasPartner(loadPartner() !== null); setPartnerKey((k) => k + 1); };
+    sync();
+    window.addEventListener(PARTNER_EVENT, sync);
+    return () => window.removeEventListener(PARTNER_EVENT, sync);
+  }, []);
 
   // Loads itself when the birth or the language changes. The button it
   // replaces asked for one tap to see the only thing the tab shows; after the
@@ -172,7 +179,7 @@ export function Forecast({ birth, locale }: {
     setOpenDay(null);
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [birthKey, locale]);
+  }, [birthKey, locale, partnerKey]);
 
   /** The partner payload, rebuilt from what was remembered on this device. */
   function partnerBirth(): Record<string, unknown> | null {

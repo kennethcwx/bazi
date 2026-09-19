@@ -476,7 +476,6 @@ details.why[open] > summary::after { transform: rotate(-135deg) translateY(-1px)
 
 /* ---------- tabs ---------- */
 .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
-.tabs.who { margin-bottom: 12px; }
 .tabs button {
   flex: 1; background: var(--surface); color: var(--text-dim);
   border: 1px solid var(--line); font-weight: 500; font-size: 0.8529rem;

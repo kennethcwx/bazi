@@ -13,7 +13,7 @@ import { UI } from '../src/i18n/ui';
 import { ELEMENT } from '../src/i18n/glossary';
 import type { Locale } from '../src/i18n/text';
 import type { RenderedFinding } from '../src/analyzer/findings';
-import { loadPartner, savePartner, type SavedBirth } from '../src/storage';
+import { activeSlot, loadPartnerAt, savePartnerAt, setActiveSlot, SLOTS, type SavedBirth, type Slot } from '../src/storage';
 import { PlacePicker } from './PlacePicker';
 import { PLACES, DEFAULT_PLACE } from '../src/places';
 
@@ -30,7 +30,10 @@ export function Compatibility({ selfBirth, locale }: {
   locale: Locale;
 }) {
   const [open, setOpen] = useState(false);
-  const [saved, setSaved] = useState<SavedBirth | null>(null);
+  /** Which of the two remembered partners the form and the reading are about. */
+  const [slot, setSlot] = useState<Slot>(0);
+  const [records, setRecords] = useState<(SavedBirth | null)[]>([null, null]);
+  const saved = records[slot] ?? null;
   const [place, setPlace] = useState(DEFAULT_PLACE);
   const [timeKnown, setTimeKnown] = useState(true);
   // Controlled, for the same reason the main form is: remembered details
@@ -45,33 +48,62 @@ export function Compatibility({ selfBirth, locale }: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /** Put a remembered partner in the form. */
+  function fill(p: SavedBirth | null) {
+    setPlace(p?.placeIndex ?? DEFAULT_PLACE);
+    setTimeKnown(p?.timeKnown ?? true);
+    setPname(p?.label ?? '');
+    setPdate(p?.date ?? '');
+    setPtime(p?.time ?? '');
+    setPgender(p?.gender ?? 'female');
+  }
+
   useEffect(() => {
-    const p = loadPartner();
-    if (!p) return;
-    setSaved(p);
-    setPlace(p.placeIndex);
-    setTimeKnown(p.timeKnown);
-    setPname(p.label ?? '');
-    setPdate(p.date);
-    setPtime(p.time);
-    setPgender(p.gender);
+    const all = SLOTS.map((i) => loadPartnerAt(i));
+    const active = activeSlot();
+    setRecords(all);
+    setSlot(active);
+    fill(all[active] ?? null);
+    // A remembered partner compares at once; the tap the button asked for
+    // only ever had one answer.
+    if (all[active]) void compare(all[active]!);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!selfBirth) return;
+  /** Switch slots: a remembered partner compares at once, an empty one opens the form. */
+  function switchSlot(next: Slot) {
+    if (next === slot) return;
+    setSlot(next);
+    setActiveSlot(next);
+    setData(null);
+    setError(null);
+    const p = records[next] ?? null;
+    fill(p);
+    if (p) void compare(p);
+    else setOpen(true);
+  }
 
-    const p = PLACES[place]!;
-    const record: SavedBirth = {
+  function toRecord(): SavedBirth {
+    return {
       date: pdate, time: ptime, gender: pgender,
       placeIndex: place, timeKnown, useTrueSolarTime: true,
       label: pname,
     };
-    savePartner(record);
-    setSaved(record);
+  }
 
-    const [y, mo, d] = pdate.split('-').map(Number);
-    const [h, mi] = ptime ? ptime.split(':').map(Number) : [undefined, undefined];
+  async function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const record = toRecord();
+    savePartnerAt(slot, record);
+    setRecords((r) => r.map((x, i) => (i === slot ? record : x)));
+    await compare(record);
+  }
+
+  async function compare(record: SavedBirth) {
+    if (!selfBirth) return;
+    const p = PLACES[record.placeIndex]!;
+    const [y, mo, d] = record.date.split('-').map(Number);
+    const [h, mi] = record.time ? record.time.split(':').map(Number) : [undefined, undefined];
 
     setBusy(true);
     setError(null);
@@ -83,8 +115,8 @@ export function Compatibility({ selfBirth, locale }: {
           self: selfBirth,
           partner: {
             year: y, month: mo, day: d,
-            ...(timeKnown && h !== undefined ? { hour: h, minute: mi ?? 0 } : {}),
-            timeZone: p.tz, longitude: p.lon, gender: pgender,
+            ...(record.timeKnown && h !== undefined ? { hour: h, minute: mi ?? 0 } : {}),
+            timeZone: p.tz, longitude: p.lon, gender: record.gender,
             useTrueSolarTime: true,
           },
           locale,
@@ -103,6 +135,14 @@ export function Compatibility({ selfBirth, locale }: {
   return (
     <details className="acc" open>
       <summary><h2>{UI.compatibility[locale]}</h2></summary>
+
+      <div className="tabs" role="group" aria-label={UI.partnerSlot[locale]}>
+        {SLOTS.map((i) => (
+          <button key={i} type="button" aria-pressed={slot === i} onClick={() => switchSlot(i)}>
+            {UI.partnerSlot[locale]} {i + 1} · {records[i]?.label || (records[i] ? records[i]!.date : UI.partnerEmptySlot[locale])}
+          </button>
+        ))}
+      </div>
 
       {!open && !data && (
         <button className="q-btn" onClick={() => setOpen(true)} disabled={!selfBirth}>

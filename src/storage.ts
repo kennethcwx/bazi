@@ -12,7 +12,16 @@
  */
 
 const SELF_KEY = 'bazi_self';
-const PARTNER_KEY = 'bazi_partner';
+/**
+ * Two partner slots, so a comparison can be kept for more than one person.
+ * The first key is the old single slot, so nothing already remembered moves.
+ * One slot is "active": loadPartner/savePartner read and write that one, and
+ * every pair feature — 合婚, the joint forecast, the natal 合盘 — follows it.
+ */
+const PARTNER_KEYS = ['bazi_partner', 'bazi_partner2'] as const;
+const ACTIVE_KEY = 'bazi_partner_active';
+export type Slot = 0 | 1;
+export const SLOTS: readonly Slot[] = [0, 1];
 
 export interface SavedBirth {
   readonly date: string;          // YYYY-MM-DD
@@ -65,20 +74,25 @@ function write(key: string, value: SavedBirth | null): void {
 export const loadSelf = (): SavedBirth | null => read(SELF_KEY);
 export const saveSelf = (v: SavedBirth): void => write(SELF_KEY, v);
 
-export const loadPartner = (): SavedBirth | null => read(PARTNER_KEY);
-export const savePartner = (v: SavedBirth): void => write(PARTNER_KEY, v);
+export function activeSlot(): Slot {
+  try { return window.localStorage.getItem(ACTIVE_KEY) === '1' ? 1 : 0; } catch { return 0; }
+}
+/** Fired on window when the active partner changes, so sibling sections can reload. */
+export const PARTNER_EVENT = 'bazi:partner';
+const notify = () => { try { window.dispatchEvent(new Event(PARTNER_EVENT)); } catch { /* SSR */ } };
+export function setActiveSlot(i: Slot): void {
+  try { window.localStorage.setItem(ACTIVE_KEY, String(i)); } catch { /* ignore */ }
+  notify();
+}
+export const loadPartnerAt = (i: Slot): SavedBirth | null => read(PARTNER_KEYS[i]);
+export const savePartnerAt = (i: Slot, v: SavedBirth): void => { write(PARTNER_KEYS[i], v); notify(); };
+export const loadPartner = (): SavedBirth | null => loadPartnerAt(activeSlot());
+export const savePartner = (v: SavedBirth): void => savePartnerAt(activeSlot(), v);
 
 /** Forget everything. Offered in the UI so the promise above is keepable. */
 export function forgetAll(): void {
   write(SELF_KEY, null);
-  write(PARTNER_KEY, null);
+  for (const k of PARTNER_KEYS) write(k, null);
 }
 
 export const hasSaved = (): boolean => loadSelf() !== null || loadPartner() !== null;
-
-/** The two people this device remembers, addressed by role. */
-export type Who = 'self' | 'partner';
-const KEY: Record<Who, string> = { self: SELF_KEY, partner: PARTNER_KEY };
-export const load = (who: Who): SavedBirth | null => read(KEY[who]);
-export const save = (who: Who, v: SavedBirth): void => write(KEY[who], v);
-export const forget = (who: Who): void => write(KEY[who], null);

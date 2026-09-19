@@ -14,7 +14,7 @@ import Wheel from './Wheel';
 import { PlacePicker } from '../PlacePicker';
 import { LangSwitch, savedLocale, useLocale } from '../useLocale';
 import { DEFAULT_PLACE } from '../../src/places';
-import { load, loadSelf, saveSelf, type SavedBirth } from '../../src/storage';
+import { loadPartner, loadSelf, saveSelf, type SavedBirth } from '../../src/storage';
 import { UI } from '../../src/i18n/ui';
 import { t } from '../../src/i18n/text';
 
@@ -40,8 +40,8 @@ const S = {
   synastry: t('合盘', 'Synastry'),
   compare: t('对照伴侣的星盘', "Compare with your partner's chart"),
   comparing: t('对照中…', 'Comparing…'),
-  noPartner: t('还没有记住伴侣的生辰：在「八字」页切到「伴侣」填好并排盘，这里就能合盘。',
-    'No partner remembered yet: on the BaZi page switch to Partner, cast their chart, and the comparison appears here.'),
+  noPartner: t('还没有记住伴侣的生辰：在「八字」页的「合婚」里填好对方的生辰，这里就能合盘。',
+    "No partner remembered yet: add their birth under 合婚 on the BaZi page and the comparison appears here."),
   overallOf: t('契合度', 'Match'),
   overlays: t('宫位落点', 'House overlays'),
   allAspects: t('全部跨盘相位', 'All cross-aspects'),
@@ -117,7 +117,7 @@ export default function Horoscope() {
   }
 
   useEffect(() => {
-    setPartner(load('partner'));
+    setPartner(loadPartner());
     const mine = loadSelf();
     if (!mine) return;
     setDate(mine.date); setTime(mine.time || '12:00'); setTimeKnown(mine.timeKnown); setPlace(mine.placeIndex);

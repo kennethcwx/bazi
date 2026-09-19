@@ -171,11 +171,9 @@ export const UI = {
   you: t('你', 'You'),
   them: t('对方', 'Them'),
 
-  // whose chart
-  whose: t('看谁的盘', 'Whose chart'),
-  whoSelf: t('我', 'Me'),
-  whoPartner: t('伴侣', 'Partner'),
-  partnerEmpty: t('还没有记住对方的生辰，填好后排盘即可记住。', "No partner remembered yet — fill in their details and cast to remember them."),
+  // partner slots under 合婚
+  partnerSlot: t('伴侣', 'Partner'),
+  partnerEmptySlot: t('未填', 'empty'),
 
   // remembered data
   remembered: t('已记住这份生辰（仅存在本机）', 'Birth details remembered on this device only'),

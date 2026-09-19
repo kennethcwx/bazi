@@ -35,7 +35,7 @@ import { Compatibility } from './Compatibility';
 import { PlacePicker } from './PlacePicker';
 import Nav from './Nav';
 import { PLACES, DEFAULT_PLACE } from '../src/places';
-import { load, save, forget as forgetStored, loadSelf, type SavedBirth, type Who } from '../src/storage';
+import { loadSelf, saveSelf, forgetAll, hasSaved, type SavedBirth } from '../src/storage';
 import { savedLocale } from './useLocale';
 
 interface DecadeView {
@@ -287,9 +287,6 @@ export default function Page() {
   const [time, setTime] = useState('14:30');
   const [gender, setGender] = useState<'male' | 'female'>('male');
   const [remembered, setRemembered] = useState(false);
-  /** Whose birth the form holds: this device remembers one of each. */
-  const [who, setWho] = useState<Who>('self');
-  const [partnerLabel, setPartnerLabel] = useState('');
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -319,7 +316,6 @@ export default function Page() {
     // A remembered birth casts itself: coming back to this tab should not
     // cost a tap to see the same chart again.
     if (mine) showStored(mine, savedLocale());
-    setPartnerLabel(load('partner')?.label ?? '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -335,22 +331,6 @@ export default function Page() {
     const payload = birthPayload(b);
     lastInput.current = payload;
     void castChart(payload, forLocale, false);
-  }
-
-  /** Switch between the two remembered people; an empty slot leaves the form for typing. */
-  function switchWho(next: Who) {
-    if (next === who) return;
-    setWho(next);
-    clearReading();
-    setError(null);
-    const b = load(next);
-    if (b) showStored(b, locale);
-    else {
-      setRemembered(false);
-      setResult(null);
-      lastInput.current = null;
-      if (next === 'partner') setGender(gender === 'male' ? 'female' : 'male');
-    }
   }
 
   const castChart = useCallback(async (
@@ -413,19 +393,12 @@ export default function Page() {
     clearReading();
   }
 
-  const pairSelf = (): Record<string, unknown> | null => {
-    if (who === 'self') return lastInput.current;
-    const mine = loadSelf();
-    return mine ? birthPayload(mine) : null;
-  };
-
   const currentBirth = () =>
     birthPayload({ date, time, gender, placeIndex: place, timeKnown, useTrueSolarTime: trueSolar });
 
   function forget() {
-    forgetStored(who);
+    forgetAll();
     setRemembered(false);
-    if (who === 'partner') setPartnerLabel('');
   }
 
   async function submit(e: FormEvent<HTMLFormElement>) {
@@ -435,11 +408,7 @@ export default function Page() {
     lastInput.current = payload;
     // Remembering on cast rather than behind a checkbox: the user has already
     // typed it, and a "remember me" box they must find is friction for no gain.
-    save(who, {
-      date, time, gender, placeIndex: place, timeKnown, useTrueSolarTime: trueSolar,
-      // The 合婚 form names the partner; keep that name when this form re-saves them.
-      ...(who === 'partner' && partnerLabel ? { label: partnerLabel } : {}),
-    });
+    saveSelf({ date, time, gender, placeIndex: place, timeKnown, useTrueSolarTime: trueSolar });
     setRemembered(true);
     await castChart(payload, locale, true);
   }
@@ -544,13 +513,6 @@ export default function Page() {
       </div>
       <Nav locale={L} />
 
-      <div className="tabs who" role="group" aria-label={UI.whose[L]}>
-        <button type="button" aria-pressed={who === 'self'} onClick={() => switchWho('self')}>{UI.whoSelf[L]}</button>
-        <button type="button" aria-pressed={who === 'partner'} onClick={() => switchWho('partner')}>
-          {UI.whoPartner[L]}{partnerLabel && ` · ${partnerLabel}`}
-        </button>
-      </div>
-
       <form onSubmit={submit}>
         <div>
           <label htmlFor="date">{UI.birthDate[L]}</label>
@@ -592,13 +554,11 @@ export default function Page() {
         </div>
       </form>
 
-      {remembered ? (
+      {remembered && hasSaved() && (
         <p className="remembered">
           {UI.remembered[L]}
           <button type="button" className="linkish" onClick={forget}>{UI.forget[L]}</button>
         </p>
-      ) : who === 'partner' && (
-        <p className="remembered">{UI.partnerEmpty[L]}</p>
       )}
 
       {error && <p className="err" role="alert">{error}</p>}
@@ -931,11 +891,9 @@ export default function Page() {
           </details>
 
           {tab === 'relationship' ? (
-            /* The joint forecast and 合婚 are always me-and-partner: on the
-               partner's own chart they still read from my remembered birth. */
             <>
-              <Forecast birth={pairSelf()} locale={L} />
-              <Compatibility selfBirth={pairSelf()} locale={L} />
+              <Forecast birth={lastInput.current} locale={L} />
+              <Compatibility selfBirth={lastInput.current} locale={L} />
             </>
           ) : (
             /* The two sections above are relationship-only; someone who opened
