@@ -584,7 +584,6 @@ details.why[open] > summary::after { transform: rotate(-135deg) translateY(-1px)
 .day-word.m-friction { color: var(--m-friction); }
 .day-word.m-apart { color: var(--m-apart); }
 .day-word.f-steady { color: var(--text-dim); }
-.day-word.f-low { color: var(--text-faint); opacity: 0.8; }
 
 .day-detail { margin-top: 10px; }
 .day-detail-head {
@@ -719,7 +718,6 @@ details.why[open] > summary::after { transform: rotate(-135deg) translateY(-1px)
   border-left: 2px solid var(--line); padding-left: 10px;
   margin: 0 0 18px;
 }
-.cite-lead { color: var(--text-faint); opacity: 0.75; }
 .cite-chip {
   border: 1px solid var(--line); border-radius: 999px;
   padding: 1px 9px; color: var(--text-dim); white-space: normal;
@@ -835,7 +833,7 @@ details.terms { margin-top: 18px; border-top: 1px solid var(--line); padding-top
 .h-good { border-color: rgba(201, 162, 39, 0.5); background: #221d15; }
 .h-good .hour-branch { color: var(--gold); }
 .h-avoid { border-color: rgba(207, 95, 87, 0.35); }
-.h-avoid .hour-branch { color: var(--fire-text); opacity: 0.85; }
+.h-avoid .hour-branch { color: var(--fire-text); }
 
 @media (min-width: 480px) {
   .hour-grid { grid-template-columns: repeat(6, 1fr); }

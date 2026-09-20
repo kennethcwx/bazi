@@ -191,7 +191,7 @@ function Reading({ text, streaming, locale }: {
         .filter(Boolean);
       blocks.push(
         <p className="cite" key={key++}>
-          <span className="cite-lead">{UI.basedOn[locale]}</span>
+          <span>{UI.basedOn[locale]}</span>
           {ids.map((id) => (
             <span className="cite-chip" key={id}>{findingLabel(id, locale)}</span>
           ))}
