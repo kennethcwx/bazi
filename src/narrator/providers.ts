@@ -147,7 +147,9 @@ function geminiProvider(key: string): Provider {
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: 'user', parts: [{ text: user }] }],
-        generationConfig: { maxOutputTokens: 4096, temperature: 0.7 },
+        // Thinking tokens count against this on the thinking Flash models; too
+        // small a cap ends the visible reply mid-sentence with MAX_TOKENS.
+        generationConfig: { maxOutputTokens: 8192, temperature: 0.7 },
       }),
     },
   );
@@ -172,10 +174,15 @@ function geminiProvider(key: string): Provider {
         throw new Error(`Gemini ${res.status}: ${detail.slice(0, 200)}`);
       }
 
+      let finish: string | undefined;
       const text = await readSse(res, (p) => {
-        const c = p as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
-        return c.candidates?.[0]?.content?.parts?.map((x) => x.text ?? '').join('') ?? '';
+        const c = p as { candidates?: { finishReason?: string; content?: { parts?: { text?: string; thought?: boolean }[] } }[] };
+        finish = c.candidates?.[0]?.finishReason ?? finish;
+        return c.candidates?.[0]?.content?.parts?.filter((x) => !x.thought).map((x) => x.text ?? '').join('') ?? '';
       }, onDelta);
+      // A stream that ends on MAX_TOKENS or SAFETY looks complete to a reader;
+      // say so, so the page can offer a retry instead of a clipped reading.
+      if (finish && finish !== 'STOP') throw new Error(`Gemini stopped early: ${finish}`);
 
       return { text };
     },

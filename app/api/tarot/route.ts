@@ -46,7 +46,8 @@ export async function POST(req: Request) {
       send('meta', { source: providerStatus().id });
       try {
         const r = await narrateTarot(question, topic, spread, locale, (text) => send('delta', { text }));
-        send('done', { source: r?.source ?? 'composed' });
+        // The whole text rides along, so a delta lost on the way is healed.
+        send('done', { source: r?.source ?? 'composed', text: r?.text ?? null });
       } catch (e) {
         send('failed', { error: e instanceof Error ? e.message : 'narrator failed' });
       } finally {

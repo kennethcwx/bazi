@@ -40,6 +40,7 @@ const S = {
   reversed: t('逆位', 'Reversed'),
   upright: t('正位', 'Upright'),
   hint: t('抽牌前先在心里定一个问题。', 'Hold one question in mind before you draw.'),
+  retry: t('重新解读', 'Read again'),
 };
 
 function personKey(): string {
@@ -103,7 +104,7 @@ export default function Tarot() {
       });
       if (!res.ok || !res.body) { setAnswerError((await res.json().catch(() => ({}))).error ?? 'error'); return; }
       const reader = res.body.getReader(); const dec = new TextDecoder();
-      let buf = ''; let acc = '';
+      let buf = ''; let acc = ''; let ended = false;
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -116,11 +117,18 @@ export default function Tarot() {
           let d: Record<string, unknown>; try { d = JSON.parse(dl); } catch { continue; }
           if (ev === 'meta') setAnswerSource(String(d['source'] ?? ''));
           else if (ev === 'delta') { acc += String(d['text'] ?? ''); setAnswer(acc); }
-          else if (ev === 'done') setAnswerSource(String(d['source'] ?? ''));
-          else if (ev === 'failed') setAnswerError(String(d['error'] ?? 'error'));
+          else if (ev === 'done') {
+            ended = true;
+            setAnswerSource(String(d['source'] ?? ''));
+            const full = typeof d['text'] === 'string' ? d['text'] : '';
+            if (full.length > acc.length) { acc = full; setAnswer(full); }
+          } else if (ev === 'failed') { ended = true; setAnswerError(String(d['error'] ?? 'error')); }
         }
       }
-    } catch { setAnswerError(UI.errConnect[locale]); }
+      // The socket closed with no done/failed: the phone locked, or the
+      // function timed out. What is on screen is only part of the reading.
+      if (!ended) setAnswerError(UI.errStreamCut[locale]);
+    } catch { setAnswerError(UI.errStreamCut[locale]); }
     finally { setAnswerBusy(false); }
   }
 
@@ -183,7 +191,12 @@ export default function Tarot() {
             </div>
             <div className="card" style={{ marginTop: 10 }}>
               <div className="tarot-ask-label">{S.answer[L]}</div>
-              {answerError && <p className="err" role="alert">{answerError}</p>}
+              {answerError && (
+                <p className="err" role="alert">
+                  {answerError}{' '}
+                  <button type="button" className="linkish" onClick={() => narrate(asked.question, asked.topic, spread, L)}>{S.retry[L]}</button>
+                </p>
+              )}
               {answer
                 ? answer.split(/\n{2,}/).map((para, i) => <p key={i} className="tarot-answer">{para}</p>)
                 : answerBusy && <p className="note" style={{ marginTop: 0 }} role="status">{S.thinking[L]}</p>}
