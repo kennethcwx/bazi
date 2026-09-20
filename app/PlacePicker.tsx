@@ -26,10 +26,13 @@ export function PlacePicker({ id, value, onChange, locale }: {
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  /** Row the arrow keys are on; Enter picks it. Resets with the query. */
+  const [active, setActive] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const selected: Place = PLACES[value] ?? PLACES[0]!;
   const results = open ? searchPlaces(query) : [];
+  const cursor = Math.min(active, Math.max(results.length - 1, 0));
 
   // Close on an outside click. Without this the list stays over the form on a
   // phone and the user has no obvious way out.
@@ -67,10 +70,22 @@ export function PlacePicker({ id, value, onChange, locale }: {
           autoFocus
           autoComplete="off"
           placeholder={UI.placeSearch[locale]}
-          onChange={(e) => setQuery(e.target.value)}
+          role="combobox"
+          aria-expanded
+          aria-controls={`${id}-list`}
+          aria-activedescendant={results[cursor] ? `${id}-opt-${cursor}` : undefined}
+          onChange={(e) => { setQuery(e.target.value); setActive(0); }}
           onKeyDown={(e) => {
             if (e.key === 'Escape') { setOpen(false); setQuery(''); }
-            if (e.key === 'Enter' && results[0]) { e.preventDefault(); choose(results[0]); }
+            else if (e.key === 'Enter' && results[cursor]) { e.preventDefault(); choose(results[cursor]); }
+            else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+              e.preventDefault();
+              if (!results.length) return;
+              const n = results.length;
+              const next = (cursor + (e.key === 'ArrowDown' ? 1 : n - 1)) % n;
+              setActive(next);
+              document.getElementById(`${id}-opt-${next}`)?.scrollIntoView({ block: 'nearest' });
+            }
           }}
         />
       ) : (
@@ -86,17 +101,20 @@ export function PlacePicker({ id, value, onChange, locale }: {
       )}
 
       {open && (
-        <div className="place-list" role="listbox">
+        <div className="place-list" role="listbox" id={`${id}-list`}>
           {results.length === 0 && (
             <p className="place-empty">{UI.placeNoMatch[locale]}</p>
           )}
-          {results.map((p) => (
+          {results.map((p, i) => (
             <button
               key={`${p.tz}:${p.lon}:${p.en}`}
+              id={`${id}-opt-${i}`}
               type="button"
               role="option"
               aria-selected={p === selected}
+              data-active={i === cursor || undefined}
               className="place-opt"
+              tabIndex={-1}
               onClick={() => choose(p)}
             >
               <span className="place-name">{p[locale]}</span>

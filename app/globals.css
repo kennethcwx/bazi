@@ -252,6 +252,7 @@ button:active:not(:disabled) { background: #b08e1f; }
 .place-opt:last-child { border-bottom: 0; }
 .place-opt:hover, .place-opt:active { background: var(--surface-2); }
 .place-opt[aria-selected='true'] { color: var(--gold); }
+.place-opt[data-active] { background: var(--surface-2); box-shadow: inset 2px 0 0 var(--gold); }
 .place-name { flex: 1; min-width: 0; }
 .place-meta { font-size: 0.7059rem; color: var(--text-faint); flex: none; }
 .place-empty { margin: 0; padding: 16px 13px; font-size: 0.8235rem; color: var(--text-dim); }
@@ -286,9 +287,11 @@ button:active:not(:disabled) { background: #b08e1f; }
   /* Never break-all: it splits English mid-word into "Illnes / s". */
   word-break: keep-all; overflow-wrap: break-word;
 }
+/* In flow beside the label, not pinned to the corner: pinned, the English
+   "void" sat on top of the centred "Month". */
 .pillar .void {
-  position: absolute; top: 6px; right: 6px;
-  font-size: 0.6471rem; color: var(--text-faint);
+  display: inline-block; margin-left: 5px; vertical-align: 1px;
+  font-size: 0.5882rem; color: var(--text-faint); line-height: 1.3;
   border: 1px solid var(--line); border-radius: 3px; padding: 0 4px;
 }
 .pillar.unknown { border-style: dashed; opacity: 0.5; }
@@ -688,6 +691,9 @@ details.why[open] > summary::after { transform: rotate(-135deg) translateY(-1px)
   .luck-scroll { margin: 0; padding: 0; overflow-x: visible; mask-image: none; }
   .luck { grid-auto-flow: unset; grid-template-columns: repeat(5, 1fr); }
   .glance-row { grid-template-columns: 100px 1fr; }
+  /* Segmented controls size to their labels on a wide screen instead of
+     stretching three words across 900px. */
+  .tabs button, .tabs.wrap-tabs button { flex: 0 1 auto; min-width: 120px; padding: 10px 20px; }
 }
 
 @media (min-width: 900px) {

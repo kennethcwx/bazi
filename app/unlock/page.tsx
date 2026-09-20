@@ -67,6 +67,21 @@ export default function Unlock() {
   const press = (digit: string) =>
     setPin((p) => (p.length >= PIN_LENGTH ? p : p + digit));
 
+  // A hardware keyboard types straight into the keypad: digits, Backspace,
+  // Escape to clear. The buttons stay for thumbs.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (busy || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (/^[0-9]$/.test(e.key)) press(e.key);
+      else if (e.key === 'Backspace') setPin((p) => p.slice(0, -1));
+      else if (e.key === 'Escape') setPin('');
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [busy]);
+
   return (
     <main className="gate">
       <div className="gate-inner">

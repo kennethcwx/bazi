@@ -121,8 +121,10 @@ function PillarCard({ p, position, locale, stars = [] }: {
   }
   return (
     <div className={`pillar${position === 'day' ? ' is-day' : ''}`}>
-      {p.isVoid && <span className="void">{UI.void[locale]}</span>}
-      <div className="pos">{label}</div>
+      <div className="pos">
+        {label}
+        {p.isVoid && <span className="void">{UI.void[locale]}</span>}
+      </div>
       <div className="tengod">
         {p.tenGod ? TEN_GOD[p.tenGod]![locale] : UI.dayMaster[locale]}
       </div>
