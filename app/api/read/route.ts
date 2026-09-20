@@ -64,8 +64,11 @@ export async function POST(req: Request) {
   // when out of scope or when nothing computed touches it.
   let template = body.templateId ? templateById(body.templateId) : undefined;
   let basedOn: string[] | null = null;
-  if (!template && body.question) {
-    const routed = routeFreeform(analysis, body.question, locale, providerStatus().id !== 'composed');
+  // Same bound as /api/tarot: a non-string would throw inside the tokenizer
+  // (500), and an unbounded one goes straight into the model prompt.
+  const question = typeof body.question === 'string' ? body.question.trim().slice(0, 200) : '';
+  if (!template && question) {
+    const routed = routeFreeform(analysis, question, locale, providerStatus().id !== 'composed');
     if (routed.kind === 'declined') {
       return Response.json({ error: routed.reason[locale], code: 'declined' }, { status: 400 });
     }
