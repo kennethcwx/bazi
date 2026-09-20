@@ -273,6 +273,9 @@ button:active:not(:disabled) { background: #b08e1f; }
   font-size: 0.6765rem; color: var(--text-dim); min-height: 18px;
   line-height: 1.35; word-break: keep-all;
 }
+/* English ten-god names run two lines, "Day Master" one: reserve both so the
+   day pillar's 干支 sits level with its neighbours. */
+:lang(en) .pillar .tengod { min-height: 2.7em; }
 .pillar .gz {
   font-family: var(--serif);
   font-size: clamp(28px, 9vw, 42px); line-height: 1.1; margin: 4px 0 7px;
