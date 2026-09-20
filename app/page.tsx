@@ -287,6 +287,8 @@ export default function Page() {
   const [time, setTime] = useState('14:30');
   const [gender, setGender] = useState<'male' | 'female'>('male');
   const [remembered, setRemembered] = useState(false);
+  // A remembered birth shows as one line, not the form it already filled.
+  const [editing, setEditing] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -411,6 +413,7 @@ export default function Page() {
     // typed it, and a "remember me" box they must find is friction for no gain.
     saveSelf({ date, time, gender, placeIndex: place, timeKnown, useTrueSolarTime: trueSolar });
     setRemembered(true);
+    setEditing(false);
     await castChart(payload, locale, true);
   }
 
@@ -523,6 +526,13 @@ export default function Page() {
       </div>
       <Nav locale={L} />
 
+      {remembered && !editing ? (
+        <p className="remembered">
+          {date} · {timeKnown ? time : UI.timeUnknown[L]} · {UI[gender][L]} · {PLACES[place]?.[L]}
+          <button type="button" className="linkish" onClick={() => setEditing(true)}>{UI.change[L]}</button>
+          <button type="button" className="linkish" onClick={forget}>{UI.forget[L]}</button>
+        </p>
+      ) : (
       <form onSubmit={submit}>
         <div>
           <label htmlFor="date">{UI.birthDate[L]}</label>
@@ -563,8 +573,9 @@ export default function Page() {
           </button>
         </div>
       </form>
+      )}
 
-      {remembered && hasSaved() && (
+      {remembered && editing && hasSaved() && (
         <p className="remembered">
           {UI.remembered[L]}
           <button type="button" className="linkish" onClick={forget}>{UI.forget[L]}</button>

@@ -13,7 +13,7 @@ import Nav from '../Nav';
 import Wheel from './Wheel';
 import { PlacePicker } from '../PlacePicker';
 import { LangSwitch, savedLocale, useLocale } from '../useLocale';
-import { DEFAULT_PLACE } from '../../src/places';
+import { DEFAULT_PLACE, PLACES } from '../../src/places';
 import { activeSlot, loadPartnerAt, loadSelf, saveSelf, setActiveSlot, SLOTS, type SavedBirth, type Slot } from '../../src/storage';
 import { UI } from '../../src/i18n/ui';
 import { t } from '../../src/i18n/text';
@@ -128,6 +128,9 @@ export default function Horoscope() {
   const [openDay, setOpenDay] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // A remembered birth shows as one line, not the form it already filled.
+  const [remembered, setRemembered] = useState(false);
+  const [editing, setEditing] = useState(false);
   /** The two partners 合婚 remembers; the active one is what the comparison is against. */
   const [slot, setSlot] = useState<Slot>(0);
   const [partners, setPartners] = useState<(SavedBirth | null)[]>([null, null]);
@@ -181,6 +184,7 @@ export default function Horoscope() {
     setSlot(active);
     const mine = loadSelf();
     if (!mine) return;
+    setRemembered(true);
     setDate(mine.date); setTime(mine.time || '12:00'); setTimeKnown(mine.timeKnown); setPlace(mine.placeIndex);
     void cast({ date: mine.date, time: mine.time, timeKnown: mine.timeKnown, placeIndex: mine.placeIndex }, savedLocale(), all[active] ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -193,6 +197,7 @@ export default function Horoscope() {
       date, time: timeKnown ? time : '', gender: mine?.gender ?? 'male', placeIndex: place, timeKnown,
       useTrueSolarTime: mine?.useTrueSolarTime ?? true,
     });
+    setRemembered(true); setEditing(false);
     void cast({ date, time, timeKnown, placeIndex: place });
   }
 
@@ -226,6 +231,12 @@ export default function Horoscope() {
       </div>
       <Nav locale={L} />
 
+      {remembered && !editing ? (
+        <p className="remembered">
+          {date} · {timeKnown ? time : UI.timeUnknown[L]} · {PLACES[place]?.[L]}
+          <button type="button" className="linkish" onClick={() => setEditing(true)}>{UI.change[L]}</button>
+        </p>
+      ) : (
       <form onSubmit={submit}>
         <div>
           <label htmlFor="date">{UI.birthDate[L]}</label>
@@ -246,6 +257,7 @@ export default function Horoscope() {
           <button type="submit" disabled={busy} style={{ width: '100%' }}>{busy ? S.casting[L] : S.cast[L]}</button>
         </div>
       </form>
+      )}
 
       {error && <p className="err" role="alert">{error}</p>}
 
@@ -253,7 +265,9 @@ export default function Horoscope() {
         <>
           {!result.timeKnown && <p className="note">{S.noTime[L]}</p>}
 
-          <details className="acc" open>
+          {/* Open only when there is someone to compare with; an empty-state box
+              should not be the first thing under the form. */}
+          <details className="acc" open={partners.some(Boolean)}>
             <summary><h2>{S.synastry[L]}</h2></summary>
             <div className="tabs" role="group" aria-label={UI.partnerSlot[L]}>
               {SLOTS.map((i) => (

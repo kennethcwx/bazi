@@ -181,6 +181,7 @@ export const UI = {
   // remembered data
   remembered: t('已记住这份生辰（仅存在本机）', 'Birth details remembered on this device only'),
   forget: t('清除', 'Forget'),
+  change: t('更改', 'Change'),
 
   // narrator provenance
   writtenBy: t('本文由', 'Written by'),
