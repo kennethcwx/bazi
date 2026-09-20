@@ -254,6 +254,54 @@ export default function Horoscope() {
           {!result.timeKnown && <p className="note">{S.noTime[L]}</p>}
 
           <details className="acc" open>
+            <summary><h2>{S.synastry[L]}</h2></summary>
+            <div className="tabs" role="group" aria-label={UI.partnerSlot[L]}>
+              {SLOTS.map((i) => (
+                <button key={i} type="button" aria-pressed={slot === i} onClick={() => switchSlot(i)}>
+                  {UI.partnerSlot[L]} {i + 1} · {partners[i]?.label || (partners[i] ? partners[i]!.date : UI.partnerEmptySlot[L])}
+                </button>
+              ))}
+            </div>
+            <div className="card">
+              {!partner ? (
+                <p className="note" style={{ marginTop: 0 }}>{S.noPartner[L]}</p>
+              ) : !syn ? (
+                <button type="button" className="q-btn" style={{ width: '100%' }} disabled={synBusy} onClick={() => compare()}>
+                  {synBusy ? S.comparing[L] : `${S.compare[L]} · ${partner.label || S.partnerDefault[L]}`}
+                </button>
+              ) : (
+                <>
+                  <div className="syn-overall">
+                    <span className="syn-score">{syn.overall}</span>
+                    <span className="syn-of">/100 · {S.overallOf[L]} · {partner.label || S.partnerDefault[L]}</span>
+                  </div>
+                  {syn.factors.map((f) => (
+                    <div className="lens" key={f.factor}>
+                      <div className="lens-head">
+                        <span className="lens-name">{f.name}</span>
+                        <span className="syn-num">{f.score}</span>
+                      </div>
+                      <div className="syn-bar" aria-hidden="true"><i style={{ width: `${f.score}%` }} /></div>
+                      <p className="lens-text">{f.text}</p>
+                      {f.source && <p className="lens-src">{S.dailySource[L]}：{f.source}</p>}
+                    </div>
+                  ))}
+                  <div className="lens">
+                    <span className="lens-name">{S.overlays[L]}</span>
+                    {syn.overlays.length === 0
+                      ? <p className="lens-src">{S.noOverlays[L]}</p>
+                      : <ul className="reasoning">{syn.overlays.map((o, i) => <li key={i}>{o.text}</li>)}</ul>}
+                  </div>
+                  <details className="why">
+                    <summary>{S.allAspects[L]}（{syn.aspects.length}）</summary>
+                    <ul className="reasoning">{syn.aspects.map((x, i) => <li key={i}>{x.text}（{x.orb}°）</li>)}</ul>
+                  </details>
+                </>
+              )}
+            </div>
+          </details>
+
+          <details className="acc" open>
             <summary><h2>{S.daily[L]}</h2></summary>
             <div className="days">
               {result.calendar.map((d, i) => (
@@ -346,54 +394,6 @@ export default function Horoscope() {
               <ul className="reasoning">
                 {result.reading.placements.map((r, i) => <li key={i}>{r}</li>)}
               </ul>
-            </div>
-          </details>
-
-          <details className="acc" open>
-            <summary><h2>{S.synastry[L]}</h2></summary>
-            <div className="tabs" role="group" aria-label={UI.partnerSlot[L]}>
-              {SLOTS.map((i) => (
-                <button key={i} type="button" aria-pressed={slot === i} onClick={() => switchSlot(i)}>
-                  {UI.partnerSlot[L]} {i + 1} · {partners[i]?.label || (partners[i] ? partners[i]!.date : UI.partnerEmptySlot[L])}
-                </button>
-              ))}
-            </div>
-            <div className="card">
-              {!partner ? (
-                <p className="note" style={{ marginTop: 0 }}>{S.noPartner[L]}</p>
-              ) : !syn ? (
-                <button type="button" className="q-btn" style={{ width: '100%' }} disabled={synBusy} onClick={() => compare()}>
-                  {synBusy ? S.comparing[L] : `${S.compare[L]} · ${partner.label || S.partnerDefault[L]}`}
-                </button>
-              ) : (
-                <>
-                  <div className="syn-overall">
-                    <span className="syn-score">{syn.overall}</span>
-                    <span className="syn-of">/100 · {S.overallOf[L]} · {partner.label || S.partnerDefault[L]}</span>
-                  </div>
-                  {syn.factors.map((f) => (
-                    <div className="lens" key={f.factor}>
-                      <div className="lens-head">
-                        <span className="lens-name">{f.name}</span>
-                        <span className="syn-num">{f.score}</span>
-                      </div>
-                      <div className="syn-bar" aria-hidden="true"><i style={{ width: `${f.score}%` }} /></div>
-                      <p className="lens-text">{f.text}</p>
-                      {f.source && <p className="lens-src">{S.dailySource[L]}：{f.source}</p>}
-                    </div>
-                  ))}
-                  <div className="lens">
-                    <span className="lens-name">{S.overlays[L]}</span>
-                    {syn.overlays.length === 0
-                      ? <p className="lens-src">{S.noOverlays[L]}</p>
-                      : <ul className="reasoning">{syn.overlays.map((o, i) => <li key={i}>{o.text}</li>)}</ul>}
-                  </div>
-                  <details className="why">
-                    <summary>{S.allAspects[L]}（{syn.aspects.length}）</summary>
-                    <ul className="reasoning">{syn.aspects.map((x, i) => <li key={i}>{x.text}（{x.orb}°）</li>)}</ul>
-                  </details>
-                </>
-              )}
             </div>
           </details>
 
