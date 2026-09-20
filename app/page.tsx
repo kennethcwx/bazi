@@ -121,10 +121,7 @@ function PillarCard({ p, position, locale, stars = [] }: {
   }
   return (
     <div className={`pillar${position === 'day' ? ' is-day' : ''}`}>
-      <div className="pos">
-        {label}
-        {p.isVoid && <span className="void">{UI.void[locale]}</span>}
-      </div>
+      <div className="pos">{label}</div>
       <div className="tengod">
         {p.tenGod ? TEN_GOD[p.tenGod]![locale] : UI.dayMaster[locale]}
       </div>
@@ -149,13 +146,16 @@ function PillarCard({ p, position, locale, stars = [] }: {
           {position === 'day' && <span className="meta-k">{UI.selfSeat[locale]} </span>}
           {TERRAIN[p.terrain]?.[locale] ?? p.terrain}
         </div>
-        {stars.length > 0 && (
+        {(stars.length > 0 || p.isVoid) && (
           <div className="stars">
             {stars.map((s, i) => (
               <span key={s.name + i} className="star" title={s.meaning}>
                 {SHENSHA[s.name]?.[locale] ?? s.name}
               </span>
             ))}
+            {/* 旬空 is a pillar mark like the stars, so it sits among them:
+                pinned to the corner it overlapped the English label. */}
+            {p.isVoid && <span className="star void">{UI.void[locale]}</span>}
           </div>
         )}
       </div>
