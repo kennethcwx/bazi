@@ -15,6 +15,7 @@ import type { Locale } from '../src/i18n/text';
 import type { RenderedFinding } from '../src/analyzer/findings';
 import { activeSlot, loadPartnerAt, savePartnerAt, setActiveSlot, SLOTS, type SavedBirth, type Slot } from '../src/storage';
 import { PlacePicker } from './PlacePicker';
+import { useAbort } from './useAbort';
 import { PLACES, DEFAULT_PLACE } from '../src/places';
 
 interface CompatData {
@@ -47,6 +48,7 @@ export function Compatibility({ selfBirth, locale }: {
   const [data, setData] = useState<CompatData | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const next = useAbort();
 
   /** Put a remembered partner in the form. */
   function fill(p: SavedBirth | null) {
@@ -105,6 +107,7 @@ export function Compatibility({ selfBirth, locale }: {
     const [y, mo, d] = record.date.split('-').map(Number);
     const [h, mi] = record.time ? record.time.split(':').map(Number) : [undefined, undefined];
 
+    const signal = next();
     setBusy(true);
     setError(null);
     try {
@@ -121,14 +124,16 @@ export function Compatibility({ selfBirth, locale }: {
           },
           locale,
         }),
+        signal,
       });
       const json = await res.json();
       if (!res.ok) { setError(json.error ?? UI.errCast[locale]); setData(null); }
       else setData(json as CompatData);
     } catch {
+      if (signal.aborted) return;
       setError(UI.errConnect[locale]);
     } finally {
-      setBusy(false);
+      if (!signal.aborted) setBusy(false);
     }
   }
 

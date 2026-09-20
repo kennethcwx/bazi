@@ -13,6 +13,7 @@ import Nav from '../Nav';
 import Wheel from './Wheel';
 import { PlacePicker } from '../PlacePicker';
 import { LangSwitch, savedLocale, useLocale } from '../useLocale';
+import { useAbort } from '../useAbort';
 import { DEFAULT_PLACE, PLACES } from '../../src/places';
 import { activeSlot, loadPartnerAt, loadSelf, saveSelf, setActiveSlot, SLOTS, type SavedBirth, type Slot } from '../../src/storage';
 import { UI } from '../../src/i18n/ui';
@@ -137,8 +138,11 @@ export default function Horoscope() {
   const partner = partners[slot] ?? null;
   const [syn, setSyn] = useState<Syn | null>(null);
   const [synBusy, setSynBusy] = useState(false);
+  const nextCast = useAbort();
+  const nextSyn = useAbort();
 
   async function cast(p: { date: string; time: string; timeKnown: boolean; placeIndex: number }, locale = L, with_ = partner) {
+    const signal = nextCast();
     setBusy(true); setError(null);
     try {
       const res = await fetch('/api/natal', {
@@ -147,13 +151,14 @@ export default function Horoscope() {
           ...p, locale, now: Date.now(), days: calendarDays(),
           ...(with_ ? { partner: asBirth(with_) } : {}),
         }),
+        signal,
       });
       const json = await res.json();
       if (!res.ok) { setError(json.error ?? UI.errCast[locale]); setResult(null); }
       else setResult(json as Result);
       setSyn(null);
-    } catch { setError(UI.errConnect[locale]); }
-    finally { setBusy(false); }
+    } catch { if (!signal.aborted) setError(UI.errConnect[locale]); }
+    finally { if (!signal.aborted) setBusy(false); }
   }
 
   /** The birth in the form, in the shape the API takes. */
@@ -161,6 +166,7 @@ export default function Horoscope() {
 
   async function compare(locale = L, p = partner) {
     if (!p) return;
+    const signal = nextSyn();
     setSynBusy(true);
     try {
       const res = await fetch('/api/synastry', {
@@ -170,12 +176,13 @@ export default function Horoscope() {
           b: asBirth(p),
           locale,
         }),
+        signal,
       });
       const json = await res.json();
       if (!res.ok) setError(json.error ?? UI.errCast[locale]);
       else setSyn(json as Syn);
-    } catch { setError(UI.errConnect[locale]); }
-    finally { setSynBusy(false); }
+    } catch { if (!signal.aborted) setError(UI.errConnect[locale]); }
+    finally { if (!signal.aborted) setSynBusy(false); }
   }
 
   useEffect(() => {

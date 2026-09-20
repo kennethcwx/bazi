@@ -24,6 +24,7 @@ import { UI } from '../src/i18n/ui';
 import type { Locale } from '../src/i18n/text';
 import { loadPartner, PARTNER_EVENT } from '../src/storage';
 import { PLACES } from '../src/places';
+import { useAbort } from './useAbort';
 
 type Band = 'notable' | 'mild' | 'quiet';
 type Mode = 'close' | 'stirred' | 'friction' | 'apart' | 'quiet';
@@ -155,6 +156,7 @@ export function Forecast({ birth, locale }: {
 }) {
   const [data, setData] = useState<Data | null>(null);
   const [busy, setBusy] = useState(false);
+  const next = useAbort();
   const [error, setError] = useState<string | null>(null);
   const [openDay, setOpenDay] = useState<string | null>(null);
   const [hasPartner, setHasPartner] = useState(false);
@@ -198,6 +200,7 @@ export function Forecast({ birth, locale }: {
 
   async function load(hoursFor?: string) {
     if (!birth) return;
+    const signal = next();
     setBusy(true);
     setError(null);
     try {
@@ -209,14 +212,16 @@ export function Forecast({ birth, locale }: {
           ...(partnerBirth() ? { partner: partnerBirth() } : {}),
           ...(hoursFor ? { hoursFor } : {}),
         }),
+        signal,
       });
       const json = await res.json();
       if (!res.ok) { setError(json.error ?? UI.errCast[locale]); setData(null); }
       else setData(json as Data);
     } catch {
+      if (signal.aborted) return;
       setError(UI.errConnect[locale]);
     } finally {
-      setBusy(false);
+      if (!signal.aborted) setBusy(false);
     }
   }
 

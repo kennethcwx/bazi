@@ -33,6 +33,7 @@ import { TEMPLATES } from '../src/narrator/templates';
 import { Forecast } from './Forecast';
 import { Compatibility } from './Compatibility';
 import { PlacePicker } from './PlacePicker';
+import { useAbort } from './useAbort';
 import Nav from './Nav';
 import { PLACES, DEFAULT_PLACE } from '../src/places';
 import { loadSelf, saveSelf, forgetAll, hasSaved, type SavedBirth } from '../src/storage';
@@ -298,6 +299,8 @@ export default function Page() {
   const [question, setQuestion] = useState('');
   const [reading, setReading] = useState('');
   const [readingBusy, setReadingBusy] = useState(false);
+  const nextCast = useAbort();
+  const nextRead = useAbort();
   const [readingError, setReadingError] = useState<string | null>(null);
   const [readingSource, setReadingSource] = useState<string | null>(null);
   const [grounding, setGrounding] = useState<Grounding | null>(null);
@@ -341,6 +344,7 @@ export default function Page() {
     forLocale: Locale,
     scroll: boolean,
   ) => {
+    const signal = nextCast();
     setBusy(true);
     setError(null);
     try {
@@ -348,6 +352,7 @@ export default function Page() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...payload, locale: forLocale }),
+        signal,
       });
       const json = await res.json();
       if (!res.ok) { setError(json.error ?? UI.errCast[forLocale]); setResult(null); }
@@ -360,11 +365,12 @@ export default function Page() {
         }
       }
     } catch {
+      if (signal.aborted) return;
       setError(UI.errConnect[forLocale]);
     } finally {
-      setBusy(false);
+      if (!signal.aborted) setBusy(false);
     }
-  }, []);
+  }, [nextCast]);
 
   function changeLocale(next: Locale) {
     setLocale(next);
@@ -434,6 +440,7 @@ export default function Page() {
       return;
     }
 
+    const signal = nextRead();
     setReadingBusy(true);
     try {
       const res = await fetch('/api/read', {
@@ -443,6 +450,7 @@ export default function Page() {
           ...lastInput.current, locale,
           ...(templateId ? { templateId } : { question: freeText }),
         }),
+        signal,
       });
 
       if (!res.ok || !res.body) {
@@ -494,9 +502,10 @@ export default function Page() {
         }
       }
     } catch {
+      if (signal.aborted) return;
       setReadingError(UI.errStreamCut[locale]);
     } finally {
-      setReadingBusy(false);
+      if (!signal.aborted) setReadingBusy(false);
     }
   }
 

@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react';
 import Nav from '../Nav';
 import { LangSwitch, useLocale } from '../useLocale';
+import { useAbort } from '../useAbort';
 import { dailyCard, draw, type Draw } from '../../src/tarot/cards';
 import { readSpread, SIZES, TOPIC_NAME, TOPICS, type Size, type SpreadReading, type Topic } from '../../src/tarot/spreads';
 import { loadSelf } from '../../src/storage';
@@ -80,6 +81,7 @@ export default function Tarot() {
   const [spread, setSpread] = useState<SpreadReading | null>(null);
   const [answer, setAnswer] = useState('');
   const [answerBusy, setAnswerBusy] = useState(false);
+  const next = useAbort();
   const [answerSource, setAnswerSource] = useState<string | null>(null);
   const [answerError, setAnswerError] = useState<string | null>(null);
 
@@ -93,6 +95,7 @@ export default function Tarot() {
 
   /** Stream the model's answer; with no model, the composed table stands and says so. */
   async function narrate(q: string, tp: Topic, sp: SpreadReading, locale: 'zh' | 'en') {
+    const signal = next();
     setAnswer(''); setAnswerSource(null); setAnswerError(null); setAnswerBusy(true);
     try {
       const res = await fetch('/api/tarot', {
@@ -101,6 +104,7 @@ export default function Tarot() {
           question: q, topic: tp, locale,
           cards: sp.cards.map((c) => ({ id: c.draw.card.id, reversed: c.draw.reversed })),
         }),
+        signal,
       });
       if (!res.ok || !res.body) { setAnswerError((await res.json().catch(() => ({}))).error ?? 'error'); return; }
       const reader = res.body.getReader(); const dec = new TextDecoder();
@@ -128,8 +132,8 @@ export default function Tarot() {
       // The socket closed with no done/failed: the phone locked, or the
       // function timed out. What is on screen is only part of the reading.
       if (!ended) setAnswerError(UI.errStreamCut[locale]);
-    } catch { setAnswerError(UI.errStreamCut[locale]); }
-    finally { setAnswerBusy(false); }
+    } catch { if (!signal.aborted) setAnswerError(UI.errStreamCut[locale]); }
+    finally { if (!signal.aborted) setAnswerBusy(false); }
   }
 
   // Client-only: the seed and the local date both come from the device.
