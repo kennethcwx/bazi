@@ -232,7 +232,6 @@ export default function Horoscope() {
       <div className="head">
         <div>
           <h1>{S.title[L]}</h1>
-          <p className="sub">{S.tagline[L]}</p>
         </div>
         <LangSwitch locale={L} onChange={changeLocale} />
       </div>

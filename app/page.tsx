@@ -520,7 +520,6 @@ export default function Page() {
       <div className="head">
         <div>
           <h1>{UI.title[L]}</h1>
-          <p className="sub">{UI.tagline[L]}</p>
         </div>
         <div className="lang" role="group" aria-label="Language">
           <button

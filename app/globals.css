@@ -36,7 +36,9 @@
   --wood: #57a882;
   --fire: #cf5f57;
   --earth: #c2954f;
-  --metal: #cfc7b8;
+  /* Cool silver, not warm off-white: #cfc7b8 was 1.36:1 against --text, so
+     庚/辛 read as plain body text and 金 fell out of the colour system. */
+  --metal: #a9b8c4;
   --water: #5b93cc;
   /* --fire as TEXT. The bar/chip colour above is 4.18:1 on --surface-2, under
      AA for small text; this one is 5.0:1 there and 5.9:1 on --ink. */
@@ -290,14 +292,14 @@ button:active:not(:disabled) { background: #b08e1f; }
   /* Never break-all: it splits English mid-word into "Illnes / s". */
   word-break: keep-all; overflow-wrap: break-word;
 }
-.pillar .star.void { color: var(--text-faint); border-color: var(--line); }
+.pillar .star.void { color: var(--text-faint); border-style: dashed; }
 .pillar.unknown { border-style: dashed; opacity: 0.5; }
 .meta-k { color: var(--text-faint); letter-spacing: 0.04em; }
 /* 神煞 landing on this pillar. */
 .pillar .stars { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; margin-top: 6px; }
 .pillar .star {
-  font-size: 0.6471rem; line-height: 1.3; color: var(--gold);
-  border: 1px solid var(--gold-dim); border-radius: 999px; padding: 1px 6px;
+  font-size: 0.6471rem; line-height: 1.3; color: var(--text-dim);
+  border: 1px solid var(--line); border-radius: 999px; padding: 1px 6px;
   /* English names are two words; let them wrap inside a four-across column
      rather than run past the card's edge. */
   max-width: 100%; text-align: center; overflow-wrap: break-word; word-break: keep-all;
@@ -738,7 +740,8 @@ details.terms { margin-top: 18px; border-top: 1px solid var(--line); padding-top
 /* Modes: what a day does. Colours stay off the 五行 palette so a mode never
    reads as an element. Steady/low are neutral — a background, not a verdict. */
 :root {
-  --m-close: var(--gold);
+  /* Its own hue: gold already means selected + primary action. */
+  --m-close: #b9a3d9;
   --m-stirred: #d68fa6;
   --m-friction: var(--fire-text);
   --m-apart: #7f96b3;
@@ -801,7 +804,7 @@ details.terms { margin-top: 18px; border-top: 1px solid var(--line); padding-top
   font-size: 0.6471rem; line-height: 1; padding: 4px 7px; border-radius: 999px;
   border: 1px solid var(--line); color: var(--text-dim); background: var(--surface-2);
 }
-.chip.m-close { color: var(--m-close); border-color: rgba(201, 162, 39, 0.45); }
+.chip.m-close { color: var(--m-close); border-color: rgba(185, 163, 217, 0.45); }
 .chip.m-stirred { color: var(--m-stirred); border-color: rgba(214, 143, 166, 0.45); }
 .chip.m-friction { color: var(--m-friction); border-color: rgba(207, 95, 87, 0.45); }
 .chip.m-apart { color: var(--m-apart); border-color: rgba(127, 150, 179, 0.45); }
@@ -874,6 +877,9 @@ details.terms { margin-top: 18px; border-top: 1px solid var(--line); padding-top
 .nav a svg { flex: none; }
 .nav a[aria-current='page'] { color: var(--gold); font-weight: 600; }
 .nav a[aria-current='page'] svg { stroke-width: 2; }
+@media (prefers-reduced-transparency: reduce) {
+  .nav { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
 
 /* ---------- 星盘 ---------- */
 /* ---------- section accordions ---------- */
