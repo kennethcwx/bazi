@@ -64,6 +64,7 @@ function CardFace({ d, L, position, meaning: m }: { d: Draw; L: 'zh' | 'en'; pos
   return (
     <div className={`tarot-card${d.reversed ? ' is-reversed' : ''}`}>
       {position && <div className="tarot-pos">{position}</div>}
+      <img className="tarot-img" src={`/tarot/${d.card.id}.jpg`} alt="" width={360} height={620} loading="lazy" decoding="async" />
       <div className="tarot-name">{d.card.name[L]}</div>
       <div className="tarot-orient">{d.reversed ? S.reversed[L] : S.upright[L]}{d.card.suit && ` · ${d.card.suit[L]}`}</div>
       <p className="tarot-meaning">{meaning}</p>

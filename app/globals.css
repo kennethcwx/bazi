@@ -935,6 +935,11 @@ details.acc[open] > summary::after { transform: rotate(-135deg) translateY(1px);
   padding: 16px; border-top: 3px solid var(--gold);
 }
 .tarot-card.is-reversed { border-top-color: var(--line); border-bottom: 3px solid var(--gold); }
+.tarot-img {
+  display: block; width: 100%; max-width: 200px; height: auto; margin: 0 auto 12px;
+  border-radius: 6px; border: 1px solid var(--line);
+}
+.tarot-card.is-reversed .tarot-img { transform: rotate(180deg); }
 .tarot-pos { font-size: 0.6765rem; color: var(--text-faint); letter-spacing: 0.04em; margin-bottom: 4px; }
 .tarot-name { font-family: var(--serif); font-size: 1.1765rem; }
 .tarot-orient { font-size: 0.7059rem; color: var(--text-dim); margin-bottom: 8px; }
