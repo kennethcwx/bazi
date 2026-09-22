@@ -9,7 +9,7 @@
  * The spread is genuinely random, because a spread is a question asked now.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import Nav from '../Nav';
 import { LangSwitch, useLocale } from '../useLocale';
 import { useAbort } from '../useAbort';
@@ -59,12 +59,15 @@ const today = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-function CardFace({ d, L, position, meaning: m }: { d: Draw; L: 'zh' | 'en'; position?: string; meaning?: string }) {
+function CardFace({ d, L, position, meaning: m, delay = 0 }: { d: Draw; L: 'zh' | 'en'; position?: string; meaning?: string; delay?: number }) {
   const meaning = m ?? (d.reversed ? d.card.reversed : d.card.upright)[L];
   return (
-    <div className={`tarot-card${d.reversed ? ' is-reversed' : ''}`}>
+    <div className={`tarot-card${d.reversed ? ' is-reversed' : ''}`} style={{ '--d': `${delay}ms` } as CSSProperties}>
       {position && <div className="tarot-pos">{position}</div>}
-      <img className="tarot-img" src={`/tarot/${d.card.id}.jpg`} alt="" width={360} height={620} loading="lazy" decoding="async" />
+      <div className="tarot-flip">
+        <div className="tarot-back" aria-hidden />
+        <img className="tarot-img" src={`/tarot/${d.card.id}.jpg`} alt="" width={360} height={620} decoding="async" />
+      </div>
       <div className="tarot-name">{d.card.name[L]}</div>
       <div className="tarot-orient">{d.reversed ? S.reversed[L] : S.upright[L]}{d.card.suit && ` · ${d.card.suit[L]}`}</div>
       <p className="tarot-meaning">{meaning}</p>
@@ -191,7 +194,7 @@ export default function Tarot() {
             </p>
             <div className={`tarot-spread n${spread.cards.length}`}>
               {spread.cards.map((c, i) => (
-                <CardFace key={i} d={c.draw} L={L} position={c.position[L]} meaning={c.meaning[L]} />
+                <CardFace key={`${i}-${c.draw.card.id}-${c.draw.reversed}`} d={c.draw} L={L} position={c.position[L]} meaning={c.meaning[L]} delay={i * 220} />
               ))}
             </div>
             <div className="card" style={{ marginTop: 10 }}>
