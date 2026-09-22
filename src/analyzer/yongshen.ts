@@ -45,6 +45,26 @@ const USABLE_SHARE = 10;
  *  other eight months 穷通宝鉴 still names a 调候用神, but it only adjusts. */
 const URGENT_BRANCHES = new Set(['亥', '子', '丑', '巳', '午', '未']);
 
+/** 通关: two families that control each other, each holding at least this
+ *  share, together most of the chart, and within this gap of one another,
+ *  are a standoff — propping either side up feeds the fight. The 用神 is then
+ *  the family that sits between them in the generation cycle, so the
+ *  attacker's force flows through it into the defender instead of against it.
+ *  Only a 中和 chart is read this way: a clear 身强/身弱 verdict is a stronger
+ *  fact than the standoff, and 扶抑 keeps it. Swept over 1980–1999 births,
+ *  these thresholds fire on 4.2% of charts (5.7% without the 中和 gate). */
+const STANDOFF_SHARE = 30;
+const STANDOFF_PAIR_SHARE = 60;
+const STANDOFF_GAP = 6;
+/** [attacker, defender, mediator] — 攻方生通关，通关生守方. */
+const STANDOFFS: readonly (readonly [TenGodFamily, TenGodFamily, TenGodFamily])[] = [
+  ['官杀', '比劫', '印'],
+  ['财', '印', '官杀'],
+  ['食伤', '官杀', '财'],
+  ['比劫', '财', '食伤'],
+  ['印', '食伤', '比劫'],
+];
+
 export interface YongShenAnalysis {
   /** Always present, always shown to the user. */
   readonly school: LocalizedText;
@@ -72,6 +92,9 @@ export interface YongShenAnalysis {
   /** True when 调候 wants something 扶抑 considers unfavourable. Surfaced, not
    *  resolved — it is a real disagreement between two valid readings. */
   readonly climateConflict: boolean;
+  /** 通关: the [attacker, defender] families the 用神 was chosen to bridge,
+   *  or null when 扶抑 chose it. */
+  readonly mediation: readonly [TenGodFamily, TenGodFamily] | null;
   readonly reasoning: readonly LocalizedText[];
 }
 
@@ -138,6 +161,7 @@ export function analyzeYongShen(
       climateStems: [],
       climateUrgent: false,
       climateConflict: false,
+      mediation: null,
       reasoning: [
         ...s.reasoning,
         t(
@@ -172,6 +196,7 @@ export function analyzeYongShen(
       climateStems: [],
       climateUrgent: false,
       climateConflict: false,
+      mediation: null,
       reasoning: [
         ...f.reasoning,
         t(
@@ -186,8 +211,25 @@ export function analyzeYongShen(
 
   let primaryFamily: TenGodFamily;
   let secondaryFamily: TenGodFamily | null;
+  let mediation: YongShenAnalysis['mediation'] = null;
 
-  if (strength.verdict === '身强') {
+  const standoff = strength.verdict === '中和' ? STANDOFFS.find(([a, b]) =>
+    share[a] >= STANDOFF_SHARE && share[b] >= STANDOFF_SHARE
+    && share[a] + share[b] >= STANDOFF_PAIR_SHARE && Math.abs(share[a] - share[b]) <= STANDOFF_GAP) : undefined;
+
+  if (standoff) {
+    // 通关 replaces 补不足: when two heavy families are locked, the balance
+    // is a by-product of the fight, and the scarcest element is beside the point.
+    const [a, b, m] = standoff;
+    primaryFamily = m;
+    secondaryFamily = null;
+    mediation = [a, b];
+    reasoning.push(t(
+      `${a} ${share[a]}% 与 ${b} ${share[b]}% 势均力敌，相战不休，取 ${m} 通关为用（${a}生${m}，${m}生${b}）。`,
+      `${fam(a)} at ${share[a]}% and ${fam(b)} at ${share[b]}% are locked in a standoff, ` +
+        `so the chart needs ${fam(m)} to mediate: it turns the pressure of one into support for the other.`,
+    ));
+  } else if (strength.verdict === '身强') {
     // Strong day master: spend it. Prefer direct control, then consumption,
     // then output — 官杀 acts fastest, but only if there is enough of it to act.
     if (share['官杀'] >= USABLE_SHARE) {
@@ -329,6 +371,7 @@ export function analyzeYongShen(
     climateStems,
     climateUrgent,
     climateConflict,
+    mediation,
     reasoning,
   };
 }

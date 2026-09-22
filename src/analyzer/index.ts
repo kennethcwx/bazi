@@ -32,8 +32,11 @@ import { applicable, type Finding, type Topic } from './findings';
  *     patterns), so a 透 财官 no longer mislabels a 建禄 chart.
  * v7: 化气格 and 专旺格 determined, and 用神 inverts when either is — the last
  *     two structures that replace 扶抑 rather than modifying it.
+ * v9: 通关 — a 中和 chart with two heavy, near-equal families that control
+ *     each other takes the mediating family as 用神 instead of the scarcest
+ *     element (4.2% of charts).
  */
-export const ANALYZER_VERSION = 'v8';
+export const ANALYZER_VERSION = 'v9';
 
 export interface Analysis {
   readonly chart: Chart;
