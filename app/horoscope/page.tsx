@@ -265,6 +265,11 @@ export default function Horoscope() {
       </form>
       )}
 
+      {/* The remembered-birth path replaces the form, and with it the submit
+          button that was the only sign a cast was running — so an auto-cast
+          left the page empty until the answer landed. */}
+      {busy && !result && <p className="note" role="status">{S.casting[L]}</p>}
+
       {error && <p className="err" role="alert">{error}</p>}
 
       {result && (

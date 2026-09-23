@@ -270,7 +270,7 @@ button:active:not(:disabled) { background: #b08e1f; }
   position: relative; min-width: 0;
 }
 .pillar.is-day { border-color: var(--gold); background: #1e1a16; }
-.pillar .pos { font-size: 0.6471rem; color: var(--text-faint); letter-spacing: 0.04em; }
+.pillar .pos { font-size: 0.7059rem; color: var(--text-faint); letter-spacing: 0.04em; }
 .pillar .tengod {
   font-size: 0.6765rem; color: var(--text-dim); min-height: 18px;
   line-height: 1.35; word-break: keep-all;
@@ -282,13 +282,13 @@ button:active:not(:disabled) { background: #b08e1f; }
   font-family: var(--serif);
   font-size: clamp(28px, 9vw, 42px); line-height: 1.1; margin: 4px 0 7px;
 }
-.pillar .hidden { font-size: 0.6471rem; color: var(--text-dim); line-height: 1.6; }
+.pillar .hidden { font-size: 0.7059rem; color: var(--text-dim); line-height: 1.6; }
 /* 藏干 十神 names wrap rather than clip — the long English terms (Indirect
    Wealth, Hurting Officer) do not fit a 4-across column on a phone, and a
    clipped audit trail is unreadable, which defeats the point of showing it. */
 .pillar .hidden div { white-space: normal; overflow-wrap: break-word; }
 .pillar .meta {
-  font-size: 0.6471rem; color: var(--text-faint); margin-top: 8px; line-height: 1.5;
+  font-size: 0.7059rem; color: var(--text-faint); margin-top: 8px; line-height: 1.5;
   /* Never break-all: it splits English mid-word into "Illnes / s". */
   word-break: keep-all; overflow-wrap: break-word;
 }
@@ -298,7 +298,7 @@ button:active:not(:disabled) { background: #b08e1f; }
 /* 神煞 landing on this pillar. */
 .pillar .stars { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; margin-top: 6px; }
 .pillar .star {
-  font-size: 0.6471rem; line-height: 1.3; color: var(--text-dim);
+  font-size: 0.7059rem; line-height: 1.3; color: var(--text-dim);
   border: 1px solid var(--line); border-radius: 999px; padding: 1px 6px;
   /* English names are two words; let them wrap inside a four-across column
      rather than run past the card's edge. */
@@ -441,10 +441,10 @@ details.why[open] > summary::after { transform: rotate(-135deg) translateY(-1px)
   background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--radius-sm); padding: 10px 4px; text-align: center;
 }
-.luck-cell .age { font-size: 0.6471rem; color: var(--text-faint); }
+.luck-cell .age { font-size: 0.7059rem; color: var(--text-faint); }
 .luck-cell .gz { font-family: var(--serif); font-size: 1rem; margin: 4px 0; }
 .luck-cell .verdict-tag {
-  font-size: 0.6471rem; color: var(--text-faint); letter-spacing: 0.02em;
+  font-size: 0.7059rem; color: var(--text-faint); letter-spacing: 0.02em;
   margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .luck-cell .bar { height: 3px; border-radius: 2px; background: var(--line); margin-top: 7px; }
@@ -460,10 +460,10 @@ details.why[open] > summary::after { transform: rotate(-135deg) translateY(-1px)
   background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--radius-sm); padding: 9px 4px; text-align: center;
 }
-.annual-cell .age { font-size: 0.6471rem; color: var(--text-faint); }
+.annual-cell .age { font-size: 0.7059rem; color: var(--text-faint); }
 .annual-cell .gz { font-family: var(--serif); font-size: 0.9412rem; margin: 3px 0; }
 .annual-cell .tg {
-  font-size: 0.6471rem; color: var(--text-dim); letter-spacing: 0.01em;
+  font-size: 0.7059rem; color: var(--text-dim); letter-spacing: 0.01em;
   line-height: 1.35; margin-top: 3px; overflow-wrap: break-word;
 }
 .annual-cell .tg.dim { color: var(--text-faint); }
@@ -478,7 +478,7 @@ details.why[open] > summary::after { transform: rotate(-135deg) translateY(-1px)
 .months .annual-cell .now-tag { margin-top: 5px; }
 .annual-cell.now { border-color: var(--gold); background: #1e1a16; }
 .annual-cell .now-tag {
-  font-size: 0.6471rem; color: var(--gold); letter-spacing: 0.04em; margin-top: 5px;
+  font-size: 0.7059rem; color: var(--gold); letter-spacing: 0.04em; margin-top: 5px;
 }
 
 /* ---------- tabs ---------- */
@@ -549,7 +549,7 @@ details.why[open] > summary::after { transform: rotate(-135deg) translateY(-1px)
 .finding .ev li { margin: 3px 0; }
 .tag {
   display: inline-block;
-  font-size: 0.6471rem; letter-spacing: 0.04em;
+  font-size: 0.7059rem; letter-spacing: 0.04em;
   color: var(--text-faint); border: 1px solid var(--line);
   border-radius: 3px; padding: 1px 6px; margin-left: 8px;
   white-space: nowrap; vertical-align: 1px;
@@ -569,8 +569,8 @@ details.why[open] > summary::after { transform: rotate(-135deg) translateY(-1px)
   color: var(--text-dim); font-weight: 400; position: relative;
 }
 .day:disabled { opacity: 1; cursor: default; }
-.day-date { font-size: 0.6471rem; color: var(--text-faint); }
-.day-wd { font-size: 0.6471rem; color: var(--text-faint); }
+.day-date { font-size: 0.7059rem; color: var(--text-faint); }
+.day-wd { font-size: 0.7059rem; color: var(--text-faint); }
 .day-gz { font-family: var(--serif); font-size: 0.8824rem; color: var(--text); margin-top: 2px; }
 .day.today { border-color: var(--text-faint); }
 .day.today .day-date { color: var(--gold); font-weight: 600; }
@@ -578,7 +578,7 @@ details.why[open] > summary::after { transform: rotate(-135deg) translateY(-1px)
 
 /* The one word a day cell gets: its mode when it registers, else its form. */
 .day-word {
-  font-size: 0.6471rem; line-height: 1; margin-top: 5px; min-height: 10px;
+  font-size: 0.7059rem; line-height: 1; margin-top: 5px; min-height: 10px;
   letter-spacing: 0.02em; color: var(--text-faint);
 }
 .day-word.m-close { color: var(--m-close); }
@@ -797,12 +797,12 @@ details.terms { margin-top: 18px; border-top: 1px solid var(--line); padding-top
    42px cell and wrapped the 干支, so stacked days stood 25px taller. */
 .stack-mark {
   position: absolute; top: 3px; right: 4px;
-  font-family: var(--sans); font-size: 0.6471rem; color: var(--gold); line-height: 1;
+  font-family: var(--sans); font-size: 0.7059rem; color: var(--gold); line-height: 1;
 }
 
 .chips { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 .chip {
-  font-size: 0.6471rem; line-height: 1; padding: 4px 7px; border-radius: 999px;
+  font-size: 0.7059rem; line-height: 1; padding: 4px 7px; border-radius: 999px;
   border: 1px solid var(--line); color: var(--text-dim); background: var(--surface-2);
 }
 .chip.m-close { color: var(--m-close); border-color: rgba(185, 163, 217, 0.45); }
@@ -833,7 +833,7 @@ details.terms { margin-top: 18px; border-top: 1px solid var(--line); padding-top
   display: flex; flex-direction: column; gap: 1px;
 }
 .hour-branch { font-family: var(--serif); font-size: 0.8824rem; color: var(--text-dim); }
-.hour-range { font-size: 0.6471rem; color: var(--text-faint); }
+.hour-range { font-size: 0.7059rem; color: var(--text-faint); }
 .h-good { border-color: rgba(201, 162, 39, 0.5); background: #221d15; }
 .h-good .hour-branch { color: var(--gold); }
 .h-avoid { border-color: rgba(207, 95, 87, 0.35); }
@@ -870,7 +870,7 @@ details.terms { margin-top: 18px; border-top: 1px solid var(--line); padding-top
 .nav a {
   flex: 1; max-width: 220px; text-align: center; text-decoration: none;
   color: var(--text-dim); border-radius: var(--radius-sm);
-  font-weight: 500; font-size: 0.6471rem; letter-spacing: 0.02em;
+  font-weight: 500; font-size: 0.7059rem; letter-spacing: 0.02em;
   padding: 4px 8px 2px; min-height: var(--tap);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
   -webkit-tap-highlight-color: transparent;

@@ -592,6 +592,11 @@ export default function Page() {
         </p>
       )}
 
+      {/* The remembered-birth path replaces the form, and with it the submit
+          button that was the only sign a cast was running — so an auto-cast
+          left the page empty until the answer landed. */}
+      {busy && !result && <p className="note" role="status">{UI.casting[L]}</p>}
+
       {error && <p className="err" role="alert">{error}</p>}
 
       {result && (
