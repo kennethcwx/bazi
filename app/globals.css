@@ -512,6 +512,8 @@ details.why[open] > summary::after { transform: rotate(-135deg) translateY(-1px)
 .ask input { flex: 1; min-width: 0; }
 .ask button { flex: none; padding: 0 18px; }
 .reading { font-size: 0.9412rem; line-height: 1.85; }
+/* Measure cap: only bites on desktop; a phone is narrower than 68ch. */
+.reading, .audit, .reasoning { max-width: 68ch; }
 .reading h3 {
   font-family: var(--serif); font-size: 1.0588rem; font-weight: 500;
   margin: 24px 0 10px; color: var(--gold);
