@@ -440,10 +440,10 @@ export function stackedOn(mode: Mode, layers: readonly LayerRead[]): Layer[] {
   return layers.filter((l) => l.mode === mode).map((l) => l.layer);
 }
 
-/** The note a stacked day carries, naming the layer it lands on. */
-export function stackNote(mode: Mode, layers: readonly Layer[]): LocalizedText {
-  const zh = layers.join('与');
-  const en = layers.map((l) => (l === '流年' ? 'the year' : 'the month')).join(' and ');
+/** The note a stacked day carries, naming the layers (and their 干支) it lands on. */
+export function stackNote(mode: Mode, layers: readonly LayerRead[]): LocalizedText {
+  const zh = layers.map((l) => `${l.layer}${l.ganZhi}`).join('与');
+  const en = layers.map((l) => `${l.layer === '流年' ? 'the year' : 'the month'} (${l.ganZhi})`).join(' and ');
   return t(
     `${zh}本已偏${MODE_LABEL[mode].zh}，今日再叠一层——比单看这一天更重`,
     `${en.charAt(0).toUpperCase()}${en.slice(1)} already lean${layers.length === 1 ? 's' : ''} ${MODE_LABEL[mode].en}; today adds a layer on top — heavier than the day alone`,

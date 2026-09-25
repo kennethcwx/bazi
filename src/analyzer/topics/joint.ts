@@ -104,7 +104,9 @@ function scoreSide(
     mode: r.mode,
     form: r.form,
     score: r.score,
-    notes: stacked.length ? [...r.notes, stackNote(r.mode, stacked)] : r.notes,
+    notes: stacked.length && layers
+      ? [...r.notes, stackNote(r.mode, [layers.year, layers.month].filter((l) => stacked.includes(l.layer)))]
+      : r.notes,
     stacked,
   };
 }
@@ -255,8 +257,9 @@ export function forecastJoint(
       branch: cycle.getEarthBranch().getName(),
     };
 
-    const yours = scoreSide(self, selfFavour, incoming, layers.yours);
-    const theirs = scoreSide(partner, partnerFavour, incoming, layers.theirs);
+    // Stack marks read the layers this day sits in; `layers` above is the summary.
+    const yours = scoreSide(self, selfFavour, incoming, layersOf(self, date));
+    const theirs = scoreSide(partner, partnerFavour, incoming, layersOf(partner, date));
     const between = scoreBetween(self, partner, incoming);
 
     out.push({

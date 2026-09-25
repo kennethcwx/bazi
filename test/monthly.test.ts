@@ -165,3 +165,23 @@ describe('stacking 流年 / 流月 over a day', () => {
     expect(stackedDays).toBeGreaterThan(0);
   });
 });
+
+describe('a window that straddles a 节', () => {
+  // 丙申 day. 2026-09-25 → 10-24 crosses 寒露 (10-08): 丁酉 is 合 to the palace,
+  // 戊戌 (the midpoint's month) is quiet. Reading one month for the whole window
+  // left the 丁酉 days unmarked — this chart showed no 叠 at all.
+  const chart = buildChart(at({ year: 1994, month: 5, day: 10, hour: 4, minute: 47, timeZone: 'Asia/Singapore', longitude: 103.8, useTrueSolarTime: true }));
+  const f = forecastRelationship(chart, new Date('2026-09-25T12:00:00Z'), 30);
+
+  it('marks each day against the month it sits in', () => {
+    for (const d of f.days) {
+      const own = layersOf(chart, new Date(`${d.date}T12:00:00Z`));
+      expect(d.stacked, d.date).toEqual(stackedOn(d.mode, [own.year, own.month]));
+    }
+    expect(f.layers.month.ganZhi).toBe('戊戌');
+    const marked = f.days.filter((d) => d.stacked.length > 0);
+    expect(marked.length).toBeGreaterThan(0);
+    expect(marked.every((d) => d.date < '2026-10-08')).toBe(true);
+    expect(marked[0].notes.at(-1)?.zh).toContain('流月丁酉');
+  });
+});

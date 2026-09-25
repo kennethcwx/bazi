@@ -120,7 +120,9 @@ export function scoreDay(
     band: read.band,
     mode: read.mode,
     form: read.form,
-    notes: stacked.length ? [...read.notes, stackNote(read.mode, stacked)] : read.notes,
+    notes: stacked.length && layers
+      ? [...read.notes, stackNote(read.mode, [layers.year, layers.month].filter((l) => stacked.includes(l.layer)))]
+      : read.notes,
     tone: read.balance > 0 ? 'easy' : read.balance < 0 ? 'friction' : null,
     stacked,
   };
@@ -145,14 +147,16 @@ export function forecastRelationship(
   const start = Date.UTC(
     fromDate.getUTCFullYear(), fromDate.getUTCMonth(), fromDate.getUTCDate(),
   );
-  // 流年 and 流月 apply across the window rather than to any one day. Read
-  // at the midpoint; a 30-day window can straddle a 节 or 立春, and the
-  // midpoint is the least wrong single answer.
+  // The summary 流年/流月 is read at the midpoint — a 30-day window can
+  // straddle a 节 or 立春 and the midpoint is the least wrong single answer.
+  // Each day's stack mark reads the layers THAT day sits in, or days before
+  // the 节 would be compared against next month.
   const mid = new Date(start + Math.floor(span / 2) * 86_400_000);
   const layers = layersOf(chart, mid);
 
   for (let i = 0; i < span; i++) {
-    out.push(scoreDay(chart, new Date(start + i * 86_400_000), favour, layers));
+    const date = new Date(start + i * 86_400_000);
+    out.push(scoreDay(chart, date, favour, layersOf(chart, date)));
   }
 
   const monthPillar = transitPillars(
