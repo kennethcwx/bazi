@@ -182,6 +182,6 @@ describe('a window that straddles a 节', () => {
     const marked = f.days.filter((d) => d.stacked.length > 0);
     expect(marked.length).toBeGreaterThan(0);
     expect(marked.every((d) => d.date < '2026-10-08')).toBe(true);
-    expect(marked[0].notes.at(-1)?.zh).toContain('流月丁酉');
+    expect(marked[0]?.notes.at(-1)?.zh).toContain('流月丁酉');
   });
 });
