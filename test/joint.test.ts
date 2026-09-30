@@ -124,7 +124,7 @@ describe('时辰 breakdown', () => {
     // A clash on either side rules the hour out; harmony with neither side
     // clashing makes it good.
     for (const h of hours) {
-      const clashes = h.forYou === 'clash' || h.forThem === 'clash';
+      const clashes = h.dayClash || h.forYou === 'clash' || h.forThem === 'clash';
       const harmonises = h.forYou === 'harmony' || h.forThem === 'harmony';
       expect(h.band).toBe(clashes ? 'avoid' : harmonises ? 'good' : 'neutral');
     }
@@ -143,16 +143,39 @@ describe('时辰 breakdown', () => {
     expect([...seen].sort()).toEqual(['avoid', 'good', 'neutral']);
   });
 
-  it('still leaves the plain hours in the majority', () => {
-    let neutral = 0, total = 0;
+  it('changes with the day — the hour branch alone is the same every day', () => {
+    // Bands used to read only hour BRANCH vs the two natal day branches, which
+    // are all fixed to the clock: 30 days gave one identical pattern.
+    const patterns = new Set<string>();
     for (let d = 1; d <= 30; d++) {
       const iso = new Date(Date.UTC(2026, 2, d)).toISOString().slice(0, 10);
-      for (const h of hourBreakdown(iso, self, partner, ['土', '金'])) {
-        total++;
-        if (h.band === 'neutral') neutral++;
-      }
+      patterns.add(hourBreakdown(iso, self, partner, ['土', '金']).map((h) => h.band[0]).join(''));
     }
-    expect(neutral / total).toBeGreaterThan(0.45);
+    expect(patterns.size).toBeGreaterThan(5);
+  });
+
+  it('rules out the hour that clashes the day itself (日时相冲)', () => {
+    // Each day branch has exactly one 六冲 partner among the twelve hours.
+    expect(hours.filter((h) => h.dayClash)).toHaveLength(1);
+    for (const h of hours.filter((x) => x.dayClash)) expect(h.band).toBe('avoid');
+  });
+
+  it('does not paint most of the grid', () => {
+    // Two people's day stems and branches each claim hours, plus the day's own
+    // clash, so the joint grid runs ~1/3 neutral; alone it stays ~1/2.
+    const share = (p: typeof partner | null) => {
+      let neutral = 0, total = 0;
+      for (let d = 1; d <= 30; d++) {
+        const iso = new Date(Date.UTC(2026, 2, d)).toISOString().slice(0, 10);
+        for (const h of hourBreakdown(iso, self, p, ['土', '金'])) {
+          total++;
+          if (h.band === 'neutral') neutral++;
+        }
+      }
+      return neutral / total;
+    };
+    expect(share(null)).toBeGreaterThan(0.45);
+    expect(share(partner)).toBeGreaterThan(0.3);
   });
 
   it('gives every non-neutral hour a reason', () => {

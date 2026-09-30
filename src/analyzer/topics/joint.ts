@@ -69,7 +69,9 @@ export interface HourOutlook {
   /** How the hour sits with each person's 日支, reported per side. */
   readonly forYou: HourSide;
   readonly forThem: HourSide;
-  /** avoid = it clashes someone; good = it harmonises someone and clashes
+  /** The hour's branch clashes the day's own branch (日时相冲) — out for both. */
+  readonly dayClash: boolean;
+  /** avoid = it clashes someone or the day itself; good = it harmonises someone and clashes
    *  no one; neutral = it does neither. */
   readonly band: 'good' | 'neutral' | 'avoid';
   readonly notes: readonly LocalizedText[];
@@ -317,9 +319,14 @@ export const JOINT_CAVEAT: LocalizedText = t(
 /**
  * The twelve 时辰 of one day, scored for how easily a conversation sits.
  *
- * An hour that combines with both day branches is calm ground; one that clashes
- * either is where a small remark becomes an argument. Favourable elements nudge
- * it, they do not decide it.
+ * An hour that combines with either person's day pillar is calm ground; one that
+ * clashes either is where a small remark becomes an argument. Favourable elements
+ * nudge it, they do not decide it.
+ *
+ * The hour BRANCH is tied to the clock, so branch-vs-natal alone gives the same
+ * twelve bands every day. Two things make it the day's own: the hour STEM (it
+ * rotates with the day stem, 五鼠遁) can 五合 a person's day stem, and an hour
+ * whose branch clashes the day's branch (日时相冲) is ruled out for both.
  *
  * The 时辰 from 23:00 belongs to the next day's cycle, so this covers the day's
  * own twelve and says as much rather than quietly folding it in.
@@ -332,6 +339,10 @@ export function hourBreakdown(
 ): HourOutlook[] {
   const [y, m, d] = isoDate.split('-').map(Number);
   const fav = new Set(favourable);
+  const today = transitPillars(y!, m!, d!).day;
+  const todayPillar: PositionedPillar = {
+    position: '当日', stem: today.getHeavenStem().getName(), branch: today.getEarthBranch().getName(),
+  };
   const out: HourOutlook[] = [];
 
   const pair: PositionedPillar[] = [
@@ -354,7 +365,7 @@ export function hourBreakdown(
     let forThem: HourSide = null;
 
     for (const r of findRelations([...pair, incoming])) {
-      if (!r.positions.includes('时辰') || !isBranchRelation(r)) continue;
+      if (!r.positions.includes('时辰')) continue;
       const other = r.positions.find((p) => p !== '时辰');
       if (!other) continue;
 
@@ -380,6 +391,12 @@ export function hourBreakdown(
       else forThem = forThem === 'clash' ? forThem : (verdict ?? forThem);
     }
 
+    const dayClash = findRelations([todayPillar, incoming]).some((r) => r.kind === '六冲');
+    if (dayClash) {
+      notes.push(t(`时支冲当日日支${todayPillar.branch}，两人都不宜`,
+        `The hour clashes the day's own branch ${todayPillar.branch} — off for both`));
+    }
+
     const el = elementOfBranch(branch);
     if (fav.has(el)) {
       notes.push(t(`时支属${el}，为你的用神`,
@@ -389,11 +406,11 @@ export function hourBreakdown(
     // Band is decided by the sides, not by a summed score. An hour can only
     // 六合 one branch, so any threshold that required harmonising both people
     // AND carrying a favourable element was unreachable in practice.
-    const clashes = forYou === 'clash' || forThem === 'clash';
+    const clashes = dayClash || forYou === 'clash' || forThem === 'clash';
     const harmonises = forYou === 'harmony' || forThem === 'harmony';
     const band: HourOutlook['band'] = clashes ? 'avoid' : harmonises ? 'good' : 'neutral';
 
-    out.push({ index, branch, ganZhi: cycle.getName(), range: HOUR_RANGES[index]!, forYou, forThem, band, notes });
+    out.push({ index, branch, ganZhi: cycle.getName(), range: HOUR_RANGES[index]!, forYou, forThem, dayClash, band, notes });
   });
 
   return out;
