@@ -836,6 +836,9 @@ details.terms { margin-top: 18px; border-top: 1px solid var(--line); padding-top
 }
 .hour-branch { font-family: var(--serif); font-size: 0.8824rem; color: var(--text-dim); }
 .hour-range { font-size: 0.7059rem; color: var(--text-faint); }
+/* 黄历 star: gold for 黄道, faint for 黑道. Same 12px tier as the range. */
+.hour-star { font-family: var(--serif); font-size: 0.7059rem; color: var(--text-faint); }
+.hour-star.yellow { color: var(--gold); }
 .h-good { border-color: rgba(201, 162, 39, 0.5); background: #221d15; }
 .h-good .hour-branch { color: var(--gold); }
 .h-avoid { border-color: rgba(207, 95, 87, 0.35); }

@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { buildChart } from '../src/engine/chart';
+import { buildChart, transitPillars } from '../src/engine/chart';
 import { forecastJoint, hourBreakdown, JOINT_CAVEAT } from '../src/analyzer/topics/joint';
 import { LOCALES } from '../src/i18n/text';
 import type { BirthInput } from '../src/engine/types';
@@ -95,9 +95,11 @@ describe('joint forecast', () => {
     }
   });
 
-  it('carries a caveat that refuses to call these auspicious hours', () => {
-    expect(JOINT_CAVEAT.zh).toContain('不是吉时');
-    expect(JOINT_CAVEAT.en).toContain('not an auspicious hour');
+  it('carries a caveat that guarantees nothing and flags 黄道 as untested tradition', () => {
+    expect(JOINT_CAVEAT.zh).toContain('不保证');
+    expect(JOINT_CAVEAT.zh).toContain('没有验证');
+    expect(JOINT_CAVEAT.en).toContain('guarantees nothing');
+    expect(JOINT_CAVEAT.en).toContain('never been tested');
     expect(CHINESE_PROSE.test(JOINT_CAVEAT.en)).toBe(false);
   });
 });
@@ -121,12 +123,12 @@ describe('时辰 breakdown', () => {
       expect([null, 'harmony', 'clash']).toContain(h.forYou);
       expect([null, 'harmony', 'clash']).toContain(h.forThem);
     }
-    // A clash on either side rules the hour out; harmony with neither side
-    // clashing makes it good.
+    // A clash on either side rules the hour out, even on 黄道; a 黄道 hour that
+    // harmonises someone with no one clashing makes it good.
     for (const h of hours) {
       const clashes = h.dayClash || h.forYou === 'clash' || h.forThem === 'clash';
       const harmonises = h.forYou === 'harmony' || h.forThem === 'harmony';
-      expect(h.band).toBe(clashes ? 'avoid' : harmonises ? 'good' : 'neutral');
+      expect(h.band).toBe(clashes ? 'avoid' : harmonises && h.yellow ? 'good' : 'neutral');
     }
   });
 
@@ -158,6 +160,40 @@ describe('时辰 breakdown', () => {
     // Each day branch has exactly one 六冲 partner among the twelve hours.
     expect(hours.filter((h) => h.dayClash)).toHaveLength(1);
     for (const h of hours.filter((x) => x.dayClash)) expect(h.band).toBe('avoid');
+  });
+
+  it('reads 黄道 off the classical table: 青龙 sits by day branch, six 黄道 a day', () => {
+    // 寅申日 青龙在子, 卯酉日在寅, 辰戌日在辰, 巳亥日在午, 子午日在申, 丑未日在戌.
+    const dragonAt: Record<string, string> = {
+      子: '申', 午: '申', 丑: '戌', 未: '戌', 寅: '子', 申: '子',
+      卯: '寅', 酉: '寅', 辰: '辰', 戌: '辰', 巳: '午', 亥: '午',
+    };
+    const YELLOW = ['青龙', '明堂', '金匮', '天德', '玉堂', '司命'];
+    for (let d = 1; d <= 12; d++) {
+      const iso = new Date(Date.UTC(2026, 9, d)).toISOString().slice(0, 10);
+      const day = transitPillars(2026, 10, d).day.getEarthBranch().getName();
+      const hrs = hourBreakdown(iso, self, partner, []);
+      expect(hrs.find((h) => h.star === '青龙')!.branch, `${iso} ${day}日`).toBe(dragonAt[day]);
+      expect(hrs.filter((h) => h.yellow)).toHaveLength(6);
+      for (const h of hrs) expect(h.yellow, h.star).toBe(YELLOW.includes(h.star));
+    }
+  });
+
+  it('never makes a 黑道 hour good, and a clash beats 黄道', () => {
+    let blackHarmony = 0, yellowClash = 0;
+    for (let d = 1; d <= 60; d++) {
+      const iso = new Date(Date.UTC(2026, 2, d)).toISOString().slice(0, 10);
+      for (const h of hourBreakdown(iso, self, partner, ['土', '金'])) {
+        const harmonises = h.forYou === 'harmony' || h.forThem === 'harmony';
+        const clashes = h.dayClash || h.forYou === 'clash' || h.forThem === 'clash';
+        if (!h.yellow) expect(h.band).not.toBe('good');
+        if (!h.yellow && harmonises && !clashes) { blackHarmony++; expect(h.band).toBe('neutral'); }
+        if (h.yellow && clashes) { yellowClash++; expect(h.band).toBe('avoid'); }
+      }
+    }
+    // Both cases must actually occur, or the assertions above prove nothing.
+    expect(blackHarmony).toBeGreaterThan(0);
+    expect(yellowClash).toBeGreaterThan(0);
   });
 
   it('does not paint most of the grid', () => {

@@ -44,6 +44,7 @@ interface Hour {
   band: 'good' | 'neutral' | 'avoid';
   forYou: 'harmony' | 'clash' | null;
   forThem: 'harmony' | 'clash' | null;
+  star: string; yellow: boolean;
   notes: string[];
 }
 
@@ -332,6 +333,7 @@ export function Forecast({ birth, locale }: {
                         title={h.notes.join('; ')}>
                         <span className="hour-branch">{h.branch}</span>
                         <span className="hour-range">{h.range}</span>
+                        <span className={`hour-star${h.yellow ? ' yellow' : ''}`}>{h.star}</span>
                         <span className="hour-sides">
                           <i className={`hs hs-${h.forYou ?? 'none'}`} />
                           {hasPartner && <i className={`hs hs-${h.forThem ?? 'none'}`} />}

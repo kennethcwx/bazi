@@ -71,8 +71,12 @@ export interface HourOutlook {
   readonly forThem: HourSide;
   /** The hour's branch clashes the day's own branch (日时相冲) — out for both. */
   readonly dayClash: boolean;
-  /** avoid = it clashes someone or the day itself; good = it harmonises someone and clashes
-   *  no one; neutral = it does neither. */
+  /** The almanac's 十二值神 for the hour (青龙, 白虎 …), set by the day branch. */
+  readonly star: string;
+  /** 黄道 when the star is one of the six auspicious ones. */
+  readonly yellow: boolean;
+  /** avoid = it clashes someone or the day itself; good = a 黄道 hour that harmonises
+   *  someone and clashes no one; neutral = everything else. */
   readonly band: 'good' | 'neutral' | 'avoid';
   readonly notes: readonly LocalizedText[];
 }
@@ -307,14 +311,21 @@ export function forecastJoint(
 
 export const JOINT_CAVEAT: LocalizedText = t(
   '这一层比流日更轻。它讲的是哪一天、哪个时辰在结构上阻力较小，' +
-    '不是吉时，也不保证谈得成。真要紧的事，挑两个人都清醒的时候讲，比挑时辰有用。',
+    '不保证谈得成。时辰以黄历的黄道为底，黄道是传统惯例，没有验证过。' +
+    '真要紧的事，挑两个人都清醒的时候讲，比挑时辰有用。',
   'This layer is lighter than the daily one. It says which day and which 时辰 ' +
-    'carry least structural friction. It is not an auspicious hour and it ' +
-    'guarantees nothing. For anything that matters, picking a time you are both ' +
-    'rested beats picking a 时辰.',
+    'carry least structural friction, and it guarantees nothing. Hours start from ' +
+    "the almanac's 黄道 hours, a tradition that has never been tested. For anything " +
+    'that matters, picking a time you are both rested beats picking a 时辰.',
 );
 
 // ---------------------------------------------------------------------------
+
+const STAR_EN: Record<string, string> = {
+  青龙: 'Azure Dragon', 明堂: 'Bright Hall', 天刑: 'Heavenly Punishment', 朱雀: 'Vermilion Bird',
+  金匮: 'Golden Coffer', 天德: 'Heavenly Virtue', 白虎: 'White Tiger', 玉堂: 'Jade Hall',
+  天牢: 'Heavenly Prison', 玄武: 'Black Tortoise', 司命: 'Life Keeper', 勾陈: 'Hook Array',
+};
 
 /**
  * The twelve 时辰 of one day, scored for how easily a conversation sits.
@@ -327,6 +338,9 @@ export const JOINT_CAVEAT: LocalizedText = t(
  * twelve bands every day. Two things make it the day's own: the hour STEM (it
  * rotates with the day stem, 五鼠遁) can 五合 a person's day stem, and an hour
  * whose branch clashes the day's branch (日时相冲) is ruled out for both.
+ *
+ * Under both sits the almanac's 黄道/黑道 (十二值神, the layer 黄历 apps show): it
+ * rotates with the day branch and gates 'good' to the six 黄道 hours.
  *
  * The 时辰 from 23:00 belongs to the next day's cycle, so this covers the day's
  * own twelve and says as much rather than quietly folding it in.
@@ -353,8 +367,10 @@ export function hourBreakdown(
   ];
 
   HOUR_MIDPOINTS.forEach((h, index) => {
-    const cycle = SolarTime.fromYmdHms(y!, m!, d!, h, 0, 0)
-      .getSixtyCycleHour().getSixtyCycle();
+    const hour = SolarTime.fromYmdHms(y!, m!, d!, h, 0, 0).getSixtyCycleHour();
+    const cycle = hour.getSixtyCycle();
+    const star = hour.getTwelveStar().getName();
+    const yellow = hour.getTwelveStar().getEcliptic().getName() === '黄道';
     const branch = cycle.getEarthBranch().getName();
     const incoming: PositionedPillar = {
       position: '时辰', stem: cycle.getHeavenStem().getName(), branch,
@@ -397,6 +413,10 @@ export function hourBreakdown(
         `The hour clashes the day's own branch ${todayPillar.branch} — off for both`));
     }
 
+    notes.push(yellow
+      ? t(`黄历：${star}，黄道`, `Almanac: ${STAR_EN[star]}, an auspicious (黄道) hour`)
+      : t(`黄历：${star}，黑道`, `Almanac: ${STAR_EN[star]}, an inauspicious (黑道) hour`));
+
     const el = elementOfBranch(branch);
     if (fav.has(el)) {
       notes.push(t(`时支属${el}，为你的用神`,
@@ -406,11 +426,14 @@ export function hourBreakdown(
     // Band is decided by the sides, not by a summed score. An hour can only
     // 六合 one branch, so any threshold that required harmonising both people
     // AND carrying a favourable element was unreachable in practice.
+    // The almanac is the base: only a 黄道 hour can be good, and a clash rules an
+    // hour out even on 黄道. A 黑道 hour with no clash stays neutral, so red still
+    // means friction rather than the almanac's verdict.
     const clashes = dayClash || forYou === 'clash' || forThem === 'clash';
     const harmonises = forYou === 'harmony' || forThem === 'harmony';
-    const band: HourOutlook['band'] = clashes ? 'avoid' : harmonises ? 'good' : 'neutral';
+    const band: HourOutlook['band'] = clashes ? 'avoid' : harmonises && yellow ? 'good' : 'neutral';
 
-    out.push({ index, branch, ganZhi: cycle.getName(), range: HOUR_RANGES[index]!, forYou, forThem, dayClash, band, notes });
+    out.push({ index, branch, ganZhi: cycle.getName(), range: HOUR_RANGES[index]!, forYou, forThem, dayClash, star, yellow, band, notes });
   });
 
   return out;

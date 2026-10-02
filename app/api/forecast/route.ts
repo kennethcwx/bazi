@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     const hours = isDate(hoursFor)
       ? hourBreakdown(hoursFor, self, partner, favourable).map((h) => ({
           index: h.index, branch: h.branch, ganZhi: h.ganZhi, range: h.range,
-          band: h.band, forYou: h.forYou, forThem: h.forThem,
+          band: h.band, forYou: h.forYou, forThem: h.forThem, star: h.star, yellow: h.yellow,
           notes: h.notes.map((n) => n[locale]),
         }))
       : null;
