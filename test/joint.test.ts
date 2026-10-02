@@ -210,6 +210,20 @@ describe('时辰 breakdown', () => {
     }
   });
 
+  it('names the stem for a 天干五合 and the branch for everything else', () => {
+    let stem = 0;
+    for (let d = 1; d <= 30; d++) {
+      const iso = new Date(Date.UTC(2026, 2, d)).toISOString().slice(0, 10);
+      for (const h of hourBreakdown(iso, self, partner, [])) {
+        for (const n of h.notes) {
+          if (n.zh.startsWith('天干五合')) { stem++; expect(n.zh, n.zh).toMatch(/日干，/); }
+          else if (/^(六合|三合|半合|六冲|相刑|自刑|六害|相破)/.test(n.zh)) expect(n.zh, n.zh).toMatch(/日支，/);
+        }
+      }
+    }
+    expect(stem).toBeGreaterThan(0);
+  });
+
   it('gives every non-neutral hour a reason', () => {
     for (const h of hours) {
       if (h.band !== 'neutral') expect(h.notes.length, h.branch).toBeGreaterThan(0);

@@ -389,6 +389,7 @@ export function hourBreakdown(
       const mine = other === '你日柱';
       const whose = mine ? t('你', 'you') : t('对方', 'them');
       const rel = RELATION[r.kind]!;
+      const part = isBranchRelation(r) ? '日支' : '日干';
       // 害 and 破 are blemishes rather than clashes; only a real 冲 or 刑
       // should rule an hour out.
       const severe = r.kind === '六冲' || r.kind === '相刑' || r.kind === '自刑';
@@ -397,10 +398,10 @@ export function hourBreakdown(
         : severe ? 'clash' : null;
 
       if (verdict === 'harmony') {
-        notes.push(t(`${rel.zh}${whose.zh}日支，${whose.zh}较松`,
+        notes.push(t(`${rel.zh}${whose.zh}${part}，${whose.zh}较松`,
           `${rel.en} with ${whose.en} — ${whose.en} more at ease`));
       } else if (verdict === 'clash') {
-        notes.push(t(`${rel.zh}${whose.zh}日支，${whose.zh}易起火`,
+        notes.push(t(`${rel.zh}${whose.zh}${part}，${whose.zh}易起火`,
           `${rel.en} against ${whose.en} — ${whose.en} quicker to bristle`));
       }
 
