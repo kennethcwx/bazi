@@ -143,7 +143,7 @@ export const UI = {
   hoursTitle: t('时辰', 'Hours of the day'),
   hourHarmony: t('合', 'harmony'),
   hourClash: t('冲', 'clash'),
-  hoursGood: t('阻力最小', 'Least friction'),
+  hoursGood: t('黄道吉时', 'Good hours (黄道)'),
   hoursAvoid: t('容易起冲突', 'Most abrasive'),
   hoursNone: t('这天没有特别顺的时辰', 'no hour stands out today'),
 

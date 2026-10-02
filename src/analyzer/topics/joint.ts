@@ -75,8 +75,8 @@ export interface HourOutlook {
   readonly star: string;
   /** 黄道 when the star is one of the six auspicious ones. */
   readonly yellow: boolean;
-  /** avoid = it clashes someone or the day itself; good = a 黄道 hour that harmonises
-   *  someone and clashes no one; neutral = everything else. */
+  /** avoid = it clashes someone or the day itself; good = a 黄道 hour that clashes no
+   *  one (as 黄历 apps mark it); neutral = a 黑道 hour that clashes no one. */
   readonly band: 'good' | 'neutral' | 'avoid';
   readonly notes: readonly LocalizedText[];
 }
@@ -340,7 +340,8 @@ const STAR_EN: Record<string, string> = {
  * whose branch clashes the day's branch (日时相冲) is ruled out for both.
  *
  * Under both sits the almanac's 黄道/黑道 (十二值神, the layer 黄历 apps show): it
- * rotates with the day branch and gates 'good' to the six 黄道 hours.
+ * rotates with the day branch and makes the six 黄道 hours good unless a chart vetoes.
+ * Harmony with either person still shows per side, it just no longer decides the band.
  *
  * The 时辰 from 23:00 belongs to the next day's cycle, so this covers the day's
  * own twelve and says as much rather than quietly folding it in.
@@ -426,12 +427,11 @@ export function hourBreakdown(
     // Band is decided by the sides, not by a summed score. An hour can only
     // 六合 one branch, so any threshold that required harmonising both people
     // AND carrying a favourable element was unreachable in practice.
-    // The almanac is the base: only a 黄道 hour can be good, and a clash rules an
-    // hour out even on 黄道. A 黑道 hour with no clash stays neutral, so red still
-    // means friction rather than the almanac's verdict.
+    // 先避凶，后趋吉: a clash rules an hour out even on 黄道; past that the almanac
+    // decides, so good matches what a 黄历 app shows. A 黑道 hour with no clash stays
+    // neutral, so red still means friction rather than the almanac's verdict.
     const clashes = dayClash || forYou === 'clash' || forThem === 'clash';
-    const harmonises = forYou === 'harmony' || forThem === 'harmony';
-    const band: HourOutlook['band'] = clashes ? 'avoid' : harmonises && yellow ? 'good' : 'neutral';
+    const band: HourOutlook['band'] = clashes ? 'avoid' : yellow ? 'good' : 'neutral';
 
     out.push({ index, branch, ganZhi: cycle.getName(), range: HOUR_RANGES[index]!, forYou, forThem, dayClash, star, yellow, band, notes });
   });

@@ -357,10 +357,12 @@ export function Forecast({ birth, locale }: {
                         <li>
                           {UI.hoursGood[locale]}：{good.length > 0
                             ? good.map((h) => {
+                                // Good is set by 黄道 now; name who it also suits only when it does.
                                 const who = h.forYou === 'harmony' && h.forThem === 'harmony'
                                   ? UI.trackBetween[locale]
-                                  : h.forYou === 'harmony' ? UI.trackYours[locale] : UI.trackTheirs[locale];
-                                return `${h.branch} ${h.range}（${who}）`;
+                                  : h.forYou === 'harmony' ? UI.trackYours[locale]
+                                  : h.forThem === 'harmony' ? UI.trackTheirs[locale] : null;
+                                return `${h.branch} ${h.range}（${h.star}${who ? ` · ${who}` : ''}）`;
                               }).join('、')
                             : UI.hoursNone[locale]}
                         </li>
