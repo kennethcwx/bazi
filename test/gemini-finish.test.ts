@@ -32,3 +32,30 @@ describe('gemini stream end', () => {
     await expect(gemini().stream('s', 'u', () => {})).rejects.toThrow(/MAX_TOKENS/);
   });
 });
+
+describe('gemini that never answers', () => {
+  // A fetch that only settles when aborted — what a stalled Gemini looks like.
+  const hang = (_u: unknown, init?: RequestInit) => new Promise<Response>((_, reject) =>
+    init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError'))));
+
+  it('moves to the fallback model when the first stalls', async () => {
+    vi.useFakeTimers();
+    const f = vi.fn().mockImplementationOnce(hang).mockImplementationOnce(async () => sse(frame([{ text: '可读' }], 'STOP')));
+    vi.stubGlobal('fetch', f);
+    const p = gemini().stream('s', 'u', () => {});
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect((await p).text).toBe('可读');
+    expect(String(f.mock.calls[1]![0])).toContain('lite');
+    vi.useRealTimers();
+  });
+
+  it('fails cleanly, well inside the 60s function limit, when both stall', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('fetch', vi.fn(hang));
+    const p = gemini().stream('s', 'u', () => {});
+    const caught = expect(p).rejects.toThrow(/busy/);
+    await vi.advanceTimersByTimeAsync(40_000);
+    await caught;
+    vi.useRealTimers();
+  });
+});

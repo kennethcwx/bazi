@@ -139,7 +139,7 @@ function geminiProvider(key: string): Provider {
   // that spikes "high demand" 503s. The lite model is rarely busy; a reading
   // on it beats no reading.
   const fallback = env('GEMINI_FALLBACK_MODEL') ?? 'gemini-3.1-flash-lite';
-  const call = (m: string, system: string, user: string) => fetch(
+  const call = (m: string, system: string, user: string, signal?: AbortSignal) => fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${m}:streamGenerateContent?alt=sse`,
     {
       method: 'POST',
@@ -151,17 +151,29 @@ function geminiProvider(key: string): Provider {
         // small a cap ends the visible reply mid-sentence with MAX_TOKENS.
         generationConfig: { maxOutputTokens: 8192, temperature: 0.7 },
       }),
+      signal,
     },
   );
+  // A busy Gemini sometimes neither answers nor 503s — it just holds the socket
+  // until the function's 60s limit kills it and the page waits on nothing. Each
+  // model gets a budget to START replying; past it, it counts as busy.
+  const START_MS = 20_000;
+  const tryCall = async (m: string, system: string, user: string): Promise<Response | null> => {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), START_MS);
+    try { return await call(m, system, user, ac.signal); }
+    catch (e) { if (ac.signal.aborted) return null; throw e; }
+    finally { clearTimeout(timer); }
+  };
+  const busy = (r: Response | null) => !r || r.status === 503 || r.status === 429;
   return {
     id: 'gemini',
     label: 'Gemini',
     model,
     async stream(system, user, onDelta) {
-      let res = await call(model, system, user);
-      if ((res.status === 503 || res.status === 429) && fallback !== model) {
-        res = await call(fallback, system, user);
-      }
+      let res = await tryCall(model, system, user);
+      if (busy(res) && fallback !== model) res = await tryCall(fallback, system, user);
+      if (!res) throw new Error('Gemini is busy right now; try again in a minute.');
 
       if (!res.ok) {
         const detail = await res.text().catch(() => '');
